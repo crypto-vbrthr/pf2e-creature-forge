@@ -1,6 +1,7 @@
 import { deepClone } from "./clone.js";
 import { validateBlueprint } from "./validator.js";
 import { resolveAttackNameKey } from "./attack-localization.js";
+import { MODULE_VERSION } from "../constants.js";
 
 function localizeAttackName(attack) {
   const nameKey = resolveAttackNameKey(attack);
@@ -160,7 +161,7 @@ export function compileActorSource(blueprint, options = {}) {
     flags: {
       "pf2e-creature-forge": {
         blueprintSchemaVersion: blueprint.schemaVersion,
-        generatorVersion: blueprint.metadata?.generatorVersion ?? "0.2.0",
+        generatorVersion: blueprint.metadata?.generatorVersion ?? MODULE_VERSION,
         seed: blueprint.metadata?.seed ?? "",
         blueprint: deepClone(blueprint)
       }

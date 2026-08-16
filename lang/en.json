@@ -1,7 +1,7 @@
 {
   "PF2E_CREATURE_FORGE.WindowTitle": "PF2E Creature Forge",
   "PF2E_CREATURE_FORGE.Open": "Creature Forge",
-  "PF2E_CREATURE_FORGE.FoundationHint": "Categories, Subtypes & Defensive Affinities: concept-driven traits, immunities, resistances, weaknesses, and HP tradeoffs.",
+  "PF2E_CREATURE_FORGE.FoundationHint": "API-first creature generation with an embeddable editor and extensible content sources.",
   "PF2E_CREATURE_FORGE.Untitled": "Creature",
   "PF2E_CREATURE_FORGE.Editor.Concept": "Concept",
   "PF2E_CREATURE_FORGE.Editor.Defenses": "Defenses",
@@ -257,5 +257,21 @@
   "PF2E_CREATURE_FORGE.AffinityType.silver": "Silver",
   "PF2E_CREATURE_FORGE.AffinityType.grabbed": "Grabbed",
   "PF2E_CREATURE_FORGE.AffinityType.prone": "Prone",
-  "PF2E_CREATURE_FORGE.AffinityType.restrained": "Restrained"
+  "PF2E_CREATURE_FORGE.AffinityType.restrained": "Restrained",
+  "PF2E_CREATURE_FORGE.Editor.Sources": "Compendium sources",
+  "PF2E_CREATURE_FORGE.Field.CategorySources": "Category compendiums",
+  "PF2E_CREATURE_FORGE.Field.SubtypeSources": "Subtype compendiums",
+  "PF2E_CREATURE_FORGE.Editor.CategorySourceHint": "Selected NPC compendiums can contribute additional creature categories.",
+  "PF2E_CREATURE_FORGE.Editor.SubtypeSourceHint": "Traits observed on NPCs in the selected compendiums become additional subtype candidates.",
+  "PF2E_CREATURE_FORGE.Action.RefreshSources": "Rescan sources",
+  "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.World": "The selection is saved as the world default.",
+  "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.Host": "The selection applies only to this editor or generation request.",
+  "PF2E_CREATURE_FORGE.Notifications.SourceScanFailed": "At least one creature compendium could not be scanned.",
+  "PF2E_CREATURE_FORGE.Editor.DiscoveredFrom": "Discovered in",
+  "PF2E_CREATURE_FORGE.Editor.CoreAndExtensions": "Creature Forge Core & extensions",
+  "PF2E_CREATURE_FORGE.Editor.Tabs": "Creature Forge sections",
+  "PF2E_CREATURE_FORGE.Editor.Tab.Creature": "Creature",
+  "PF2E_CREATURE_FORGE.Editor.Tab.Sources": "Sources",
+  "PF2E_CREATURE_FORGE.Editor.SourcesHint": "Choose which NPC compendiums may contribute additional categories and subtypes. Creature Forge Core and registered extension content remain available regardless.",
+  "PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint": "Core categories/subtypes and API-registered extension content always remain available in addition to these compendium sources."
 }

@@ -28,6 +28,7 @@ export class ContentRegistry {
     if (existing && !options.replace) throw new Error(`Creature Forge content '${id}' is already registered as ${contentType}.`);
 
     const source = {
+      ...deepClone(definition.source ?? {}),
       moduleId: String(options.moduleId ?? definition.source?.moduleId ?? MODULE_ID),
       bundleId: options.bundleId ? String(options.bundleId) : (definition.source?.bundleId ?? null),
       version: String(options.version ?? definition.source?.version ?? "0.0.0")
@@ -98,12 +99,75 @@ export class ContentRegistry {
     return values.filter((entry) => {
       if (filters.moduleId && entry.source?.moduleId !== filters.moduleId) return false;
       if (filters.bundleId && entry.source?.bundleId !== filters.bundleId) return false;
+      if (filters.compendiumIds?.length && entry.source?.sourceKind === "compendium" && !filters.compendiumIds.includes(entry.source?.compendiumId)) return false;
       if (filters.tags?.length) {
         const tags = new Set(entry.tags ?? []);
         if (!filters.tags.every((tag) => tags.has(tag))) return false;
       }
       return true;
     }).map(deepClone);
+  }
+
+  /**
+   * Resolve a content entry by namespaced id or semantic slug while respecting
+   * host/request-local compendium source selections. Non-compendium content
+   * (core and registered extension modules) always remains available.
+   */
+  resolve(type, value, { compendiumIds = [] } = {}) {
+    const contentType = assertType(type);
+    const target = String(value ?? "");
+    const all = [...(this.maps.get(contentType)?.values() ?? [])];
+    const exact = all.find((entry) => entry.id === target);
+    if (exact) {
+      if (exact.source?.sourceKind !== "compendium" || !compendiumIds.length || compendiumIds.includes(exact.source?.compendiumId)) {
+        return deepClone(exact);
+      }
+      return null;
+    }
+
+    const candidates = all.filter((entry) => entry.slug === target);
+    const permanent = candidates.find((entry) => entry.source?.sourceKind !== "compendium");
+    if (permanent) return deepClone(permanent);
+    if (!compendiumIds.length) return null;
+    for (const compendiumId of compendiumIds) {
+      const discovered = candidates.find((entry) => entry.source?.compendiumId === compendiumId);
+      if (discovered) return deepClone(discovered);
+    }
+    return null;
+  }
+
+  /**
+   * List content visible for a specific source selection and collapse duplicate
+   * semantic slugs. When multiple selected compendiums expose the same subtype,
+   * their observed category associations are merged for editor guidance.
+   */
+  listResolved(type, { compendiumIds = [] } = {}) {
+    const contentType = assertType(type);
+    const entries = this.list(contentType).filter((entry) => {
+      if (entry.source?.sourceKind !== "compendium") return true;
+      return compendiumIds.includes(entry.source?.compendiumId);
+    });
+    const byKey = new Map();
+    for (const entry of entries) {
+      const key = entry.slug ?? entry.id;
+      const existing = byKey.get(key);
+      if (!existing) {
+        byKey.set(key, { ...entry, discoveredSources: entry.source?.sourceKind === "compendium" ? [entry.source.compendiumId] : [] });
+        continue;
+      }
+      if (entry.source?.sourceKind === "compendium") {
+        existing.discoveredSources = [...new Set([...(existing.discoveredSources ?? []), entry.source.compendiumId])];
+      }
+      const currentCategories = existing.supports?.categories ?? existing.selection?.categories ?? [];
+      const incomingCategories = entry.supports?.categories ?? entry.selection?.categories ?? [];
+      if (currentCategories.length || incomingCategories.length) {
+        existing.supports = {
+          ...(existing.supports ?? existing.selection ?? {}),
+          categories: [...new Set([...currentCategories, ...incomingCategories])]
+        };
+      }
+    }
+    return [...byKey.values()].map(deepClone);
   }
 
   query(type, context = {}) {

@@ -95,3 +95,51 @@
 .cf-editor .cf-affinity-preview .cf-compact-row { align-items: flex-start; flex-direction: column; gap: .15rem; }
 .cf-editor .cf-affinity-preview .cf-compact-row > span { display: flex; flex-direction: column; gap: .1rem; font-size: .82em; }
 @media (max-width: 850px) { .cf-editor .cf-affinity-preview { grid-template-columns: 1fr; } }
+
+/* 0.2.1 compendium source discovery */
+.cf-source-grid select[multiple] { min-height: 7rem; }
+.cf-source-actions { display: flex; align-items: center; gap: .75rem; margin: -.15rem 0 .8rem; }
+.cf-source-actions button { flex: 0 0 auto; }
+.cf-source-actions .cf-muted { font-size: .82em; }
+
+/* 0.2.2 editor tabs: keep source selection out of the creature form while
+   retaining request-local source controls for embedded hosts. */
+.cf-editor .cf-editor-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: end;
+  gap: .25rem;
+  padding: .45rem .75rem 0;
+  border-bottom: 1px solid var(--color-border-light-primary, #777);
+  background: color-mix(in srgb, var(--color-bg-option, #202020) 94%, transparent);
+}
+.cf-editor .cf-editor-tabs button {
+  flex: 0 0 auto;
+  min-width: 9rem;
+  padding: .5rem .8rem;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 7px 7px 0 0;
+  opacity: .72;
+}
+.cf-editor .cf-editor-tabs button.active,
+.cf-editor .cf-editor-tabs button[aria-selected="true"] {
+  opacity: 1;
+  font-weight: 700;
+  border-color: var(--color-border-light-primary, #777);
+  background: color-mix(in srgb, var(--color-bg-option, #181818) 96%, transparent);
+}
+.cf-editor .cf-tab-panel { display: none; }
+.cf-editor .cf-tab-panel.active { display: block; }
+.cf-editor .cf-sources-panel { max-width: 980px; margin: 0 auto; }
+.cf-editor .cf-tab-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.cf-editor .cf-tab-heading h3 { margin-top: 0; }
+.cf-editor .cf-tab-heading p { margin: .25rem 0 0; opacity: .72; max-width: 62rem; }
+.cf-editor .cf-source-scope { flex: 0 0 auto; max-width: 22rem; padding: .4rem .55rem; border: 1px solid var(--color-border-light-tertiary, #555); border-radius: 6px; font-size: .78em; opacity: .78; }
+.cf-editor .cf-sources-panel .cf-source-grid select[multiple] { min-height: 12rem; }
+
+@media (max-width: 700px) {
+  .cf-editor .cf-editor-tabs button { min-width: 0; flex: 1 1 0; }
+  .cf-editor .cf-tab-heading { flex-direction: column; }
+  .cf-editor .cf-source-scope { max-width: none; width: 100%; }
+}

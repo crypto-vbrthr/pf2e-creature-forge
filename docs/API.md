@@ -1,4 +1,4 @@
-# Public API 0.2.0
+# Public API 0.2.2
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;
@@ -18,7 +18,8 @@ api.schemaVersion.content;
 
 ```js
 api.createRequest(input);
-api.generate(request);
+api.generate(request);        // synchronous; selected compendium sources must already be prepared
+await api.generateAsync(request); // prepares selected category/subtype compendiums first
 api.reroll(blueprint, { scope, seed });
 api.validateRequest(request);
 api.validate(blueprint);
@@ -78,7 +79,7 @@ api.generate({
 
 Valid attack/damage ranks are `extreme`, `high`, `moderate`, and `low`. Valid ability ranks also include `terrible`. Each setting accepts `role` to use the selected role road map.
 
-### Reroll scopes in 0.2.0
+### Reroll scopes in 0.2.x
 
 - `all`
 - `defenses`
@@ -214,13 +215,37 @@ api.content.getRegistrySnapshot();
 
 ## Sources
 
+Generic compendium listing remains available:
+
 ```js
 api.sources.listCompendiums();
 api.sources.listCompendiums({ documentName: "Actor" });
 api.sources.listCompendiums({ documentName: "Item" });
 ```
 
-Semantic indexing is a later source-provider milestone.
+NPC category/subtype discovery (introduced in 0.2.1):
+
+```js
+api.sources.listCreatureCompendiums();
+await api.sources.discover("pf2e.some-bestiary");
+await api.sources.ensure({
+  categories: ["pf2e.some-bestiary"],
+  subtypes: ["pf2e.some-bestiary"]
+});
+
+api.sources.listContent("category", { selectedSources: ["pf2e.some-bestiary"] });
+api.sources.listContent("subtype", { selectedSources: ["pf2e.some-bestiary"] });
+api.sources.isPrepared({ categories: ["pf2e.some-bestiary"] });
+api.sources.getStatus();
+api.sources.clearCache();
+
+api.sources.getDefaults();
+await api.sources.setDefaults({ categories: [], subtypes: [] });
+```
+
+`CreatureGenerationRequest.sources.categories` and `.subtypes` are independent arrays. Core and non-compendium extension content remains visible regardless of these arrays. Compendium-discovered content is filtered to the selected pack ids.
+
+When a request uses unprepared compendium sources, prefer `await api.generateAsync(request)`. For repeated synchronous generation, call `await api.sources.ensure(request.sources)` once before `api.generate(request)`.
 
 ## Integrations
 
@@ -237,21 +262,25 @@ api.integrations.getLootApi();
 
 ```js
 api.ui.openCreatureForge();
-api.ui.creatureEditor.contractVersion; // 2
+api.ui.creatureEditor.contractVersion; // 4
 api.ui.creatureEditor.modes;           // ["create", "edit", "view"]
 api.ui.creatureEditor.layouts;         // ["full", "compact"]
+api.ui.creatureEditor.tabs;            // ["creature", "sources"]
 
 const editor = api.ui.creatureEditor.create(options);
 await editor.mount(container, { layout: "full", minHeight: 620 });
 editor.element;
+editor.currentTab;
+editor.setActiveTab("sources");
 editor.value;
 editor.request;
 editor.validate();
-editor.setRequest(request);
-editor.setValue(blueprint);
+await editor.setRequest(request);
+await editor.refreshSources({ force: true });
+await editor.setValue(blueprint);
 editor.markClean();
 editor.unmount();
 editor.destroy();
 ```
 
-The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.
+The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v4 moves optional source-selection controls into a dedicated `sources` tab. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.

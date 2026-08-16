@@ -26,7 +26,7 @@ External Modules / Encounter Forge / Standalone UI
 
 ### CreatureGenerationRequest v2
 
-The request captures user intent. 0.2.0 adds a `defensiveAffinities` policy/override section to identity, role, six ability rank choices, defense ranks, offense profile, skill preferences, movement/sense controls, seed/variation, source selections, and high-level feature options.
+The request captures user intent. The v2 request includes a `defensiveAffinities` policy/override section plus independent `sources.categories` and `sources.subtypes` arrays. In 0.2.1 these source arrays become active inputs to compendium discovery rather than reserved placeholders.
 
 ### CreatureBlueprint v2
 
@@ -63,6 +63,29 @@ heavy:    attack rank down, damage rank up
 ```
 
 The engine keeps attack generation separate from Actor compilation. The Blueprint stores semantic attack data, while the compiler maps each generated strike to an embedded PF2E NPC `melee` item.
+
+
+## Compendium source discovery
+
+0.2.1 adds a source layer between Foundry compendiums and the semantic content registry. Actor compendiums are scanned through their index for NPC document type and `system.traits.value`. Traits recognized as creature types become discovered category candidates; other observed NPC traits become subtype candidates with observed category-association metadata.
+
+```text
+Selected Actor Compendiums
+          |
+      index scan
+          |
+  discovery cache
+          |
+pack-scoped category/subtype definitions
+          |
+ source-aware ContentRegistry.resolve/listResolved
+          |
+ CreatureGenerationRequest source filter
+```
+
+Scanned definitions remain pack-scoped in the registry. They are not globally activated by being scanned: `ContentRegistry.resolve()` and `listResolved()` filter compendium-discovered definitions against the current request's selected pack ids. Core and ordinary external module definitions are always available. This is what lets two embedded Creature Editors use different source sets at the same time without unregistering each other's content.
+
+The standalone host persists category/subtype source defaults at world scope. Embedded hosts default to request-local source selection and can opt into their own persistence outside Creature Forge.
 
 ## Categories, Subtypes & Defensive Affinities
 
@@ -138,4 +161,4 @@ Creature ability
 
 ## Embedded editor
 
-`api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v2), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, and persistent bottom action footer. The host owns the surrounding window, tabs, persistence, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.
+`api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v4), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, persistent bottom action footer, and its own Creature/Sources sub-tabs. The host owns the surrounding window, higher-level navigation, persistence policy, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.

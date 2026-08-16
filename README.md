@@ -2,9 +2,9 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.2.0** turns categories and subtypes into active generation inputs. They can now contribute traits, implied subtypes, immunities, resistances, weaknesses, and HP tradeoffs while preserving source provenance and deterministic rerolls.
+Version **0.2.2** moves compendium source selection into a dedicated **Sources** tab of the canonical Embedded Creature Editor. Category/subtype discovery remains host-aware: the standalone editor can persist world-default NPC compendium selections, while embedded hosts can keep their source choices request-local.
 
-## What 0.2.0 provides
+## What 0.2.2 provides
 
 - Versioned `CreatureGenerationRequest` and `CreatureBlueprint` contracts.
 - Seeded deterministic random generation. Generation code does not use `Math.random()`.
@@ -19,17 +19,15 @@ Version **0.2.0** turns categories and subtypes into active generation inputs. T
 - Role/category/subtype-aware skill generation, with explicit count/rank/preference controls.
 - Concept-sensitive land, climb, swim, fly, and burrow movement with manual overrides.
 - Concept-sensitive low-light vision, darkvision, and scent with manual overrides.
-- Category/subtype compatibility metadata and a multi-select subtype editor with immediate category compatibility refresh.
-- Category- and subtype-derived traits, implied subtypes, immunities, resistances, and weaknesses.
-- GM Core resistance/weakness scaling for levels -1 through 24, with minimum/maximum bands usable by core and external providers.
-- Defensive affinity provenance: every generated entry retains the category/subtype/provider rule that created it.
-- Automatic HP tradeoffs for broad resistances and configurable compensation for weaknesses.
-- Manual affinity overrides with conflict resolution and locked-entry preservation.
-- Scoped defensive-affinity rerolls without disturbing unrelated attacks, skills, movement, or senses.
 - Scoped rerolls for HP, defenses, ability modifiers, skills, movement, senses, and attacks.
 - PF2E NPC compilation including skills, Perception senses, land/alternate Speeds, and embedded strike items.
 - Public content registry for categories, subtypes, name templates, abilities, auras, afflictions, effects, poisons, spell profiles/packages, and loot profiles.
-- Embedded Creature Editor contract v2 plus standalone Creature Forge ApplicationV2 host.
+- NPC compendium discovery for additional category and trait-derived subtype candidates.
+- Separate category-source and subtype-source selections stored in `CreatureGenerationRequest.sources`.
+- Source-aware content resolution: core and external registered content stay available, while compendium-discovered content is visible only when its source is selected.
+- Standalone source selections persist as world defaults; embedded hosts can keep selections local.
+- Compendium pickers live in a dedicated **Sources** tab instead of occupying the primary creature-generation form.
+- Embedded Creature Editor contract v4 plus standalone Creature Forge ApplicationV2 host.
 - The editor owns its internal scrolling and persistent footer, so Generate, Reroll, and optional Create Actor actions remain visible at the bottom.
 - Multiple hosts can mount the same editor implementation; the standalone window contains no second editor implementation.
 - Standalone default size increased to 1280×860, with migration from the old default-sized saved window state.
@@ -128,7 +126,6 @@ api.reroll(blueprint, { scope: "statistics.skills" });
 api.reroll(blueprint, { scope: "statistics.movement" });
 api.reroll(blueprint, { scope: "statistics.senses" });
 api.reroll(blueprint, { scope: "combat.attacks" });
-api.reroll(blueprint, { scope: "defenses.affinities" });
 ```
 
 Attack entries with `locked: true` survive an attack-scope reroll.
@@ -140,41 +137,38 @@ const { actorSource, integrationPlan } = api.compile(blueprint);
 const { actor } = await api.createActor(blueprint, { renderSheet: true });
 ```
 
-0.2.0 also compiles generated immunities, weaknesses, and resistances into the PF2E NPC source. Future milestones will materialize abilities, auras, afflictions, spellcasting, and loot through the corresponding Forge adapters.
+0.2.2 compiles the same generated statistics/IWR/strikes as 0.2.0. Compendium discovery affects the semantic category/subtype catalog before generation; future milestones will use the same source framework for abilities, auras, afflictions, spellcasting, and loot.
 
-## Defensive affinities
+## Compendium category/subtype discovery
 
-Categories and subtypes can contribute defensive rules without hard-coding them into the generator. A definition may grant traits, imply further subtypes, and provide affinity rules:
+NPC compendiums can be selected independently as category and subtype sources. Core/registered extension content is always available; discovered compendium content is request-scoped.
 
 ```js
-api.content.registerSubtype({
-  id: "my-module.crystal",
-  slug: "crystal",
-  label: "Crystal",
-  supports: { categories: ["construct", "elemental"] },
-  grantedTraits: ["magical"],
-  defensiveAffinities: [
-    { id: "sonic-weakness", kind: "weakness", type: "sonic", scale: "maximum" },
-    { id: "physical-resistance", kind: "resistance", type: "physical", scale: "minimum" }
-  ]
+const request = api.createRequest({
+  sources: {
+    categories: ["pf2e.some-bestiary"],
+    subtypes: ["pf2e.some-bestiary", "my-module.campaign-creatures"]
+  }
 });
+
+// Async generation prepares/scans the selected packs first.
+const blueprint = await api.generateAsync(request);
+
+// Or prepare once, then use the synchronous generator repeatedly.
+await api.sources.ensure(request.sources);
+const another = api.generate(request);
 ```
 
-Core definitions include examples such as incorporeal/ghost, swarm, fire/cold, celestial/fiend sanctification, construct, undead, devil, psychopomp, protean, and wood affinities. `when`, `chance`, `priority`, `exceptions`, `doubleVs`, fixed values, and level bounds are supported by the affinity rule resolver.
-
-A request can disable automatic affinities or provide explicit additions:
+Useful source API calls:
 
 ```js
-defensiveAffinities: {
-  mode: "auto",
-  hpCompensation: "auto",
-  immunities: [{ type: "fear" }],
-  resistances: [{ type: "cold", value: 10 }],
-  weaknesses: []
-}
+api.sources.listCompendiums({ documentName: "Actor" });
+await api.sources.discover("pf2e.some-bestiary");
+await api.sources.ensure(request.sources);
+api.sources.listContent("category", { selectedSources: request.sources.categories });
+api.sources.listContent("subtype", { selectedSources: request.sources.subtypes });
+api.sources.getStatus();
 ```
-
-Manual entries take precedence over generated conflicts and are locked by default.
 
 ## External content bundles
 
@@ -212,7 +206,8 @@ const editor = api.ui.creatureEditor.create({
   capabilities: {
     generation: true,
     actorCreation: false,
-    sourceSelection: false
+    sourceSelection: true,
+    persistSourceSelection: false
   },
   onChange: ({ blueprint, request, validation }) => {
     // Host owns persistence.
@@ -224,7 +219,7 @@ await editor.mount(containerElement, {
 });
 ```
 
-The embedded editor owns only its editor DOM, state, internal scrolling, validation state, and action footer. The host owns its surrounding window, tabs, persistence, and lifecycle. Primary actions live in the editor footer, so they remain visible while the form and preview scroll independently above it.
+The embedded editor owns its editor DOM, state, internal scrolling, validation state, Creature/Sources sub-tabs, and action footer. The host owns its surrounding window, higher-level navigation, persistence policy, and lifecycle. Primary actions live in the editor footer, so they remain visible while the form and preview scroll independently above it.
 
 ```js
 editor.element;      // embedded editor root
@@ -235,7 +230,7 @@ editor.unmount();
 editor.destroy();
 ```
 
-`api.ui.creatureEditor.contractVersion` is **2**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`.
+`api.ui.creatureEditor.contractVersion` is **4**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`. The public editor exposes the `creature` and `sources` tabs when source selection is enabled, and hosts can switch tabs with `editor.setActiveTab(...)`.
 
 ## Integrations
 
@@ -253,6 +248,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.2.0 now owns core numeric statistics, category/subtype resolution, defensive affinities, skill selection, movement/senses generation, and localized strikes. Ability recipes, Effect Forge composition, auras, afflictions, spell packages, loot generation, and semantic compendium indexing remain later milestones.
+0.2.2 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill selection, movement/senses generation, and localized strike path. Ability recipes, Effect Forge composition, auras, afflictions, spell packages, and loot generation remain later milestones.
 
 See `docs/ROADMAP.md`.

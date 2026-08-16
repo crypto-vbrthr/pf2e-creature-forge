@@ -7,4 +7,14 @@ export function registerSettings() {
     type: Object,
     default: {}
   });
+
+  game.settings.register(MODULE_ID, SETTINGS.SOURCE_DEFAULTS, {
+    scope: "world",
+    config: false,
+    type: Object,
+    default: {
+      categories: [],
+      subtypes: []
+    }
+  });
 }

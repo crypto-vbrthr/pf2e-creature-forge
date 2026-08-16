@@ -33,12 +33,14 @@ export function validateGenerationRequest(request, { registry } = {}) {
   if (!category) {
     issues.push(issue("error", "CATEGORY_REQUIRED", "identity.category", "A primary creature category is required."));
   } else if (registry) {
-    const exists = registry.list("category").some((entry) => entry.slug === category || entry.id === category);
+    const exists = Boolean(registry.resolve?.("category", category, { compendiumIds: request?.sources?.categories ?? [] }))
+      || registry.list("category").some((entry) => entry.source?.sourceKind !== "compendium" && (entry.slug === category || entry.id === category));
     if (!exists) issues.push(issue("warning", "CATEGORY_UNREGISTERED", "identity.category", `Category '${category}' is not registered.`));
   }
   if (registry) {
     for (const subtype of request?.identity?.subtypes ?? []) {
-      const definition = registry.list("subtype").find((entry) => entry.slug === subtype || entry.id === subtype);
+      const definition = registry.resolve?.("subtype", subtype, { compendiumIds: request?.sources?.subtypes ?? [] })
+        ?? registry.list("subtype").find((entry) => entry.source?.sourceKind !== "compendium" && (entry.slug === subtype || entry.id === subtype));
       if (!definition) {
         issues.push(issue("warning", "SUBTYPE_UNREGISTERED", "identity.subtypes", `Subtype '${subtype}' is not registered.`));
         continue;

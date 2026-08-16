@@ -1,21 +1,34 @@
 # Changelog
 
+## 0.2.2 - Source Tab & Editor UX
+
+- Moved category/subtype compendium selection out of the main creature form into a dedicated **Sources** tab.
+- Promoted the Embedded Creature Editor contract to v4 and exposed `creature` / `sources` tabs plus `currentTab` and `setActiveTab()`.
+- Kept the source tab inside the canonical embedded surface so Encounter Forge and other hosts receive the same source UI automatically.
+- Preserved world-default source persistence for the standalone host and request-local source selections for embedded hosts.
+- Preserved independent scroll positions when switching tabs and kept the persistent bottom action footer visible across tabs.
+- Added responsive tab/source-panel styling and updated DE/EN localization/documentation.
+
+## 0.2.1 - Compendium Sources & Category/Subtype Discovery
+
+- Added asynchronous scanning of selected Actor/NPC compendiums using lightweight index fields for document type and creature traits.
+- Added separate category-source and subtype-source selections to the Embedded Creature Editor.
+- Added world-default source persistence for the standalone Creature Forge while keeping embedded-host source selections request-local by default.
+- Added source-aware registry resolution so scanned compendium entries are visible only to requests that selected their source; core and external registered content remain available.
+- Added category discovery from recognized creature-type traits and subtype discovery from other observed NPC traits.
+- Added observed category compatibility metadata and occurrence counts to discovered subtype definitions.
+- Added compendium discovery provenance and cached source scanning.
+- Added `api.generateAsync()`, `api.sources.discover()`, `ensure()`, `listContent()`, source defaults, status, cache controls, and source-preparation diagnostics.
+- Preserved the existing generic `api.sources.listCompendiums({ documentName })` API.
+- Promoted the Embedded Creature Editor contract to v3 for host-aware source controls.
+- Expanded automated coverage to 57 tests.
+
 ## 0.2.0 - Categories, Subtypes & Defensive Affinities
 
-- Promoted request, Blueprint, and content schemas to v2 and the public API to 0.2.0.
-- Added category/subtype compatibility metadata, multi-select subtype UI, and immediate category compatibility refresh.
-- Added recursive implied-subtype resolution and category/subtype-granted traits.
-- Added the level -1 through 24 resistance/weakness scaling table with `minimum` and `maximum` bands.
-- Added data-driven immunity, resistance, and weakness rules for core categories and structural/thematic subtypes.
-- Added core profiles including construct, undead, elemental, celestial/fiend, mindless, incorporeal/ghost, swarm, fire/cold, wood, angel/azata, daemon/demon/devil, psychopomp, and protean concepts.
-- Added seeded chance, predicates, priority, exceptions, `doubleVs`, fixed/scaled values, and rule provenance.
-- Added manual affinity overrides, generated/manual conflict resolution, and locked-entry preservation.
-- Added automatic HP tradeoffs for broad resistances and configurable weakness compensation.
-- Added scoped `defenses.affinities` rerolls while preserving unrelated Blueprint sections.
-- Added defensive-affinity validation and source-aware preview UI.
-- Added PF2E NPC compilation for immunity, weakness, and resistance source arrays.
-- Added external subtype/provider coverage demonstrating third-party defensive affinity contributions.
-- Expanded automated coverage to 54 tests.
+- Added category/subtype compatibility metadata, implied subtypes, and granted traits.
+- Added level-scaled immunities, resistances, and weaknesses with seeded selection, manual overrides, provenance, conflicts, and scoped rerolls.
+- Added defensive HP compensation/tradeoffs and PF2E NPC IWR compilation.
+- Added external category/subtype affinity providers through the public content registry.
 
 ## 0.1.4 - Skills, Movement & Senses
 

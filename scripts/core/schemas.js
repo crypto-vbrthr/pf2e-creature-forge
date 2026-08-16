@@ -88,6 +88,9 @@ export function createGenerationRequest(input = {}) {
   request.schemaVersion = REQUEST_SCHEMA_VERSION;
   request.identity.subtypes = [...new Set((request.identity.subtypes ?? []).map((value) => String(value).trim()).filter(Boolean))];
   request.generation.seed = String(request.generation.seed ?? "").trim();
+  for (const key of ["categories", "subtypes", "abilities", "auras", "afflictions", "effects", "spells", "loot"]) {
+    request.sources[key] = [...new Set((request.sources?.[key] ?? []).map((value) => String(value).trim()).filter(Boolean))];
+  }
   request.skills.preferred = [...new Set((request.skills?.preferred ?? []).map((value) => String(value).trim().toLowerCase()).filter(Boolean))];
   if (request.skills.count !== "role") request.skills.count = Math.max(0, Math.min(8, Number(request.skills.count ?? 3)));
   for (const type of ["land", "climb", "swim", "fly", "burrow"]) {
@@ -113,7 +116,7 @@ export function createEmptyBlueprint() {
     schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     metadata: {
       generator: "pf2e-creature-forge",
-      generatorVersion: "0.2.0",
+      generatorVersion: "0.2.2",
       seed: "",
       variation: "balanced",
       requestSnapshot: null,

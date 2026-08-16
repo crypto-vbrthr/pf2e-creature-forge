@@ -113,18 +113,21 @@ function triStateOptions(current) {
 }
 
 export class EmbeddedCreatureEditor {
-  static CONTRACT_VERSION = 2;
+  static CONTRACT_VERSION = 4;
 
-  constructor({ api, session = null, request = {}, blueprint = null, mode = "create", layout = "full", capabilities = {}, onChange = null, onGenerate = null } = {}) {
+  constructor({ api, session = null, request = {}, blueprint = null, mode = "create", layout = "full", activeTab = "creature", capabilities = {}, onChange = null, onGenerate = null } = {}) {
     if (!api) throw new Error("EmbeddedCreatureEditor requires the Creature Forge API.");
     this.api = api;
     this.session = session ?? new CreatureEditorSession({ api, request, blueprint, mode });
     this.mode = mode;
     this.layout = layout;
+    this.activeTab = activeTab === "sources" ? "sources" : "creature";
+    this.tabScrollPositions = { creature: 0, sources: 0 };
     this.capabilities = {
       generation: true,
       actorCreation: false,
       sourceSelection: false,
+      persistSourceSelection: false,
       advancedEditing: true,
       ...capabilities
     };
@@ -140,6 +143,16 @@ export class EmbeddedCreatureEditor {
   get request() { return deepClone(this.session.request); }
   get isDirty() { return Boolean(this.session.dirty); }
   get element() { return this.root; }
+  get currentTab() { return this.activeTab; }
+
+  setActiveTab(tab) {
+    const next = tab === "sources" && this.capabilities.sourceSelection ? "sources" : "creature";
+    if (next === this.activeTab) return this;
+    if (this.scrollElement) this.tabScrollPositions[this.activeTab] = this.scrollElement.scrollTop;
+    this.activeTab = next;
+    this.#render({ captureScroll: false });
+    return this;
+  }
 
   async mount(container, options = {}) {
     if (!(container instanceof HTMLElement)) throw new TypeError("Creature editor host must be an HTMLElement.");
@@ -147,8 +160,17 @@ export class EmbeddedCreatureEditor {
     this.container = container;
     this.container.classList.add("cf-editor-mount");
     if (options.layout) this.layout = options.layout;
+    if (options.activeTab) this.activeTab = options.activeTab === "sources" && this.capabilities.sourceSelection ? "sources" : "creature";
+    if (!this.capabilities.sourceSelection) this.activeTab = "creature";
     if (Number.isFinite(Number(options.minHeight))) {
       this.container.style.setProperty("--cf-editor-min-height", `${Math.max(320, Number(options.minHeight))}px`);
+    }
+    try {
+      await this.api.sources.ensure(this.session.request.sources);
+      this.#reconcileContentSelection();
+    } catch (error) {
+      console.warn("pf2e-creature-forge | Could not prepare compendium discovery sources.", error);
+      globalThis.ui?.notifications?.warn?.(localize("PF2E_CREATURE_FORGE.Notifications.SourceScanFailed", "One or more creature compendiums could not be scanned."));
     }
     if (!this.session.blueprint) this.session.generate();
     this.#render();
@@ -174,16 +196,29 @@ export class EmbeddedCreatureEditor {
 
   destroy() { this.unmount(); }
 
-  setValue(blueprint) {
+  async setValue(blueprint) {
     this.session.blueprint = deepClone(blueprint);
     this.session.request = this.api.createRequest(blueprint?.metadata?.requestSnapshot ?? this.session.request);
     this.session.dirty = true;
+    await this.api.sources.ensure(this.session.request.sources);
+    this.#reconcileContentSelection();
     this.#render();
+    return this;
   }
 
-  setRequest(request) {
+  async setRequest(request) {
     this.session.setRequest(request);
+    await this.api.sources.ensure(this.session.request.sources);
+    this.#reconcileContentSelection();
     this.#render();
+    return this;
+  }
+
+  async refreshSources({ force = false } = {}) {
+    await this.api.sources.ensure(this.session.request.sources, { force });
+    this.#reconcileContentSelection();
+    this.#render();
+    return this;
   }
 
   validate() { return this.session.validate(); }
@@ -203,6 +238,8 @@ export class EmbeddedCreatureEditor {
     request.identity.role = get("role")?.value ?? "custom";
     request.identity.category = get("category")?.value ?? "humanoid";
     request.identity.subtypes = [...(get("subtypes")?.selectedOptions ?? [])].map((entry) => entry.value).filter(Boolean);
+    if (get("categorySources")) request.sources.categories = [...get("categorySources").selectedOptions].map((entry) => entry.value).filter(Boolean);
+    if (get("subtypeSources")) request.sources.subtypes = [...get("subtypeSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     request.identity.size = get("size")?.value ?? "med";
     for (const ability of ABILITIES) request.attributes[ability] = get(ability)?.value ?? "role";
     request.defenses.ac = get("ac")?.value ?? "role";
@@ -237,9 +274,29 @@ export class EmbeddedCreatureEditor {
     this.session.setRequest(request);
   }
 
+  #reconcileContentSelection() {
+    const request = this.api.createRequest(this.session.request);
+    const categories = this.api.sources.listContent("category", { selectedSources: request.sources.categories });
+    const categorySlugs = new Set(categories.map((entry) => entry.slug ?? entry.id));
+    if (!categorySlugs.has(request.identity.category)) {
+      request.identity.category = categorySlugs.has("humanoid") ? "humanoid" : (categories[0]?.slug ?? categories[0]?.id ?? "humanoid");
+    }
+    const subtypeSlugs = new Set(this.api.sources.listContent("subtype", { selectedSources: request.sources.subtypes }).map((entry) => entry.slug ?? entry.id));
+    request.identity.subtypes = (request.identity.subtypes ?? []).filter((slug) => subtypeSlugs.has(slug));
+    this.session.setRequest(request);
+  }
+
   async #handleEvent(event) {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
+
+    const requestedTab = target.closest?.("[data-cf-tab]")?.dataset?.cfTab;
+    if (event.type === "click" && requestedTab) {
+      event.preventDefault();
+      this.setActiveTab(requestedTab);
+      return;
+    }
+
     const action = target.closest?.("[data-cf-action]")?.dataset?.cfAction;
     if (event.type === "click" && action) {
       event.preventDefault();
@@ -280,6 +337,18 @@ export class EmbeddedCreatureEditor {
         this.session.reroll({ scope: "defenses.affinities" });
         this.#render();
         await this.#emitChange("reroll-affinities");
+      } else if (action === "refresh-sources" && this.capabilities.sourceSelection) {
+        this.#syncRequestFromForm();
+        try {
+          await this.api.sources.ensure(this.session.request.sources, { force: true });
+          this.#reconcileContentSelection();
+          if (this.capabilities.persistSourceSelection) await this.api.sources.setDefaults(this.session.request.sources);
+          this.#render();
+          await this.#emitChange("sources-refreshed");
+        } catch (error) {
+          console.error("pf2e-creature-forge | Source refresh failed.", error);
+          globalThis.ui?.notifications?.error?.(localize("PF2E_CREATURE_FORGE.Notifications.SourceScanFailed", "One or more creature compendiums could not be scanned."));
+        }
       } else if (action === "create-actor" && this.capabilities.actorCreation) {
         const { actor } = await this.api.createActor(this.session.blueprint, { renderSheet: true });
         globalThis.ui?.notifications?.info?.(localize("PF2E_CREATURE_FORGE.Notifications.ActorCreated", `Created ${actor?.name ?? "creature"}.`));
@@ -289,14 +358,29 @@ export class EmbeddedCreatureEditor {
 
     if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="preferredSkills"]'))) {
       this.#syncRequestFromForm();
+      if (event.type === "change" && target.matches?.('select[name="categorySources"], select[name="subtypeSources"]')) {
+        try {
+          await this.api.sources.ensure(this.session.request.sources);
+          this.#reconcileContentSelection();
+          if (this.capabilities.persistSourceSelection) await this.api.sources.setDefaults(this.session.request.sources);
+          this.#render();
+          await this.#emitChange("source-selection-change");
+        } catch (error) {
+          console.error("pf2e-creature-forge | Source selection failed.", error);
+          globalThis.ui?.notifications?.error?.(localize("PF2E_CREATURE_FORGE.Notifications.SourceScanFailed", "One or more creature compendiums could not be scanned."));
+        }
+        return;
+      }
       if (event.type === "change" && target.matches?.('select[name="category"]')) this.#render();
       await this.#emitChange("request-change");
     }
   }
 
-  #render() {
+  #render({ captureScroll = true } = {}) {
     if (!this.container) return;
-    const previousScrollTop = this.scrollElement?.scrollTop ?? 0;
+    if (!this.capabilities.sourceSelection) this.activeTab = "creature";
+    if (captureScroll && this.scrollElement) this.tabScrollPositions[this.activeTab] = this.scrollElement.scrollTop;
+    const previousScrollTop = this.tabScrollPositions[this.activeTab] ?? 0;
     if (this.boundHandler && this.root) {
       this.root.removeEventListener("change", this.boundHandler);
       this.root.removeEventListener("input", this.boundHandler);
@@ -308,12 +392,23 @@ export class EmbeddedCreatureEditor {
     const blueprint = this.session.blueprint;
     const validation = this.validate();
     const disabled = this.mode === "view" ? "disabled" : "";
-    const categories = this.api.content.list("category").map((entry) => ({ value: entry.slug ?? entry.id, label: localize(entry.label, entry.slug ?? entry.id) }));
-    const subtypeDefinitions = this.api.content.list("subtype")
+    const compendiumSources = this.api.sources.listCompendiums({ documentName: "Actor" });
+    const compendiumLabels = new Map(compendiumSources.map((entry) => [entry.id, entry.label]));
+    const sourceOptions = (selected = []) => compendiumSources.map((entry) => {
+      const suffix = entry.packageName ? ` · ${entry.packageName}` : "";
+      return option(entry.id, escapeHtml(`${entry.label}${suffix}`), selected.includes(entry.id));
+    }).join("");
+    const categories = this.api.sources.listContent("category", { selectedSources: request.sources.categories }).map((entry) => ({
+      value: entry.slug ?? entry.id,
+      label: `${localize(entry.label, entry.slug ?? entry.id)}${entry.discoveredSources?.length ? ` · ${entry.discoveredSources.map((id) => compendiumLabels.get(id) ?? id).join(", ")}` : ""}`,
+      discoveredSources: entry.discoveredSources ?? []
+    }));
+    const subtypeDefinitions = this.api.sources.listContent("subtype", { selectedSources: request.sources.subtypes })
       .map((entry) => ({
         value: entry.slug ?? entry.id,
-        label: localize(entry.label, entry.slug ?? entry.id),
-        supportedCategories: entry.supports?.categories ?? entry.selection?.categories ?? []
+        label: `${localize(entry.label, entry.slug ?? entry.id)}${entry.discoveredSources?.length ? ` · ${entry.discoveredSources.map((id) => compendiumLabels.get(id) ?? id).join(", ")}` : ""}`,
+        supportedCategories: entry.supports?.categories ?? entry.selection?.categories ?? [],
+        discoveredSources: entry.discoveredSources ?? []
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
     const selectedSubtypeSet = new Set(request.identity.subtypes ?? []);
@@ -368,8 +463,14 @@ export class EmbeddedCreatureEditor {
 
     this.container.innerHTML = `
       <section class="cf-editor cf-layout-${escapeHtml(this.layout)}" data-cf-editor data-cf-editor-contract="${EmbeddedCreatureEditor.CONTRACT_VERSION}">
+        ${this.capabilities.sourceSelection ? `
+          <nav class="cf-editor-tabs" role="tablist" aria-label="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Tabs", "Creature Forge sections"))}">
+            <button type="button" role="tab" data-cf-tab="creature" aria-selected="${this.activeTab === "creature"}" class="${this.activeTab === "creature" ? "active" : ""}"><i class="fa-solid fa-dragon"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Tab.Creature", "Creature"))}</button>
+            <button type="button" role="tab" data-cf-tab="sources" aria-selected="${this.activeTab === "sources"}" class="${this.activeTab === "sources" ? "active" : ""}"><i class="fa-solid fa-book-open"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Tab.Sources", "Sources"))}</button>
+          </nav>` : ""}
         <div class="cf-editor-scroll" data-cf-editor-scroll>
-          <div class="cf-grid">
+          <div class="cf-tab-panel ${this.activeTab === "creature" ? "active" : ""}" data-cf-tab-panel="creature" role="tabpanel">
+            <div class="cf-grid">
           <section class="cf-panel cf-inputs">
             <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Concept", "Concept"))}</h3>
             <div class="cf-form-grid">
@@ -485,7 +586,28 @@ export class EmbeddedCreatureEditor {
             <h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Validation", "Validation"))}</h4>
             ${diagnosticsHtml}
           </section>
+            </div>
           </div>
+          ${this.capabilities.sourceSelection ? `
+            <div class="cf-tab-panel ${this.activeTab === "sources" ? "active" : ""}" data-cf-tab-panel="sources" role="tabpanel">
+              <section class="cf-panel cf-sources-panel">
+                <div class="cf-tab-heading">
+                  <div>
+                    <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Sources", "Compendium sources"))}</h3>
+                    <p>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SourcesHint", "Choose which NPC compendiums may contribute discovered categories and subtypes. Creature Forge Core and registered extension content remain available."))}</p>
+                  </div>
+                  <span class="cf-source-scope">${escapeHtml(localize(this.capabilities.persistSourceSelection ? "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.World" : "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.Host", this.capabilities.persistSourceSelection ? "Saved as world defaults." : "Used only by this editor/request."))}</span>
+                </div>
+                <div class="cf-form-grid cf-source-grid">
+                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.CategorySources", "Category compendiums"))}</span><select name="categorySources" multiple size="9" ${disabled}>${sourceOptions(request.sources.categories)}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.CategorySourceHint", "Selected NPC compendiums can contribute additional creature categories."))}</small></label>
+                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SubtypeSources", "Subtype compendiums"))}</span><select name="subtypeSources" multiple size="9" ${disabled}>${sourceOptions(request.sources.subtypes)}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SubtypeSourceHint", "Traits observed on NPCs in the selected compendiums become additional subtype candidates."))}</small></label>
+                </div>
+                <div class="cf-source-actions">
+                  <button type="button" data-cf-action="refresh-sources" ${disabled}><i class="fa-solid fa-arrows-rotate"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RefreshSources", "Rescan sources"))}</button>
+                  <span class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint", "Core categories/subtypes and API-registered extension content are always available in addition to these compendium sources."))}</span>
+                </div>
+              </section>
+            </div>` : ""}
         </div>
         ${(canGenerate || canCreateActor) ? `
           <footer class="cf-editor-footer" data-cf-editor-footer>
@@ -518,6 +640,7 @@ export function createCreatureEditorUiApi({ apiProvider }) {
     contractVersion: EmbeddedCreatureEditor.CONTRACT_VERSION,
     modes: Object.freeze(["create", "edit", "view"]),
     layouts: Object.freeze(["full", "compact"]),
+    tabs: Object.freeze(["creature", "sources"]),
     createSession: (options = {}) => new CreatureEditorSession({ api: apiProvider(), ...options }),
     create: (options = {}) => new EmbeddedCreatureEditor({ api: apiProvider(), ...options })
   };

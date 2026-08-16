@@ -65,8 +65,16 @@ function resolveRequestedRank(requested, fallback) {
   return requested && requested !== "role" ? requested : fallback;
 }
 
-function resolveTrait(registry, type, value) {
-  const entry = registry?.list(type).find((candidate) => candidate.slug === value || candidate.id === value);
+function sourceIdsForType(request, type) {
+  if (type === "category") return request?.sources?.categories ?? [];
+  if (type === "subtype") return request?.sources?.subtypes ?? [];
+  return [];
+}
+
+function resolveTrait(registry, type, value, request = null) {
+  const entry = typeof registry?.resolve === "function"
+    ? registry.resolve(type, value, { compendiumIds: sourceIdsForType(request, type) })
+    : registry?.list(type).find((candidate) => candidate.slug === value || candidate.id === value);
   return entry?.trait ?? entry?.slug ?? value;
 }
 
@@ -240,8 +248,8 @@ export class CreatureGenerator {
     effectiveRequest.identity.subtypes = [...affinities.resolvedSubtypes];
     const hpBaseValue = random.fork("statistics.hp").int(hpRange.min, hpRange.max);
     const hpValue = Math.max(1, hpBaseValue + Number(affinities.hpAdjustment?.value ?? 0));
-    const primaryTrait = resolveTrait(this.registry, "category", request.identity.category);
-    const subtypeTraits = affinities.resolvedSubtypes.map((subtype) => resolveTrait(this.registry, "subtype", subtype));
+    const primaryTrait = resolveTrait(this.registry, "category", request.identity.category, request);
+    const subtypeTraits = affinities.resolvedSubtypes.map((subtype) => resolveTrait(this.registry, "subtype", subtype, request));
     const traits = [...new Set([primaryTrait, ...subtypeTraits, ...(affinities.grantedTraits ?? [])].filter(Boolean))];
     const abilities = resolveAbilityStatistics(effectiveRequest, role, level, random.fork("statistics.abilities"));
     const skills = generateSkills(effectiveRequest, role, level, abilities, random.fork("statistics.skills"));
@@ -322,6 +330,12 @@ export class CreatureGenerator {
         section: "Building Creatures / Immunities, Weaknesses, Resistances and Category Abilities",
         note: "Defensive affinities are derived from category and subtype definitions. Narrow resistances and weaknesses use the level table; broad resistances and weaknesses can adjust HP."
       },
+      ...[...(request.sources?.categories ?? []), ...(request.sources?.subtypes ?? [])].map((source) => ({
+        kind: "content-source",
+        source,
+        section: "Compendium Category/Subtype Discovery",
+        note: "Selected creature compendium contributes discoverable categories and/or subtypes for this generation request."
+      })),
       ...affinities.hpAdjustment.reasons.map((reason) => ({
         kind: "balance",
         source: "PF2E Creature Forge",

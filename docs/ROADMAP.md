@@ -56,9 +56,23 @@
 - External category/subtype affinity providers through the public content registry.
 - PF2E NPC compilation of IWR arrays.
 
+## 0.2.1 - Compendium Sources & Category/Subtype Discovery ✅
+
+- Actor/NPC compendium scanner with cached trait indexing.
+- Independent category and subtype source selections.
+- Request-local source filtering plus standalone world defaults.
+- Category discovery from creature-type traits and subtype discovery from observed NPC traits.
+- Source-aware registry resolution safe for multiple embedded editor instances.
+
+## 0.2.2 - Source Tab & Editor UX ✅
+
+- Move category/subtype compendium selection into a dedicated Sources tab.
+- Preserve standalone world defaults and embedded host-local source policy.
+- Keep Generate/Reroll/Create Actor footer visible across tabs.
+- Preserve independent scroll positions per editor tab.
+
 ## 0.2.x - Category/source expansion
 
-- Compendium scanner/source profiles for discovered category/subtype content.
 - Additional curated category/subtype definitions from selected sources.
 - Required/preferred capability metadata shared with the later ability selector.
 

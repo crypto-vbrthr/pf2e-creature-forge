@@ -1,8 +1,9 @@
 import {
   API_VERSION, BLUEPRINT_SCHEMA_VERSION, CONTENT_SCHEMA_VERSION, CONTENT_TYPES, MODULE_ID,
-  MODULE_VERSION, REQUEST_SCHEMA_VERSION
+  MODULE_VERSION, REQUEST_SCHEMA_VERSION, SETTINGS
 } from "../constants.js";
 import { compileActorSource, createActorFromBlueprint } from "../core/compiler.js";
+import { CompendiumDiscoveryManager } from "../core/compendium-discovery.js";
 import { registerCoreContent } from "../core/core-content.js";
 import { CreatureGenerator } from "../core/generator.js";
 import { ContentRegistry } from "../core/registry.js";
@@ -19,6 +20,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
   const registry = new ContentRegistry();
   registerCoreContent(registry);
   const generator = new CreatureGenerator({ registry });
+  const discovery = new CompendiumDiscoveryManager({ registry });
   const integrations = new ForgeIntegrationHub();
 
   const registerByType = (type) => (definition, options = {}) => registry.register(type, definition, options);
@@ -34,7 +36,18 @@ export function initializePublicApi({ openCreatureForge } = {}) {
     contentTypes: [...CONTENT_TYPES],
 
     createRequest: (input = {}) => createGenerationRequest(input),
-    generate: (request = {}) => generator.generate(request),
+    generate: (request = {}) => {
+      const normalized = createGenerationRequest(request);
+      if (!discovery.isPrepared(normalized.sources)) {
+        throw new Error("Creature Forge compendium sources are not prepared. Call api.generateAsync(request) or await api.sources.ensure(request.sources) before synchronous generation.");
+      }
+      return generator.generate(normalized);
+    },
+    generateAsync: async (request = {}) => {
+      const normalized = createGenerationRequest(request);
+      await discovery.ensure(normalized.sources);
+      return generator.generate(normalized);
+    },
     reroll: (blueprint, options = {}) => generator.reroll(blueprint, options),
     validateRequest: (request) => validateGenerationRequest(createGenerationRequest(request), { registry }),
     validate: (blueprint) => validateBlueprint(blueprint),
@@ -70,7 +83,33 @@ export function initializePublicApi({ openCreatureForge } = {}) {
     },
 
     sources: {
-      listCompendiums: (options = {}) => listCompendiumSources(options)
+      listCompendiums: (options = {}) => listCompendiumSources(options),
+      listCreatureCompendiums: () => discovery.listCompendiums(),
+      discover: (compendiumId, options = {}) => discovery.discover(compendiumId, options),
+      ensure: (sources = {}, options = {}) => discovery.ensure(sources, options),
+      listContent: (type, options = {}) => discovery.listContent(type, options),
+      getStatus: () => discovery.getStatus(),
+      isPrepared: (sources = {}) => discovery.isPrepared(sources),
+      clearCache: () => discovery.clearCache(),
+      getDefaults: () => {
+        try {
+          const stored = globalThis.game?.settings?.get?.(MODULE_ID, SETTINGS.SOURCE_DEFAULTS) ?? {};
+          return {
+            categories: [...new Set((stored.categories ?? []).map(String).filter(Boolean))],
+            subtypes: [...new Set((stored.subtypes ?? []).map(String).filter(Boolean))]
+          };
+        } catch {
+          return { categories: [], subtypes: [] };
+        }
+      },
+      setDefaults: async (sources = {}) => {
+        const value = {
+          categories: [...new Set((sources.categories ?? []).map(String).filter(Boolean))],
+          subtypes: [...new Set((sources.subtypes ?? []).map(String).filter(Boolean))]
+        };
+        await globalThis.game?.settings?.set?.(MODULE_ID, SETTINGS.SOURCE_DEFAULTS, value);
+        return value;
+      }
     },
 
     integrations: {

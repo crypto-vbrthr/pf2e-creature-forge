@@ -1,12 +1,13 @@
 export const MODULE_ID = "pf2e-creature-forge";
-export const MODULE_VERSION = "0.2.0";
-export const API_VERSION = "0.2.0";
+export const MODULE_VERSION = "0.2.2";
+export const API_VERSION = "0.2.2";
 export const REQUEST_SCHEMA_VERSION = 2;
 export const BLUEPRINT_SCHEMA_VERSION = 2;
 export const CONTENT_SCHEMA_VERSION = 2;
 
 export const SETTINGS = Object.freeze({
-  WINDOW_STATE: "windowState"
+  WINDOW_STATE: "windowState",
+  SOURCE_DEFAULTS: "sourceDefaults"
 });
 
 export const CONTENT_TYPES = Object.freeze([

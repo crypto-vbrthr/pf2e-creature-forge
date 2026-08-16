@@ -38,24 +38,25 @@ function matchesDefinition(entry, value) {
   return entry?.slug === value || entry?.id === value;
 }
 
-function findDefinition(registry, type, value) {
+function findDefinition(registry, type, value, compendiumIds = []) {
+  if (typeof registry?.resolve === "function") return registry.resolve(type, value, { compendiumIds });
   return registry?.list(type)?.find((entry) => matchesDefinition(entry, value)) ?? null;
 }
 
-function normalizeSubtypeSlug(registry, value) {
-  const entry = findDefinition(registry, "subtype", value);
+function normalizeSubtypeSlug(registry, value, compendiumIds = []) {
+  const entry = findDefinition(registry, "subtype", value, compendiumIds);
   return entry?.slug ?? String(value);
 }
 
-function expandSubtypes(registry, selected = []) {
-  const result = new Set(selected.map((value) => normalizeSubtypeSlug(registry, value)));
+function expandSubtypes(registry, selected = [], compendiumIds = []) {
+  const result = new Set(selected.map((value) => normalizeSubtypeSlug(registry, value, compendiumIds)));
   let changed = true;
   while (changed) {
     changed = false;
     for (const slug of [...result]) {
-      const entry = findDefinition(registry, "subtype", slug);
+      const entry = findDefinition(registry, "subtype", slug, compendiumIds);
       for (const implied of entry?.impliedSubtypes ?? []) {
-        const normalized = normalizeSubtypeSlug(registry, implied);
+        const normalized = normalizeSubtypeSlug(registry, implied, compendiumIds);
         if (!result.has(normalized)) {
           result.add(normalized);
           changed = true;
@@ -194,9 +195,11 @@ export function calculateAffinityHpAdjustment({ affinities, hpRank = "moderate" 
 }
 
 export function generateDefensiveAffinities({ request, registry, level, random, hpRank = "moderate" }) {
-  const categoryDefinition = findDefinition(registry, "category", request.identity.category);
-  const selectedSubtypeSlugs = expandSubtypes(registry, request.identity.subtypes ?? []);
-  const subtypeDefinitions = selectedSubtypeSlugs.map((slug) => findDefinition(registry, "subtype", slug)).filter(Boolean);
+  const categorySources = request.sources?.categories ?? [];
+  const subtypeSources = request.sources?.subtypes ?? [];
+  const categoryDefinition = findDefinition(registry, "category", request.identity.category, categorySources);
+  const selectedSubtypeSlugs = expandSubtypes(registry, request.identity.subtypes ?? [], subtypeSources);
+  const subtypeDefinitions = selectedSubtypeSlugs.map((slug) => findDefinition(registry, "subtype", slug, subtypeSources)).filter(Boolean);
   const context = {
     level,
     category: categoryDefinition?.slug ?? request.identity.category,

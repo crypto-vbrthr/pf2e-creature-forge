@@ -60,13 +60,16 @@ export class CreatureForgeApp extends HandlebarsApplicationMixin(ApplicationV2) 
     if (!(host instanceof HTMLElement)) return;
     const api = getPublicApi();
     if (!this.editor) {
+      const sourceDefaults = api.sources.getDefaults();
       this.editor = api.ui.creatureEditor.create({
         mode: "create",
         layout: "full",
+        request: api.createRequest({ sources: sourceDefaults }),
         capabilities: {
           generation: true,
           actorCreation: true,
-          sourceSelection: false,
+          sourceSelection: true,
+          persistSourceSelection: true,
           advancedEditing: true
         }
       });

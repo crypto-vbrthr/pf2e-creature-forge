@@ -46,3 +46,19 @@ test("duplicate content is rejected unless replace is explicit", () => {
   registry.register("ability", { id: "test.one", name: "Two" }, { replace: true });
   assert.equal(registry.get("ability", "test.one").name, "Two");
 });
+
+test("compendium-discovered content is source-filtered while core/external content remains visible", () => {
+  const registry = new ContentRegistry();
+  registry.register("subtype", { id: "core.fire", slug: "fire", source: { moduleId: "core" } });
+  registry.register("subtype", {
+    id: "discovery.aquatic",
+    slug: "aquatic",
+    source: { moduleId: "pf2e-creature-forge", sourceKind: "compendium", compendiumId: "test.bestiary" }
+  });
+
+  assert.equal(registry.resolve("subtype", "fire", { compendiumIds: [] })?.slug, "fire");
+  assert.equal(registry.resolve("subtype", "aquatic", { compendiumIds: [] }), null);
+  assert.equal(registry.resolve("subtype", "aquatic", { compendiumIds: ["test.bestiary"] })?.slug, "aquatic");
+  assert.equal(registry.listResolved("subtype", { compendiumIds: [] }).some((entry) => entry.slug === "aquatic"), false);
+  assert.equal(registry.listResolved("subtype", { compendiumIds: ["test.bestiary"] }).some((entry) => entry.slug === "aquatic"), true);
+});

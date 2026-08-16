@@ -1,7 +1,7 @@
 {
   "PF2E_CREATURE_FORGE.WindowTitle": "PF2E Creature Forge",
   "PF2E_CREATURE_FORGE.Open": "Creature Forge",
-  "PF2E_CREATURE_FORGE.FoundationHint": "Kategorien, Subtypen & defensive Affinitäten: konzeptabhängige Traits, Immunitäten, Resistenzen, Schwächen und TP-Ausgleich.",
+  "PF2E_CREATURE_FORGE.FoundationHint": "API-first Kreaturengenerierung mit eingebettetem Editor und erweiterbaren Inhaltsquellen.",
   "PF2E_CREATURE_FORGE.Untitled": "Kreatur",
   "PF2E_CREATURE_FORGE.Editor.Concept": "Konzept",
   "PF2E_CREATURE_FORGE.Editor.Defenses": "Verteidigung",
@@ -257,5 +257,21 @@
   "PF2E_CREATURE_FORGE.AffinityType.silver": "Silber",
   "PF2E_CREATURE_FORGE.AffinityType.grabbed": "Gepackt",
   "PF2E_CREATURE_FORGE.AffinityType.prone": "Liegend",
-  "PF2E_CREATURE_FORGE.AffinityType.restrained": "Festgesetzt"
+  "PF2E_CREATURE_FORGE.AffinityType.restrained": "Festgesetzt",
+  "PF2E_CREATURE_FORGE.Editor.Sources": "Kompendiumquellen",
+  "PF2E_CREATURE_FORGE.Field.CategorySources": "Kompendien für Kategorien",
+  "PF2E_CREATURE_FORGE.Field.SubtypeSources": "Kompendien für Subtypen",
+  "PF2E_CREATURE_FORGE.Editor.CategorySourceHint": "Ausgewählte NSC-Kompendien können zusätzliche Kreaturenkategorien bereitstellen.",
+  "PF2E_CREATURE_FORGE.Editor.SubtypeSourceHint": "Traits auf NSC in den ausgewählten Kompendien werden als zusätzliche Subtyp-Kandidaten erkannt.",
+  "PF2E_CREATURE_FORGE.Action.RefreshSources": "Quellen neu einlesen",
+  "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.World": "Die Auswahl wird als Weltstandard gespeichert.",
+  "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.Host": "Die Auswahl gilt nur für diesen Editor bzw. Generierungsauftrag.",
+  "PF2E_CREATURE_FORGE.Notifications.SourceScanFailed": "Mindestens ein Kreaturenkompendium konnte nicht eingelesen werden.",
+  "PF2E_CREATURE_FORGE.Editor.DiscoveredFrom": "Entdeckt in",
+  "PF2E_CREATURE_FORGE.Editor.CoreAndExtensions": "Creature Forge Core & Erweiterungen",
+  "PF2E_CREATURE_FORGE.Editor.Tabs": "Bereiche der Creature Forge",
+  "PF2E_CREATURE_FORGE.Editor.Tab.Creature": "Kreatur",
+  "PF2E_CREATURE_FORGE.Editor.Tab.Sources": "Quellen",
+  "PF2E_CREATURE_FORGE.Editor.SourcesHint": "Wähle aus, welche NSC-Kompendien zusätzliche Kategorien und Subtypen beisteuern dürfen. Creature Forge Core und registrierte Erweiterungsinhalte bleiben unabhängig davon verfügbar.",
+  "PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint": "Core-Kategorien/-Subtypen und per API registrierte Erweiterungsinhalte bleiben zusätzlich zu diesen Kompendiumquellen immer verfügbar."
 }
