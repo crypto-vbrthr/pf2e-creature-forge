@@ -81,3 +81,6 @@
   .cf-editor .cf-attack-row { grid-template-columns: 1fr; }
   .cf-editor .cf-attack-numbers { text-align: left; }
 }
+.cf-editor .cf-compact-list { list-style: none; padding: 0; margin: .45rem 0 1rem; display: grid; gap: .3rem; }
+.cf-editor .cf-compact-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .35rem .5rem; border: 1px solid var(--color-border-light-tertiary, #555); border-radius: 5px; }
+.cf-editor .cf-compact-row small { opacity: .65; }

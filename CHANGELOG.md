@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.4 - Skills, Movement & Senses
+
+- Added the GM Core creature skill table for levels -1 through 24, including seeded values inside low-skill ranges.
+- Added role-, category-, subtype-, and ability-aware skill selection with concept filters for animals, oozes, and mindless creatures.
+- Added configurable skill count, primary skill rank, and preferred skill hints to the generation request and Embedded Creature Editor.
+- Added land, climb, swim, fly, and burrow movement generation with explicit overrides and concept-sensitive automatic choices.
+- Added low-light vision, darkvision, and scent generation with explicit auto/on/off controls and configurable scent range.
+- Added scoped rerolls for skills, movement, and senses while preserving unrelated Blueprint sections and individually locked entries where applicable.
+- Added Blueprint/request validation for skills, alternate movement, senses, redundant vision, excessive high/extreme skill bands, and malformed values.
+- Added PF2E NPC compilation for generated skills, Perception senses, land Speed, and alternate Speeds.
+- Added localized skill, movement, sense, and acuity presentation in the Embedded Creature Editor.
+- Expanded automated coverage to 43 tests.
+
 ## 0.1.3 - Attack Localization
 
 - Added stable localization keys to all generated core attack names.

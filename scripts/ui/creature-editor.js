@@ -1,4 +1,4 @@
-import { RANKS, SIZES } from "../constants.js";
+import { RANKS, SIZES, SKILL_SLUGS } from "../constants.js";
 import { ROLE_IDS } from "../core/role-presets.js";
 import { deepClone } from "../core/clone.js";
 import { CreatureEditorSession } from "./editor-session.js";
@@ -55,6 +55,37 @@ function attackNameLabel(attack) {
 
 function damageTypeLabel(type) {
   return localize(`PF2E_CREATURE_FORGE.DamageType.${type}`, type ?? "");
+}
+
+function skillLabel(slug) {
+  return localize(`PF2E_CREATURE_FORGE.Skill.${slug}`, slug ?? "");
+}
+
+function movementLabel(type) {
+  return localize(`PF2E_CREATURE_FORGE.Movement.${type}`, type ?? "");
+}
+
+function senseLabel(type) {
+  return localize(`PF2E_CREATURE_FORGE.Sense.${type}`, type ?? "");
+}
+
+function speedOptions(current, { land = false } = {}) {
+  const result = [];
+  if (land) result.push(option("role", localize("PF2E_CREATURE_FORGE.Editor.RoleDefault", "Role default"), current));
+  else {
+    result.push(option("auto", localize("PF2E_CREATURE_FORGE.Field.Auto", "Automatic"), current));
+    result.push(option("none", localize("PF2E_CREATURE_FORGE.Field.None", "None"), current));
+  }
+  for (const value of [10, 15, 20, 25, 30, 35, 40, 50, 60]) result.push(option(String(value), `${value} ft.`, current));
+  return result.join("");
+}
+
+function triStateOptions(current) {
+  return [
+    option("auto", localize("PF2E_CREATURE_FORGE.Field.Auto", "Automatic"), current),
+    option("on", localize("PF2E_CREATURE_FORGE.Field.Enabled", "Enabled"), current),
+    option("off", localize("PF2E_CREATURE_FORGE.Field.Disabled", "Disabled"), current)
+  ].join("");
 }
 
 export class EmbeddedCreatureEditor {
@@ -161,6 +192,20 @@ export class EmbeddedCreatureEditor {
     request.offense.kind = get("attackKind")?.value ?? "role";
     request.offense.damageType = get("damageType")?.value ?? "auto";
     request.options.attackCount = number(get("attackCount")?.value ?? 1);
+    const skillCount = get("skillCount")?.value ?? "role";
+    request.skills.count = skillCount === "role" ? "role" : number(skillCount);
+    request.skills.primaryRank = get("primarySkillRank")?.value ?? "role";
+    request.skills.preferred = String(get("preferredSkills")?.value ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+    const landSpeed = get("landSpeed")?.value ?? "role";
+    request.movement.land = landSpeed === "role" ? "role" : number(landSpeed);
+    for (const type of ["climb", "swim", "fly", "burrow"]) {
+      const value = get(`${type}Speed`)?.value ?? "auto";
+      request.movement[type] = ["auto", "none"].includes(value) ? value : number(value);
+    }
+    request.senses.lowLightVision = get("lowLightVision")?.value ?? "auto";
+    request.senses.darkvision = get("darkvision")?.value ?? "auto";
+    request.senses.scent = get("scent")?.value ?? "auto";
+    request.senses.scentRange = number(get("scentRange")?.value ?? 30);
     request.generation.seed = get("seed")?.value ?? "";
     request.generation.variation = get("variation")?.value ?? "balanced";
     this.session.setRequest(request);
@@ -189,6 +234,18 @@ export class EmbeddedCreatureEditor {
         this.session.reroll({ scope: "statistics.hp" });
         this.#render();
         await this.#emitChange("reroll-hp");
+      } else if (action === "reroll-skills") {
+        this.session.reroll({ scope: "statistics.skills" });
+        this.#render();
+        await this.#emitChange("reroll-skills");
+      } else if (action === "reroll-movement") {
+        this.session.reroll({ scope: "statistics.movement" });
+        this.#render();
+        await this.#emitChange("reroll-movement");
+      } else if (action === "reroll-senses") {
+        this.session.reroll({ scope: "statistics.senses" });
+        this.#render();
+        await this.#emitChange("reroll-senses");
       } else if (action === "reroll-attacks") {
         this.session.reroll({ scope: "combat.attacks" });
         this.#render();
@@ -200,7 +257,7 @@ export class EmbeddedCreatureEditor {
       return;
     }
 
-    if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="subtypes"]'))) {
+    if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="subtypes"], input[name="preferredSkills"]'))) {
       this.#syncRequestFromForm();
       await this.#emitChange("request-change");
     }
@@ -241,6 +298,16 @@ export class EmbeddedCreatureEditor {
       return `<div><dt>${escapeHtml(localize(`PF2E_CREATURE_FORGE.Field.${ability.toUpperCase()}`, ability.toUpperCase()))}</dt><dd>${signed(stat?.value)} <small>${escapeHtml(rankLabel(stat?.rank))}</small></dd></div>`;
     }).join("");
 
+    const skillRows = Object.values(blueprint?.statistics?.skills ?? {}).map((skill) => `
+      <li class="cf-compact-row"><strong>${escapeHtml(skillLabel(skill.slug))}</strong><span>${signed(skill.value)} <small>${escapeHtml(rankLabel(skill.rank))}</small></span></li>`).join("");
+    const movementRows = [
+      { type: "land", value: blueprint?.statistics?.speed?.land },
+      ...(blueprint?.statistics?.speed?.other ?? [])
+    ].filter((entry) => Number(entry?.value) > 0).map((entry) => `
+      <li class="cf-compact-row"><strong>${escapeHtml(movementLabel(entry.type))}</strong><span>${Number(entry.value)} ft.</span></li>`).join("");
+    const senseRows = (blueprint?.statistics?.senses ?? []).map((sense) => `
+      <li class="cf-compact-row"><strong>${escapeHtml(senseLabel(sense.type))}</strong><span>${sense.range ? `${Number(sense.range)} ft. · ` : ""}${escapeHtml(localize(`PF2E_CREATURE_FORGE.Acuity.${sense.acuity}`, sense.acuity ?? ""))}</span></li>`).join("");
+
     const attackRows = (blueprint?.combat?.attacks ?? []).map((attack) => `
       <li class="cf-attack-row">
         <div><strong>${escapeHtml(attackNameLabel(attack))}</strong><small>${escapeHtml(localize(`PF2E_CREATURE_FORGE.AttackProfile.${attack.profile}`, attack.profile))} · ${escapeHtml(localize(`PF2E_CREATURE_FORGE.AttackKind.${attack.kind}`, attack.kind))}</small></div>
@@ -279,6 +346,26 @@ export class EmbeddedCreatureEditor {
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Will", "Will"))}</span><select name="will" ${disabled}>${rankOptions(request.defenses.saves.will, RANKS.SAVE)}</select></label>
             </div>
 
+            <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Skills", "Skills"))}</h3>
+            <div class="cf-form-grid">
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SkillCount", "Skill count"))}</span><select name="skillCount" ${disabled}>${["role",0,1,2,3,4,5,6,7,8].map((value) => option(String(value), value === "role" ? localize("PF2E_CREATURE_FORGE.Editor.RoleDefault", "Role default") : String(value), String(request.skills.count))).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.PrimarySkillRank", "Best skill"))}</span><select name="primarySkillRank" ${disabled}>${rankOptions(request.skills.primaryRank, RANKS.SKILL)}</select></label>
+              <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.PreferredSkills", "Preferred skills"))}</span><input name="preferredSkills" type="text" value="${escapeHtml((request.skills.preferred ?? []).join(", "))}" placeholder="athletics, stealth" ${disabled}></label>
+            </div>
+
+            <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.MovementSenses", "Movement & Senses"))}</h3>
+            <div class="cf-form-grid">
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Movement.land", "Land Speed"))}</span><select name="landSpeed" ${disabled}>${speedOptions(request.movement.land, { land: true })}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Movement.climb", "Climb"))}</span><select name="climbSpeed" ${disabled}>${speedOptions(request.movement.climb)}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Movement.swim", "Swim"))}</span><select name="swimSpeed" ${disabled}>${speedOptions(request.movement.swim)}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Movement.fly", "Fly"))}</span><select name="flySpeed" ${disabled}>${speedOptions(request.movement.fly)}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Movement.burrow", "Burrow"))}</span><select name="burrowSpeed" ${disabled}>${speedOptions(request.movement.burrow)}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Sense.low-light-vision", "Low-light vision"))}</span><select name="lowLightVision" ${disabled}>${triStateOptions(request.senses.lowLightVision)}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Sense.darkvision", "Darkvision"))}</span><select name="darkvision" ${disabled}>${triStateOptions(request.senses.darkvision)}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Sense.scent", "Scent"))}</span><select name="scent" ${disabled}>${triStateOptions(request.senses.scent)}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.ScentRange", "Scent range"))}</span><input name="scentRange" type="number" min="5" max="300" step="5" value="${Number(request.senses.scentRange ?? 30)}" ${disabled}></label>
+            </div>
+
             <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Offense", "Offense"))}</h3>
             <div class="cf-form-grid">
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AttackCount", "Attacks"))}</span><select name="attackCount" ${disabled}>${[0,1,2].map((value) => option(String(value), String(value), String(request.options.attackCount))).join("")}</select></label>
@@ -311,6 +398,15 @@ export class EmbeddedCreatureEditor {
               <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Reflex", "Reflex"))}</dt><dd>${signed(blueprint?.statistics?.saves?.reflex?.value)}</dd></div>
               <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Will", "Will"))}</dt><dd>${signed(blueprint?.statistics?.saves?.will?.value)}</dd></div>
             </dl>
+
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Skills", "Skills"))}</h4>${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollSkills", "Reroll skills"))}" data-cf-action="reroll-skills"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            ${skillRows ? `<ul class="cf-compact-list">${skillRows}</ul>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoSkills", "No skills generated."))}</p>`}
+
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Movement", "Movement"))}</h4>${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollMovement", "Reroll movement"))}" data-cf-action="reroll-movement"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            <ul class="cf-compact-list">${movementRows}</ul>
+
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Senses", "Senses"))}</h4>${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollSenses", "Reroll senses"))}" data-cf-action="reroll-senses"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            ${senseRows ? `<ul class="cf-compact-list">${senseRows}</ul>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoSpecialSenses", "No special senses."))}</p>`}
 
             <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Attacks", "Attacks"))}</h4>${this.capabilities.generation && this.mode !== "view" && (blueprint?.combat?.attacks?.length ?? 0) ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAttacks", "Reroll attacks"))}" data-cf-action="reroll-attacks"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
             ${(blueprint?.combat?.attacks?.length ?? 0) ? `<ul class="cf-attacks">${attackRows}</ul>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAttacks", "No strikes generated."))}</p>`}

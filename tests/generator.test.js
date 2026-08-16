@@ -121,3 +121,84 @@ test("generated core attacks carry stable localization keys", () => {
   assert.equal(bp.combat.attacks.length, 2);
   assert.ok(bp.combat.attacks.every((attack) => typeof attack.nameKey === "string" && attack.nameKey.startsWith("PF2E_CREATURE_FORGE.AttackName.")));
 });
+
+test("skills use concept-sensitive pools and GM Core rank bands", () => {
+  const generator = makeGenerator();
+  const bp = generator.generate({
+    identity: { level: 6, role: "skirmisher", category: "animal" },
+    generation: { seed: "animal-skills" }
+  });
+  const skills = Object.values(bp.statistics.skills);
+  assert.equal(skills.length, 3);
+  assert.ok(skills.some((skill) => skill.rank === "high"));
+  assert.ok(skills.every((skill) => ["acrobatics", "athletics", "intimidation", "stealth", "survival"].includes(skill.slug)));
+  assert.ok(skills.every((skill) => Number.isFinite(skill.value)));
+});
+
+test("aquatic, incorporeal, and explicit movement settings produce appropriate movement modes", () => {
+  const generator = makeGenerator();
+  const aquatic = generator.generate({
+    identity: { level: 4, role: "brute", category: "animal", subtypes: ["aquatic"] },
+    movement: { land: 20, swim: "auto", climb: "none", fly: "none", burrow: "none" },
+    generation: { seed: "aquatic-movement" }
+  });
+  assert.equal(aquatic.statistics.speed.land, 20);
+  assert.equal(aquatic.statistics.speed.other.find((speed) => speed.type === "swim")?.value, 20);
+
+  const ghost = generator.generate({
+    identity: { level: 8, role: "skillParagon", category: "undead", subtypes: ["incorporeal"] },
+    generation: { seed: "ghost-movement" }
+  });
+  assert.ok(ghost.statistics.speed.other.some((speed) => speed.type === "fly" && speed.value >= 25));
+  assert.ok(ghost.statistics.senses.some((sense) => sense.type === "darkvision"));
+
+  const explicit = generator.generate({
+    identity: { level: 8, role: "soldier", category: "humanoid" },
+    movement: { land: 30, climb: 15, swim: 20, fly: 40, burrow: 10 },
+    generation: { seed: "explicit-movement" }
+  });
+  assert.equal(explicit.statistics.speed.land, 30);
+  assert.deepEqual(Object.fromEntries(explicit.statistics.speed.other.map((speed) => [speed.type, speed.value])), {
+    swim: 20,
+    climb: 15,
+    fly: 40,
+    burrow: 10
+  });
+});
+
+test("sense overrides are deterministic and honor explicit on/off settings", () => {
+  const generator = makeGenerator();
+  const bp = generator.generate({
+    identity: { level: 5, role: "custom", category: "humanoid" },
+    senses: { lowLightVision: "off", darkvision: "on", scent: "on", scentRange: 45 },
+    generation: { seed: "explicit-senses" }
+  });
+  assert.ok(bp.statistics.senses.some((sense) => sense.type === "darkvision"));
+  assert.ok(!bp.statistics.senses.some((sense) => sense.type === "low-light-vision"));
+  assert.equal(bp.statistics.senses.find((sense) => sense.type === "scent")?.range, 45);
+  assert.equal(bp.statistics.senses.find((sense) => sense.type === "scent")?.acuity, "imprecise");
+});
+
+test("scoped skill, movement, and sense rerolls preserve unrelated blueprint sections", () => {
+  const generator = makeGenerator();
+  const original = generator.generate({
+    identity: { level: 8, role: "skirmisher", category: "beast" },
+    generation: { seed: "scope-original" }
+  });
+
+  const skillReroll = generator.reroll(original, { scope: "statistics.skills", seed: "scope-skills" });
+  assert.deepEqual(skillReroll.statistics.ac, original.statistics.ac);
+  assert.deepEqual(skillReroll.statistics.speed, original.statistics.speed);
+  assert.deepEqual(skillReroll.statistics.senses, original.statistics.senses);
+  assert.deepEqual(skillReroll.combat, original.combat);
+
+  const movementReroll = generator.reroll(original, { scope: "statistics.movement", seed: "scope-movement" });
+  assert.deepEqual(movementReroll.statistics.skills, original.statistics.skills);
+  assert.deepEqual(movementReroll.statistics.senses, original.statistics.senses);
+  assert.deepEqual(movementReroll.combat, original.combat);
+
+  const senseReroll = generator.reroll(original, { scope: "statistics.senses", seed: "scope-senses" });
+  assert.deepEqual(senseReroll.statistics.skills, original.statistics.skills);
+  assert.deepEqual(senseReroll.statistics.speed, original.statistics.speed);
+  assert.deepEqual(senseReroll.combat, original.combat);
+});

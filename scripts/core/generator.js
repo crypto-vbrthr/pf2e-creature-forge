@@ -9,6 +9,8 @@ import {
 import { validateBlueprint, validateGenerationRequest } from "./validator.js";
 import { deepClone } from "./clone.js";
 import { resolveAttackNameKey } from "./attack-localization.js";
+import { generateSkills } from "./skills.js";
+import { generateMovement, generateSenses } from "./mobility.js";
 
 const SAVE_NAMES = Object.freeze(["fortitude", "reflex", "will"]);
 const ABILITY_NAMES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
@@ -231,6 +233,9 @@ export class CreatureGenerator {
     const subtypeTraits = request.identity.subtypes.map((subtype) => resolveTrait(this.registry, "subtype", subtype));
     const traits = [...new Set([primaryTrait, ...subtypeTraits].filter(Boolean))];
     const abilities = resolveAbilityStatistics(request, role, level, random.fork("statistics.abilities"));
+    const skills = generateSkills(request, role, level, abilities, random.fork("statistics.skills"));
+    const movement = generateMovement(request, role, level, random.fork("statistics.movement"));
+    const senses = generateSenses(request, level, random.fork("statistics.senses"));
     const attacks = generateAttacks(request, role, level, random.fork("combat.attacks"));
 
     const blueprint = createEmptyBlueprint();
@@ -255,11 +260,13 @@ export class CreatureGenerator {
       ac: { rank: acRank, value: resolveRankValue(AC_TABLE, level, acRank) },
       hp: { rank: hpRank, value: hpValue, range: hpRange },
       perception: { rank: perceptionRank, value: resolveRankValue(PERCEPTION_TABLE, level, perceptionRank) },
+      senses,
+      skills,
       saves: Object.fromEntries(SAVE_NAMES.map((save) => [save, {
         rank: saveRanks[save],
         value: resolveRankValue(SAVE_TABLE, level, saveRanks[save])
       }])),
-      speed: { land: Number(role.speed ?? 25), other: [] }
+      speed: movement
     };
     blueprint.combat = {
       attacks,
@@ -278,6 +285,12 @@ export class CreatureGenerator {
         source: "Pathfinder GM Core",
         section: "Building Creatures / Attack Bonus and Attack Damage",
         note: "Strike bonuses and damage use the attack tables; two-strike profiles trade accuracy against damage."
+      },
+      {
+        kind: "rules",
+        source: "Pathfinder GM Core",
+        section: "Building Creatures / Perception, Senses, Skills, and Speed",
+        note: "Skills use the level/rank skill table; senses and movement are concept-sensitive suggestions with 25-foot land Speed as the humanlike baseline."
       }
     ];
     blueprint.diagnostics = [
@@ -317,6 +330,34 @@ export class CreatureGenerator {
     if (scope === "statistics.abilities") {
       if (next.locks?.["statistics.abilities"]) return next;
       next.statistics.abilities = regenerated().statistics.abilities;
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
+    }
+
+    if (scope === "statistics.skills" || scope === "skills") {
+      if (next.locks?.["statistics.skills"]) return next;
+      const generated = regenerated();
+      const locked = Object.fromEntries(Object.entries(next.statistics?.skills ?? {}).filter(([, skill]) => skill?.locked));
+      next.statistics.skills = { ...generated.statistics.skills, ...locked };
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
+    }
+
+    if (scope === "statistics.movement" || scope === "movement") {
+      if (next.locks?.["statistics.movement"]) return next;
+      next.statistics.speed = regenerated().statistics.speed;
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
+    }
+
+    if (scope === "statistics.senses" || scope === "senses") {
+      if (next.locks?.["statistics.senses"]) return next;
+      const generated = regenerated();
+      const lockedByType = new Map((next.statistics?.senses ?? []).filter((sense) => sense.locked).map((sense) => [sense.type, sense]));
+      next.statistics.senses = generated.statistics.senses.map((sense) => lockedByType.get(sense.type) ?? sense);
+      for (const [type, sense] of lockedByType) {
+        if (!next.statistics.senses.some((entry) => entry.type === type)) next.statistics.senses.push(sense);
+      }
       next.diagnostics = validateBlueprint(next).warnings;
       return next;
     }

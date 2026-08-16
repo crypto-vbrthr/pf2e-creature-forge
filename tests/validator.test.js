@@ -38,3 +38,27 @@ test("blueprint validation warns about coupled extreme attack and damage", () =>
   assert.equal(validation.valid, true);
   assert.ok(validation.warnings.some((entry) => entry.code === "COUPLED_EXTREME_ATTACK_DAMAGE"));
 });
+
+test("request validation rejects invalid movement and sense settings", () => {
+  const request = createGenerationRequest({
+    movement: { fly: 500 },
+    senses: { darkvision: "sometimes", scentRange: 500 }
+  });
+  const validation = validateGenerationRequest(request);
+  assert.equal(validation.valid, false);
+  assert.ok(validation.errors.some((entry) => entry.code === "INVALID_SPEED"));
+  assert.ok(validation.errors.some((entry) => entry.code === "INVALID_SENSE_SETTING"));
+  assert.ok(validation.errors.some((entry) => entry.code === "INVALID_SENSE_RANGE"));
+});
+
+test("blueprint validation detects malformed skills, movement, and senses", () => {
+  const blueprint = createEmptyBlueprint();
+  blueprint.statistics.skills = { mystery: { slug: "mystery", rank: "legendary", value: "many" } };
+  blueprint.statistics.speed.other = [{ type: "teleport", value: -5 }];
+  blueprint.statistics.senses = [{ type: "scent", acuity: "imprecise", range: 0 }];
+  const validation = validateBlueprint(blueprint);
+  assert.equal(validation.valid, false);
+  assert.ok(validation.errors.some((entry) => entry.code === "INVALID_SKILL"));
+  assert.ok(validation.errors.some((entry) => entry.code === "INVALID_OTHER_SPEED"));
+  assert.ok(validation.errors.some((entry) => entry.code === "INVALID_SENSE_RANGE"));
+});

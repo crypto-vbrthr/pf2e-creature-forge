@@ -1,8 +1,10 @@
-import { RANKS, SIZES } from "../constants.js";
+import { MOVEMENT_TYPES, RANKS, SENSE_TYPES, SIZES, SKILL_SLUGS } from "../constants.js";
 import { ROLE_IDS } from "./role-presets.js";
 
 const ABILITIES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
 const ATTACK_KINDS = Object.freeze(["role", "melee", "ranged"]);
+const SPEED_TOKENS = Object.freeze(["role", "auto", "none", "off"]);
+const SENSE_TOKENS = Object.freeze(["auto", "on", "off", true, false]);
 
 function issue(level, code, path, message) {
   return { level, code, path, message };
@@ -51,6 +53,29 @@ export function validateGenerationRequest(request, { registry } = {}) {
   if (!Number.isInteger(attackCount) || attackCount < 0 || attackCount > 2) {
     issues.push(issue("error", "INVALID_ATTACK_COUNT", "options.attackCount", "Attack count must be 0, 1, or 2."));
   }
+
+  const skillCount = request?.skills?.count;
+  if (skillCount !== "role" && (!Number.isInteger(Number(skillCount)) || Number(skillCount) < 0 || Number(skillCount) > 8)) {
+    issues.push(issue("error", "INVALID_SKILL_COUNT", "skills.count", "Skill count must be 'role' or an integer from 0 to 8."));
+  }
+  validateRank(issues, request?.skills?.primaryRank, RANKS.SKILL, "skills.primaryRank", "INVALID_SKILL_RANK", "skill", { allowRole: true });
+  for (const slug of request?.skills?.preferred ?? []) {
+    if (!SKILL_SLUGS.includes(slug)) issues.push(issue("warning", "UNKNOWN_PREFERRED_SKILL", "skills.preferred", `Unknown preferred skill '${slug}'.`));
+  }
+
+  const validateSpeed = (value, path, { allowRole = false } = {}) => {
+    if ((allowRole && value === "role") || ["auto", "none", "off"].includes(value)) return;
+    const number = Number(value);
+    if (!Number.isFinite(number) || number < 0 || number > 200) issues.push(issue("error", "INVALID_SPEED", path, `Speed '${value}' must be a supported token or a number from 0 to 200.`));
+  };
+  validateSpeed(request?.movement?.land, "movement.land", { allowRole: true });
+  for (const type of MOVEMENT_TYPES) validateSpeed(request?.movement?.[type], `movement.${type}`);
+
+  for (const [key, value] of [["lowLightVision", request?.senses?.lowLightVision], ["darkvision", request?.senses?.darkvision], ["scent", request?.senses?.scent]]) {
+    if (!SENSE_TOKENS.includes(value)) issues.push(issue("error", "INVALID_SENSE_SETTING", `senses.${key}`, `Sense setting '${value}' must be auto, on, or off.`));
+  }
+  const scentRange = Number(request?.senses?.scentRange);
+  if (!Number.isFinite(scentRange) || scentRange < 5 || scentRange > 300) issues.push(issue("error", "INVALID_SENSE_RANGE", "senses.scentRange", "Scent range must be from 5 to 300 feet."));
 
   if (request?.identity?.size === "lg" && level < 1) {
     issues.push(issue("warning", "UNUSUAL_SIZE_FOR_LEVEL", "identity.size", "Large creatures are unusual below level 1."));
@@ -113,6 +138,36 @@ export function validateBlueprint(blueprint) {
     if (!(accuracyDiff > 0 && damageDiff < 0)) {
       issues.push(issue("warning", "ATTACK_PAIR_NOT_COMPLEMENTARY", "combat.attacks", "Two-attack profiles should normally trade higher accuracy for lower damage and vice versa."));
     }
+  }
+
+  const skills = Object.values(blueprint?.statistics?.skills ?? {});
+  const highSkills = skills.filter((entry) => entry?.rank === "high").length;
+  const extremeSkills = skills.filter((entry) => entry?.rank === "extreme").length;
+  if (highSkills > 3) issues.push(issue("warning", "MANY_HIGH_SKILLS", "statistics.skills", "Most creatures should not have more than three high skills."));
+  if (extremeSkills > 1) issues.push(issue("warning", "MANY_EXTREME_SKILLS", "statistics.skills", "Most creatures should have at most one extreme skill."));
+  for (const skill of skills) {
+    if (!SKILL_SLUGS.includes(skill?.slug) || !RANKS.SKILL.includes(skill?.rank) || !Number.isFinite(Number(skill?.value))) {
+      issues.push(issue("error", "INVALID_SKILL", "statistics.skills", `Skill '${skill?.slug ?? "unknown"}' has invalid data.`));
+    }
+  }
+
+  const landSpeed = Number(blueprint?.statistics?.speed?.land);
+  if (!Number.isFinite(landSpeed) || landSpeed < 0) issues.push(issue("error", "INVALID_LAND_SPEED", "statistics.speed.land", "Land Speed must be zero or greater."));
+  for (const speed of blueprint?.statistics?.speed?.other ?? []) {
+    if (!MOVEMENT_TYPES.includes(speed?.type) || !Number.isFinite(Number(speed?.value)) || Number(speed.value) <= 0) {
+      issues.push(issue("error", "INVALID_OTHER_SPEED", "statistics.speed.other", `Movement entry '${speed?.type ?? "unknown"}' is invalid.`));
+    }
+  }
+
+  const senseTypes = [];
+  for (const sense of blueprint?.statistics?.senses ?? []) {
+    if (!SENSE_TYPES.includes(sense?.type)) issues.push(issue("error", "INVALID_SENSE", "statistics.senses", `Sense '${sense?.type ?? "unknown"}' is invalid.`));
+    if (senseTypes.includes(sense?.type)) issues.push(issue("warning", "DUPLICATE_SENSE", "statistics.senses", `Sense '${sense.type}' is duplicated.`));
+    senseTypes.push(sense?.type);
+    if (sense?.type === "scent" && (!Number.isFinite(Number(sense?.range)) || Number(sense.range) <= 0)) issues.push(issue("error", "INVALID_SENSE_RANGE", "statistics.senses", "Scent requires a positive range."));
+  }
+  if (senseTypes.includes("darkvision") && senseTypes.includes("low-light-vision")) {
+    issues.push(issue("warning", "REDUNDANT_LOW_LIGHT_VISION", "statistics.senses", "Darkvision already covers low-light vision for most stat blocks."));
   }
 
   const extremeStats = [

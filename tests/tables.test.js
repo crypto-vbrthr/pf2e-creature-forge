@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   AC_TABLE, ATTACK_TABLE, PERCEPTION_TABLE, SAVE_TABLE,
-  resolveAttackDamage, resolveAttributeValue, resolveHpRange, resolveRankValue
+  resolveAttackDamage, resolveAttributeValue, resolveHpRange, resolveRankValue, resolveSkillValue
 } from "../scripts/core/tables.js";
 
 test("GM Core AC table resolves representative levels", () => {
@@ -40,4 +40,12 @@ test("GM Core attack damage table resolves formula and average", () => {
   assert.deepEqual(resolveAttackDamage(1, "high"), { formula: "1d6+3", average: 6 });
   assert.deepEqual(resolveAttackDamage(10, "extreme"), { formula: "2d12+20", average: 33 });
   assert.deepEqual(resolveAttackDamage(24, "low"), { formula: "4d6+21", average: 35 });
+});
+
+
+test("GM Core skill table resolves fixed and low-range values", () => {
+  assert.equal(resolveSkillValue(-1, "extreme"), 8);
+  assert.equal(resolveSkillValue(10, "high"), 22);
+  assert.equal(resolveSkillValue(24, "moderate"), 40);
+  assert.equal(resolveSkillValue(10, "low", { int: (min, max) => max }), 17);
 });

@@ -35,6 +35,24 @@ export const DEFAULT_REQUEST = Object.freeze({
     kind: "role",
     damageType: "auto"
   },
+  skills: {
+    count: "role",
+    primaryRank: "role",
+    preferred: []
+  },
+  movement: {
+    land: "role",
+    climb: "auto",
+    swim: "auto",
+    fly: "auto",
+    burrow: "auto"
+  },
+  senses: {
+    lowLightVision: "auto",
+    darkvision: "auto",
+    scent: "auto",
+    scentRange: 30
+  },
   generation: {
     seed: "",
     variation: "balanced"
@@ -63,6 +81,14 @@ export function createGenerationRequest(input = {}) {
   request.schemaVersion = REQUEST_SCHEMA_VERSION;
   request.identity.subtypes = [...new Set((request.identity.subtypes ?? []).map((value) => String(value).trim()).filter(Boolean))];
   request.generation.seed = String(request.generation.seed ?? "").trim();
+  request.skills.preferred = [...new Set((request.skills?.preferred ?? []).map((value) => String(value).trim().toLowerCase()).filter(Boolean))];
+  if (request.skills.count !== "role") request.skills.count = Math.max(0, Math.min(8, Number(request.skills.count ?? 3)));
+  for (const type of ["land", "climb", "swim", "fly", "burrow"]) {
+    const value = request.movement?.[type];
+    if (typeof value === "number") request.movement[type] = Math.max(0, Math.round(value));
+    else if (/^\d+$/.test(String(value ?? ""))) request.movement[type] = Math.max(0, Number(value));
+  }
+  request.senses.scentRange = Math.max(5, Math.round(Number(request.senses?.scentRange ?? 30) / 5) * 5);
   request.options.attackCount = Math.max(0, Math.min(2, Number(request.options.attackCount ?? 1)));
   return request;
 }
@@ -72,7 +98,7 @@ export function createEmptyBlueprint() {
     schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     metadata: {
       generator: "pf2e-creature-forge",
-      generatorVersion: "0.1.3",
+      generatorVersion: "0.1.4",
       seed: "",
       variation: "balanced",
       requestSnapshot: null,
@@ -99,6 +125,8 @@ export function createEmptyBlueprint() {
       ac: { rank: "moderate", value: 15 },
       hp: { rank: "moderate", value: 20, range: { min: 19, max: 21 } },
       perception: { rank: "moderate", value: 7 },
+      senses: [],
+      skills: {},
       saves: {
         fortitude: { rank: "moderate", value: 7 },
         reflex: { rank: "moderate", value: 7 },

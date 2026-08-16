@@ -45,6 +45,27 @@ function compileMeleeItem(attack) {
   };
 }
 
+function compileSkills(skills = {}) {
+  return Object.fromEntries(Object.entries(skills).map(([slug, skill]) => [slug, {
+    base: Number(skill?.value ?? 0),
+    special: (skill?.special ?? []).map((entry) => ({ ...entry }))
+  }]));
+}
+
+function compileSenses(senses = []) {
+  return senses.map((sense) => {
+    const source = { type: String(sense.type), acuity: String(sense.acuity ?? "precise") };
+    if (Number.isFinite(Number(sense.range)) && Number(sense.range) > 0) source.range = Number(sense.range);
+    return source;
+  });
+}
+
+function compileOtherSpeeds(speed = {}) {
+  return (speed.other ?? [])
+    .filter((entry) => Number(entry?.value) > 0)
+    .map((entry) => ({ type: String(entry.type), value: Number(entry.value) }));
+}
+
 export function compileActorSource(blueprint, options = {}) {
   const validation = validateBlueprint(blueprint);
   if (!validation.valid) {
@@ -59,6 +80,9 @@ export function compileActorSource(blueprint, options = {}) {
     ["str", "dex", "con", "int", "wis", "cha"].map((ability) => [ability, { mod: Number(blueprint.statistics.abilities?.[ability]?.value ?? 0) }])
   );
   const attackItems = (blueprint.combat?.attacks ?? []).map(compileMeleeItem);
+  const skills = compileSkills(blueprint.statistics?.skills ?? {});
+  const senses = compileSenses(blueprint.statistics?.senses ?? []);
+  const otherSpeeds = compileOtherSpeeds(blueprint.statistics?.speed ?? {});
 
   const source = {
     name,
@@ -75,14 +99,14 @@ export function compileActorSource(blueprint, options = {}) {
         ac: { value: Number(blueprint.statistics.ac.value), details: "" },
         adjustment: null,
         hp: { value: hp, max: hp, temp: 0, details: "" },
-        speed: { value: Number(blueprint.statistics.speed?.land ?? 25), otherSpeeds: [], details: "" },
+        speed: { value: Number(blueprint.statistics.speed?.land ?? 25), otherSpeeds, details: "" },
         allSaves: { value: "" }
       },
-      skills: {},
+      skills,
       perception: {
         mod: Number(blueprint.statistics.perception.value),
         details: "",
-        senses: [],
+        senses,
         vision: true
       },
       initiative: { statistic: "perception" },
@@ -106,7 +130,7 @@ export function compileActorSource(blueprint, options = {}) {
     flags: {
       "pf2e-creature-forge": {
         blueprintSchemaVersion: blueprint.schemaVersion,
-        generatorVersion: blueprint.metadata?.generatorVersion ?? "0.1.3",
+        generatorVersion: blueprint.metadata?.generatorVersion ?? "0.1.4",
         seed: blueprint.metadata?.seed ?? "",
         blueprint: deepClone(blueprint)
       }

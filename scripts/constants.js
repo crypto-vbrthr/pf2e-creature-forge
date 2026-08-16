@@ -1,6 +1,6 @@
 export const MODULE_ID = "pf2e-creature-forge";
-export const MODULE_VERSION = "0.1.3";
-export const API_VERSION = "0.1.3";
+export const MODULE_VERSION = "0.1.4";
+export const API_VERSION = "0.1.4";
 export const REQUEST_SCHEMA_VERSION = 1;
 export const BLUEPRINT_SCHEMA_VERSION = 1;
 export const CONTENT_SCHEMA_VERSION = 1;
@@ -29,7 +29,17 @@ export const RANKS = Object.freeze({
   SAVE: ["extreme", "high", "moderate", "low", "terrible"],
   HP: ["high", "moderate", "low"],
   ATTACK: ["extreme", "high", "moderate", "low"],
-  DAMAGE: ["extreme", "high", "moderate", "low"]
+  DAMAGE: ["extreme", "high", "moderate", "low"],
+  SKILL: ["extreme", "high", "moderate", "low"]
 });
+
+export const SKILL_SLUGS = Object.freeze([
+  "acrobatics", "arcana", "athletics", "crafting", "deception", "diplomacy",
+  "intimidation", "medicine", "nature", "occultism", "performance", "religion",
+  "society", "stealth", "survival", "thievery"
+]);
+
+export const MOVEMENT_TYPES = Object.freeze(["climb", "swim", "fly", "burrow"]);
+export const SENSE_TYPES = Object.freeze(["low-light-vision", "darkvision", "scent"]);
 
 export const SIZES = Object.freeze(["tiny", "sm", "med", "lg", "huge", "grg"]);

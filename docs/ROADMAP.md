@@ -37,13 +37,13 @@
 - Localized damage-type presentation in attack previews.
 - Backward-compatible localization of 0.1.1/0.1.2 core attack fallback names.
 
-## 0.1.4 - Skills, Movement & Senses
+## 0.1.4 - Skills, Movement & Senses ✅
 
 - Skill rank/value generation.
 - Role/category/subtype skill affinities.
 - Movement modes and concept-sensitive speeds.
 - Senses and Perception details.
-- Size/attribute consistency diagnostics.
+- Skill/movement/sense consistency diagnostics and PF2E NPC compilation.
 
 ## 0.2.x - Categories and subtypes
 

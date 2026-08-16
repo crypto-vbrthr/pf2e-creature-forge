@@ -72,6 +72,30 @@ export const ATTACK_DAMAGE_TABLE = Object.freeze({
   low: indexedDamage(DAMAGE_LOW)
 });
 
+const SKILL_EXTREME = [8,9,10,11,13,15,16,18,20,21,23,25,26,28,30,31,33,35,36,38,40,41,43,45,46,48];
+const SKILL_HIGH = [5,6,7,8,10,12,13,15,17,18,20,22,23,25,27,28,30,32,33,35,37,38,40,42,43,45];
+const SKILL_MODERATE = [4,5,6,7,9,10,12,13,15,16,18,19,21,22,24,25,27,28,30,31,33,34,36,37,38,40];
+const SKILL_LOW = [
+  [1,2],[2,3],[3,4],[4,5],[5,7],[7,8],[8,10],[9,11],[11,13],[12,14],[13,16],[15,17],[16,19],
+  [17,20],[19,22],[20,23],[21,25],[23,26],[24,28],[25,29],[27,31],[28,32],[29,34],[31,35],[32,36],[33,38]
+];
+
+export const SKILL_TABLE = Object.freeze({
+  extreme: indexed(SKILL_EXTREME),
+  high: indexed(SKILL_HIGH),
+  moderate: indexed(SKILL_MODERATE),
+  low: indexed(SKILL_LOW.map(([min, max]) => Object.freeze({ min, max })))
+});
+
+export function resolveSkillValue(level, rank, random = null) {
+  const entry = resolveRankValue(SKILL_TABLE, level, rank);
+  if (typeof entry === "number") return entry;
+  const min = Number(entry.min);
+  const max = Number(entry.max);
+  if (random?.int) return random.int(min, max);
+  return Math.round((min + max) / 2);
+}
+
 export function assertCreatureLevel(level) {
   const value = Number(level);
   if (!Number.isInteger(value) || value < -1 || value > 24) {

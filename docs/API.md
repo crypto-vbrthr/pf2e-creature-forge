@@ -1,4 +1,4 @@
-# Public API 0.1.3
+# Public API 0.1.4
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;
@@ -53,19 +53,57 @@ api.generate({
     kind: "role",
     damageType: "auto"
   },
+  skills: {
+    count: "role",
+    primaryRank: "role",
+    preferred: ["athletics", "intimidation"]
+  },
+  movement: {
+    land: "role",
+    climb: "auto", swim: "auto", fly: "auto", burrow: "auto"
+  },
+  senses: {
+    lowLightVision: "auto", darkvision: "auto", scent: "auto", scentRange: 30
+  },
   options: { attackCount: 2 }
 });
 ```
 
 Valid attack/damage ranks are `extreme`, `high`, `moderate`, and `low`. Valid ability ranks also include `terrible`. Each setting accepts `role` to use the selected role road map.
 
-### Reroll scopes in 0.1.2
+### Reroll scopes in 0.1.4
 
 - `all`
 - `defenses`
 - `statistics.hp`
 - `statistics.abilities`
+- `statistics.skills` (alias: `skills`)
+- `statistics.movement` (alias: `movement`)
+- `statistics.senses` (alias: `senses`)
 - `combat.attacks` (alias: `attacks`)
+
+
+## Generated exploration statistics
+
+Skills are stored by PF2E skill slug and retain both the semantic rank used by Creature Forge and the resolved modifier:
+
+```js
+statistics: {
+  skills: {
+    stealth: { slug: "stealth", attribute: "dex", rank: "high", value: 18, special: [], locked: false }
+  },
+  speed: {
+    land: 30,
+    other: [{ type: "swim", value: 30, source: "generated", locked: false }]
+  },
+  senses: [
+    { type: "darkvision", acuity: "precise", range: null, source: "generated", locked: false },
+    { type: "scent", acuity: "imprecise", range: 30, source: "generated", locked: false }
+  ]
+}
+```
+
+Automatic skill choice is weighted by role, category, subtype, and the generated ability profile. Automatic movement/senses are concept-sensitive; explicit numeric speeds and `on`/`off` sense settings override those suggestions.
 
 ## Generated attack shape
 

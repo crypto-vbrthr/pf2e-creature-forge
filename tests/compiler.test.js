@@ -60,11 +60,42 @@ test("compiler localizes generated and legacy core attack names when Foundry i18
         saves: { fortitude: { rank: "moderate", value: 5 }, reflex: { rank: "moderate", value: 5 }, will: { rank: "moderate", value: 5 } }
       },
       combat: { attacks: [{ id: "attack-1", profile: "primary", name: "Fist", kind: "melee", attack: { rank: "moderate", value: 7 }, damage: { rank: "moderate", formula: "1d6+2", average: 5.5, type: "bludgeoning" }, traits: ["unarmed"], range: null }], spellcasting: [] },
-      abilities: [], resources: { effects: [], auras: [], afflictions: [] }, loot: { policy: "auto" }, metadata: { seed: "localize", generatorVersion: "0.1.3" }
+      abilities: [], resources: { effects: [], auras: [], afflictions: [] }, loot: { policy: "auto" }, metadata: { seed: "localize", generatorVersion: "0.1.4" }
     };
     const compiled = compileActorSource(blueprint);
     assert.equal(compiled.actorSource.items[0].name, "Faust");
   } finally {
     globalThis.game = previousGame;
   }
+});
+
+test("compiler materializes generated skills, senses, and alternate movement into PF2E NPC source", () => {
+  const registry = new ContentRegistry();
+  registerCoreContent(registry);
+  const generator = new CreatureGenerator({ registry });
+  const blueprint = generator.generate({
+    identity: { name: "Scout", level: 6, role: "skirmisher", category: "animal", subtypes: ["aquatic"] },
+    skills: { count: 3, primaryRank: "high", preferred: ["stealth"] },
+    movement: { land: 30, swim: 30, climb: 15, fly: "none", burrow: "none" },
+    senses: { darkvision: "on", lowLightVision: "off", scent: "on", scentRange: 40 },
+    generation: { seed: "compile-exploration" }
+  });
+  const compiled = compileActorSource(blueprint).actorSource;
+
+  assert.ok(Object.keys(compiled.system.skills).length > 0);
+  for (const [slug, skill] of Object.entries(blueprint.statistics.skills)) {
+    assert.equal(compiled.system.skills[slug].base, skill.value);
+    assert.deepEqual(compiled.system.skills[slug].special, []);
+  }
+  assert.ok(compiled.system.perception.senses.some((sense) => sense.type === "darkvision"));
+  assert.deepEqual(compiled.system.perception.senses.find((sense) => sense.type === "scent"), {
+    type: "scent",
+    acuity: "imprecise",
+    range: 40
+  });
+  assert.equal(compiled.system.attributes.speed.value, 30);
+  assert.deepEqual(compiled.system.attributes.speed.otherSpeeds, [
+    { type: "swim", value: 30 },
+    { type: "climb", value: 15 }
+  ]);
 });
