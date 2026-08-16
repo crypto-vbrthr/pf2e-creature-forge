@@ -11,6 +11,17 @@ function normalizedPosition(value = {}) {
   return result;
 }
 
+function upgradeLegacyWindowSize(value = {}) {
+  const next = { ...value };
+  const legacyWidth = Number(next.width);
+  const legacyHeight = Number(next.height);
+  if ((!Number.isFinite(legacyWidth) || legacyWidth <= 1060) && (!Number.isFinite(legacyHeight) || legacyHeight <= 780)) {
+    next.width = 1280;
+    next.height = 860;
+  }
+  return next;
+}
+
 export class CreatureForgeApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "pf2e-creature-forge-app",
@@ -20,7 +31,7 @@ export class CreatureForgeApp extends HandlebarsApplicationMixin(ApplicationV2) 
       icon: "fa-solid fa-dragon",
       resizable: true
     },
-    position: { width: 1040, height: 760 }
+    position: { width: 1280, height: 860 }
   };
 
   static PARTS = {
@@ -29,7 +40,7 @@ export class CreatureForgeApp extends HandlebarsApplicationMixin(ApplicationV2) 
 
   constructor(options = {}) {
     let saved = {};
-    try { saved = normalizedPosition(game.settings.get(MODULE_ID, SETTINGS.WINDOW_STATE)); } catch { saved = {}; }
+    try { saved = upgradeLegacyWindowSize(normalizedPosition(game.settings.get(MODULE_ID, SETTINGS.WINDOW_STATE))); } catch { saved = {}; }
     super(foundry.utils.mergeObject({ position: saved }, options, { inplace: false }));
     this.editor = null;
     this.persistTimer = null;

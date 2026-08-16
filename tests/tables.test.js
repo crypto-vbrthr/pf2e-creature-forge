@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AC_TABLE, PERCEPTION_TABLE, SAVE_TABLE, resolveHpRange, resolveRankValue } from "../scripts/core/tables.js";
+import {
+  AC_TABLE, ATTACK_TABLE, PERCEPTION_TABLE, SAVE_TABLE,
+  resolveAttackDamage, resolveAttributeValue, resolveHpRange, resolveRankValue
+} from "../scripts/core/tables.js";
 
 test("GM Core AC table resolves representative levels", () => {
   assert.equal(resolveRankValue(AC_TABLE, -1, "extreme"), 18);
@@ -18,4 +21,23 @@ test("GM Core HP table preserves ranges", () => {
   assert.deepEqual(resolveHpRange(-1, "moderate"), { min: 7, max: 8 });
   assert.deepEqual(resolveHpRange(10, "high"), { min: 215, max: 223 });
   assert.deepEqual(resolveHpRange(24, "low"), { min: 367, max: 383 });
+});
+
+test("GM Core ability modifier table resolves representative values", () => {
+  assert.equal(resolveAttributeValue(1, "high"), 4);
+  assert.equal(resolveAttributeValue(10, "moderate"), 5);
+  assert.equal(resolveAttributeValue(24, "extreme"), 13);
+  assert.equal(resolveAttributeValue(12, "terrible"), -5);
+});
+
+test("GM Core attack bonus table resolves representative values", () => {
+  assert.equal(resolveRankValue(ATTACK_TABLE, -1, "high"), 8);
+  assert.equal(resolveRankValue(ATTACK_TABLE, 10, "moderate"), 21);
+  assert.equal(resolveRankValue(ATTACK_TABLE, 24, "extreme"), 46);
+});
+
+test("GM Core attack damage table resolves formula and average", () => {
+  assert.deepEqual(resolveAttackDamage(1, "high"), { formula: "1d6+3", average: 6 });
+  assert.deepEqual(resolveAttackDamage(10, "extreme"), { formula: "2d12+20", average: 33 });
+  assert.deepEqual(resolveAttackDamage(24, "low"), { formula: "4d6+21", average: 35 });
 });

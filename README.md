@@ -1,21 +1,29 @@
 # PF2E Creature Forge
 
-PF2E Creature Forge is a new API-first creature generation engine for Foundry VTT and the Pathfinder Second Edition system.
+PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.1.0** is the architecture foundation. It deliberately focuses on stable contracts before the larger content libraries are added.
+Version **0.1.3** adds locale-neutral generated attack definitions with German/English presentation in both the Embedded Creature Editor and compiled PF2E NPC strike items, while retaining the reusable embedded UI architecture introduced in 0.1.2.
 
-## What 0.1.0 already provides
+## What 0.1.3 provides
 
 - Versioned `CreatureGenerationRequest` and `CreatureBlueprint` contracts.
-- Seeded deterministic random generation. No generation path uses `Math.random()`.
-- Pathfinder creature-building rank tables for AC, HP, saves, and Perception for levels -1 through 24.
-- Basic road-map roles: Brute, Magical Striker, Skill Paragon, Skirmisher, Sniper, Soldier, and Spellcaster.
+- Seeded deterministic random generation. Generation code does not use `Math.random()`.
+- GM Core creature-building tables for AC, HP, saves, Perception, ability modifiers, attack bonuses, and attack damage for levels -1 through 24.
+- Road-map roles: Brute, Magical Striker, Skill Paragon, Skirmisher, Sniper, Soldier, and Spellcaster.
+- Role-derived six ability modifiers with explicit per-ability overrides.
+- Concept defaults for mindless Intelligence and animal Intelligence.
+- One or two generated strikes.
+- Generated core strike names are localized in German/English through stable `nameKey` identifiers; CreatureBlueprints remain locale-neutral.
+- Two-strike mode creates complementary profiles: a more accurate/lower-damage strike and a less accurate/higher-damage strike.
+- Melee or ranged attack profiles, attack/damage rank overrides, and damage-type override.
+- Scoped rerolls for HP, defenses, ability modifiers, and attacks.
+- PF2E NPC compilation including embedded strike items.
 - Public content registry for categories, subtypes, name templates, abilities, auras, afflictions, effects, poisons, spell profiles/packages, and loot profiles.
-- External content bundles with namespaced IDs and source metadata.
-- Embedded Creature Editor contract plus a standalone Creature Forge application.
+- Embedded Creature Editor contract v2 plus standalone Creature Forge ApplicationV2 host.
+- The editor owns its internal scrolling and persistent footer, so Generate, Reroll, and optional Create Actor actions remain visible at the bottom.
+- Multiple hosts can mount the same editor implementation; the standalone window contains no second editor implementation.
+- Standalone default size increased to 1280×860, with migration from the old default-sized saved window state.
 - Runtime discovery of Effect Forge, Aura Forge, Affliction Forge, Item Forge, and Loot Forge.
-- Compendium source discovery API.
-- A preliminary PF2E NPC compiler and actor creation endpoint.
 - German and English UI.
 
 ## Public API
@@ -33,7 +41,7 @@ Hooks.on("pf2eCreatureForgeReady", (api) => {});
 Hooks.on("pf2eCreatureForgeContentReady", (registrySnapshot) => {});
 ```
 
-### Generate a blueprint
+### Generate a creature
 
 ```js
 const blueprint = api.generate({
@@ -45,24 +53,64 @@ const blueprint = api.generate({
     subtypes: ["fire"],
     size: "lg"
   },
+  attributes: {
+    str: "role",
+    dex: "role",
+    con: "role",
+    int: "role",
+    wis: "role",
+    cha: "role"
+  },
+  offense: {
+    attack: "role",
+    damage: "role",
+    kind: "melee",
+    damageType: "auto"
+  },
+  options: {
+    attackCount: 2
+  },
   generation: {
     seed: "example-seed"
   }
 });
 ```
 
-With the same request and the same seed, deterministic parts of the generated blueprint are reproduced exactly.
+The same request and seed reproduce deterministic generated values.
+
+### Two-strike profile
+
+With `attackCount: 2`, Creature Forge creates an accuracy/damage tradeoff. For example, a Soldier may receive:
+
+```text
+Accurate strike  -> higher attack bonus, lower damage band
+Heavy strike     -> lower attack bonus, higher damage band
+```
+
+The exact values are resolved from the creature's level and the GM Core attack tables.
 
 ### Reroll
 
 ```js
-const rerolled = api.reroll(blueprint, { scope: "all" });
-const hpOnly = api.reroll(blueprint, { scope: "statistics.hp" });
+api.reroll(blueprint, { scope: "all" });
+api.reroll(blueprint, { scope: "statistics.hp" });
+api.reroll(blueprint, { scope: "defenses" });
+api.reroll(blueprint, { scope: "statistics.abilities" });
+api.reroll(blueprint, { scope: "combat.attacks" });
 ```
 
-More granular reroll scopes will be added as attacks, abilities, auras, afflictions, spells, and loot enter the generation pipeline.
+Attack entries with `locked: true` survive an attack-scope reroll.
 
-### Register an external content bundle
+### Compile or create a PF2E NPC
+
+```js
+const { actorSource, integrationPlan } = api.compile(blueprint);
+const { actor } = await api.createActor(blueprint, { renderSheet: true });
+```
+
+0.1.3 compiles generated strikes as embedded PF2E NPC `melee` items and localizes their names for the active Foundry language. Future milestones will materialize abilities, auras, afflictions, spellcasting, and loot through the corresponding Forge adapters.
+
+## External content bundles
 
 ```js
 Hooks.once("pf2eCreatureForgeReady", (api) => {
@@ -71,13 +119,7 @@ Hooks.once("pf2eCreatureForgeReady", (api) => {
     moduleId: "my-module",
     version: "1.0.0",
     content: {
-      subtypes: [
-        {
-          id: "my-module.abyssal",
-          slug: "abyssal",
-          label: "Abyssal"
-        }
-      ],
+      subtypes: [],
       abilities: [],
       auras: [],
       afflictions: [],
@@ -92,9 +134,9 @@ Hooks.once("pf2eCreatureForgeReady", (api) => {
 });
 ```
 
-Individual registration helpers are also available, for example `registerAbility`, `registerAura`, `registerAffliction`, and `registerNameTemplate`.
-
 ## Embedded Creature Editor
+
+The actual editor is not tied to the Creature Forge window. The standalone ApplicationV2 shell mounts the same public editor surface that Encounter Forge or another module can mount later.
 
 ```js
 const editor = api.ui.creatureEditor.create({
@@ -111,27 +153,27 @@ const editor = api.ui.creatureEditor.create({
   }
 });
 
-await editor.mount(containerElement);
+await editor.mount(containerElement, {
+  minHeight: 620
+});
 ```
 
-The editor does not require its own Foundry window and can therefore be embedded later in Encounter Forge or other modules.
-
-Lifecycle:
+The embedded editor owns only its editor DOM, state, internal scrolling, validation state, and action footer. The host owns its surrounding window, tabs, persistence, and lifecycle. Primary actions live in the editor footer, so they remain visible while the form and preview scroll independently above it.
 
 ```js
-editor.value;
-editor.request;
+editor.element;      // embedded editor root
+editor.value;        // CreatureBlueprint snapshot
+editor.request;      // CreatureGenerationRequest snapshot
 editor.validate();
-editor.setRequest(request);
-editor.setValue(blueprint);
-editor.markClean();
 editor.unmount();
 editor.destroy();
 ```
 
+`api.ui.creatureEditor.contractVersion` is **2**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`.
+
 ## Integrations
 
-Creature Forge 0.1.0 detects, but does not yet deeply compose, these optional Forge APIs:
+Creature Forge discovers these optional APIs without taking ownership of their engines:
 
 - PF2E Critical Forge / Effect Forge
 - PF2E Aura Forge
@@ -139,16 +181,12 @@ Creature Forge 0.1.0 detects, but does not yet deeply compose, these optional Fo
 - PF2E Item Forge
 - PF2E Loot Forge
 
-Use:
-
 ```js
 api.integrations.getStatus();
 ```
 
-The next milestones will connect those adapters to generated abilities and resources rather than duplicate their engines inside Creature Forge.
-
 ## Current boundaries
 
-0.1.0 is intentionally not the finished monster generator. Attack statistics, damage, skills, ability selection, auras, afflictions, spell packages, resistances/immunities/weaknesses, loot generation, and compendium indexing are represented in the architecture but are scheduled for subsequent milestones.
+0.1.3 now owns the core numeric stat and localized strike generation path. Skills, senses, category/subtype defensive affinities, ability recipes, Effect Forge composition, auras, afflictions, spell packages, loot generation, and semantic compendium indexing remain later milestones.
 
 See `docs/ROADMAP.md`.

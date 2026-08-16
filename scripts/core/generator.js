@@ -2,11 +2,61 @@ import { MODULE_VERSION } from "../constants.js";
 import { createRandomSeed, SeededRandom } from "./rng.js";
 import { createEmptyBlueprint, createGenerationRequest } from "./schemas.js";
 import { resolveRolePreset } from "./role-presets.js";
-import { AC_TABLE, HP_TABLE, PERCEPTION_TABLE, SAVE_TABLE, assertCreatureLevel, resolveHpRange, resolveRankValue } from "./tables.js";
+import {
+  AC_TABLE, ATTACK_TABLE, HP_TABLE, PERCEPTION_TABLE, SAVE_TABLE,
+  assertCreatureLevel, resolveAttackDamage, resolveAttributeValue, resolveHpRange, resolveRankValue
+} from "./tables.js";
 import { validateBlueprint, validateGenerationRequest } from "./validator.js";
 import { deepClone } from "./clone.js";
+import { resolveAttackNameKey } from "./attack-localization.js";
 
-const SAVE_NAMES = ["fortitude", "reflex", "will"];
+const SAVE_NAMES = Object.freeze(["fortitude", "reflex", "will"]);
+const ABILITY_NAMES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
+const ATTACK_RANKS = Object.freeze(["low", "moderate", "high", "extreme"]);
+const DAMAGE_RANKS = Object.freeze(["low", "moderate", "high", "extreme"]);
+
+const CATEGORY_ATTACK_FORMS = Object.freeze({
+  animal: [
+    { accurate: ["Claw", "slashing"], heavy: ["Jaws", "piercing"] },
+    { accurate: ["Talons", "slashing"], heavy: ["Bite", "piercing"] }
+  ],
+  beast: [
+    { accurate: ["Claw", "slashing"], heavy: ["Jaws", "piercing"] },
+    { accurate: ["Horn", "piercing"], heavy: ["Slam", "bludgeoning"] }
+  ],
+  dragon: [
+    { accurate: ["Claw", "slashing"], heavy: ["Jaws", "piercing"] },
+    { accurate: ["Tail", "bludgeoning"], heavy: ["Jaws", "piercing"] }
+  ],
+  aberration: [
+    { accurate: ["Tentacle", "bludgeoning"], heavy: ["Maw", "piercing"] },
+    { accurate: ["Claw", "slashing"], heavy: ["Slam", "bludgeoning"] }
+  ],
+  celestial: [{ accurate: ["Claw", "slashing"], heavy: ["Slam", "bludgeoning"] }],
+  fiend: [{ accurate: ["Claw", "slashing"], heavy: ["Jaws", "piercing"] }],
+  fey: [{ accurate: ["Claw", "slashing"], heavy: ["Thorn", "piercing"] }],
+  fungus: [{ accurate: ["Tendril", "bludgeoning"], heavy: ["Spore Lash", "bludgeoning"] }],
+  plant: [{ accurate: ["Tendril", "bludgeoning"], heavy: ["Thorn", "piercing"] }],
+  ooze: [{ accurate: ["Pseudopod", "bludgeoning"], heavy: ["Slam", "bludgeoning"] }],
+  undead: [
+    { accurate: ["Claw", "slashing"], heavy: ["Jaws", "piercing"] },
+    { accurate: ["Grasp", "bludgeoning"], heavy: ["Slam", "bludgeoning"] }
+  ],
+  construct: [{ accurate: ["Fist", "bludgeoning"], heavy: ["Slam", "bludgeoning"] }],
+  elemental: [{ accurate: ["Elemental Strike", "bludgeoning"], heavy: ["Slam", "bludgeoning"] }],
+  giant: [{ accurate: ["Fist", "bludgeoning"], heavy: ["Slam", "bludgeoning"] }],
+  humanoid: [{ accurate: ["Quick Strike", "slashing"], heavy: ["Heavy Strike", "bludgeoning"] }],
+  astral: [{ accurate: ["Force Touch", "force"], heavy: ["Slam", "force"] }],
+  ethereal: [{ accurate: ["Ethereal Touch", "force"], heavy: ["Slam", "force"] }],
+  monitor: [{ accurate: ["Claw", "slashing"], heavy: ["Slam", "bludgeoning"] }]
+});
+
+const ELEMENTAL_DAMAGE_BY_SUBTYPE = Object.freeze({
+  acid: "acid",
+  cold: "cold",
+  electricity: "electricity",
+  fire: "fire"
+});
 
 function resolveRequestedRank(requested, fallback) {
   return requested && requested !== "role" ? requested : fallback;
@@ -15,6 +65,137 @@ function resolveRequestedRank(requested, fallback) {
 function resolveTrait(registry, type, value) {
   const entry = registry?.list(type).find((candidate) => candidate.slug === value || candidate.id === value);
   return entry?.trait ?? entry?.slug ?? value;
+}
+
+function shiftRank(rank, delta, allowed) {
+  const index = allowed.indexOf(rank);
+  if (index < 0) return rank;
+  return allowed[Math.max(0, Math.min(allowed.length - 1, index + delta))];
+}
+
+function normalizeAbilityRank(level, rank) {
+  if (rank === "extreme" && level < 1) return "high";
+  return rank;
+}
+
+function resolveAbilityStatistics(request, role, level, random) {
+  const result = {};
+  for (const ability of ABILITY_NAMES) {
+    const requested = request.attributes?.[ability] ?? "role";
+    let rank = normalizeAbilityRank(level, resolveRequestedRank(requested, role.abilities?.[ability] ?? "moderate"));
+    let value;
+
+    if (ability === "int" && requested === "role" && request.identity.subtypes.includes("mindless")) {
+      rank = "terrible";
+      value = -5;
+    } else if (ability === "int" && requested === "role" && request.identity.category === "animal") {
+      rank = "terrible";
+      value = random.fork("animal-intelligence").pick([-5, -4]);
+    } else {
+      value = resolveAttributeValue(level, rank);
+    }
+
+    result[ability] = { rank, value };
+  }
+  return result;
+}
+
+function resolveDamageType(request, attackKind, profile, form, random) {
+  const explicit = String(request.offense?.damageType ?? "auto").trim().toLowerCase();
+  if (explicit && explicit !== "auto") return explicit;
+
+  const elemental = request.identity.subtypes
+    .map((slug) => ELEMENTAL_DAMAGE_BY_SUBTYPE[slug])
+    .filter(Boolean);
+  if (elemental.length && (request.identity.category === "elemental" || request.identity.category === "dragon" || request.identity.category === "aberration")) {
+    const useElement = request.generation.variation === "experimental" ? 0.7 : 0.4;
+    if (random.chance(useElement)) return random.pick(elemental);
+  }
+
+  if (attackKind === "ranged") return profile === "heavy" ? "piercing" : "piercing";
+  return form?.[1] ?? "bludgeoning";
+}
+
+function chooseAttackForms(request, random) {
+  const options = CATEGORY_ATTACK_FORMS[request.identity.category] ?? CATEGORY_ATTACK_FORMS.humanoid;
+  return random.pick(options) ?? options[0];
+}
+
+function resolveAttackKind(request, role) {
+  const kind = request.offense?.kind;
+  return kind && kind !== "role" ? kind : (role.offense?.kind ?? "melee");
+}
+
+function resolveBaseOffense(request, role) {
+  return {
+    attack: resolveRequestedRank(request.offense?.attack, role.offense?.attack ?? "moderate"),
+    damage: resolveRequestedRank(request.offense?.damage, role.offense?.damage ?? "moderate")
+  };
+}
+
+function pairRanks(baseAttack, baseDamage, profile, level) {
+  if (profile === "primary") return { attack: baseAttack, damage: baseDamage };
+  if (profile === "accurate") {
+    let attack = shiftRank(baseAttack, 1, ATTACK_RANKS);
+    if (level < 11 && attack === "extreme" && baseAttack !== "extreme") attack = "high";
+    return { attack, damage: shiftRank(baseDamage, -1, DAMAGE_RANKS) };
+  }
+  return {
+    attack: shiftRank(baseAttack, -1, ATTACK_RANKS),
+    damage: shiftRank(baseDamage, 1, DAMAGE_RANKS)
+  };
+}
+
+function buildAttack({ request, role, level, random, profile, id, forms }) {
+  const base = resolveBaseOffense(request, role);
+  const ranks = pairRanks(base.attack, base.damage, profile, level);
+  const kind = resolveAttackKind(request, role);
+  const formProfile = profile === "primary" ? (random.chance(0.5) ? "accurate" : "heavy") : profile;
+  const form = kind === "ranged"
+    ? (formProfile === "heavy" ? ["Heavy Shot", "piercing"] : ["Precise Shot", "piercing"])
+    : forms[formProfile];
+  const damage = resolveAttackDamage(level, ranks.damage);
+  const damageType = resolveDamageType(request, kind, formProfile, form, random.fork("damage-type"));
+  const traits = [];
+  if (kind === "melee") traits.push("unarmed");
+  if (kind === "melee" && formProfile === "accurate") traits.push("agile");
+
+  const name = form?.[0] ?? (kind === "ranged" ? "Projectile" : "Strike");
+
+  return {
+    id,
+    profile,
+    name,
+    nameKey: resolveAttackNameKey(name),
+    kind,
+    category: kind === "melee" ? "unarmed" : "ranged",
+    attack: {
+      rank: ranks.attack,
+      value: resolveRankValue(ATTACK_TABLE, level, ranks.attack)
+    },
+    damage: {
+      rank: ranks.damage,
+      formula: damage.formula,
+      average: damage.average,
+      type: damageType
+    },
+    traits: [...new Set(traits)],
+    range: kind === "ranged" ? 60 : null,
+    locked: false
+  };
+}
+
+function generateAttacks(request, role, level, random) {
+  const count = Math.max(0, Math.min(2, Number(request.options.attackCount ?? 1)));
+  if (count === 0) return [];
+  const forms = chooseAttackForms(request, random.fork("forms"));
+  if (count === 1) {
+    return [buildAttack({ request, role, level, random: random.fork("attack-1"), profile: "primary", id: "attack-1", forms })];
+  }
+  return [
+    buildAttack({ request, role, level, random: random.fork("attack-1"), profile: "accurate", id: "attack-1", forms }),
+    buildAttack({ request, role, level, random: random.fork("attack-2"), profile: "heavy", id: "attack-2", forms })
+  ];
 }
 
 export class CreatureGenerator {
@@ -49,6 +230,8 @@ export class CreatureGenerator {
     const primaryTrait = resolveTrait(this.registry, "category", request.identity.category);
     const subtypeTraits = request.identity.subtypes.map((subtype) => resolveTrait(this.registry, "subtype", subtype));
     const traits = [...new Set([primaryTrait, ...subtypeTraits].filter(Boolean))];
+    const abilities = resolveAbilityStatistics(request, role, level, random.fork("statistics.abilities"));
+    const attacks = generateAttacks(request, role, level, random.fork("combat.attacks"));
 
     const blueprint = createEmptyBlueprint();
     blueprint.metadata = {
@@ -68,6 +251,7 @@ export class CreatureGenerator {
       size: request.identity.size
     };
     blueprint.statistics = {
+      abilities,
       ac: { rank: acRank, value: resolveRankValue(AC_TABLE, level, acRank) },
       hp: { rank: hpRank, value: hpValue, range: hpRange },
       perception: { rank: perceptionRank, value: resolveRankValue(PERCEPTION_TABLE, level, perceptionRank) },
@@ -75,28 +259,31 @@ export class CreatureGenerator {
         rank: saveRanks[save],
         value: resolveRankValue(SAVE_TABLE, level, saveRanks[save])
       }])),
-      speed: { land: 25, other: [] }
+      speed: { land: Number(role.speed ?? 25), other: [] }
     };
     blueprint.combat = {
-      attacks: Array.from({ length: Math.max(0, Math.min(2, Number(request.options.attackCount ?? 1))) }, (_, index) => ({
-        id: `attack-${index + 1}`,
-        state: "planned",
-        profile: index === 0 ? "primary" : "secondary",
-        locked: false
-      })),
+      attacks,
       spellcasting: []
     };
     blueprint.loot.policy = request.options.loot ?? "auto";
+    blueprint.provenance = [
+      {
+        kind: "rules",
+        source: "Pathfinder GM Core",
+        section: "Building Creatures / Ability Modifiers",
+        note: "Ability modifiers use the level/rank creature-building table and role road maps."
+      },
+      {
+        kind: "rules",
+        source: "Pathfinder GM Core",
+        section: "Building Creatures / Attack Bonus and Attack Damage",
+        note: "Strike bonuses and damage use the attack tables; two-strike profiles trade accuracy against damage."
+      }
+    ];
     blueprint.diagnostics = [
       ...requestValidation.warnings,
       ...validateBlueprint(blueprint).warnings
     ];
-    blueprint.provenance = [{
-      kind: "rules",
-      source: "Pathfinder GM Core",
-      section: "Building Creatures",
-      note: "Core defensive statistics use the level/rank tables from the creature-building rules."
-    }];
     return blueprint;
   }
 
@@ -121,14 +308,39 @@ export class CreatureGenerator {
       if (next.locks?.["statistics.hp"]) return next;
       const range = next.statistics.hp.range ?? resolveHpRange(next.identity.level, next.statistics.hp.rank);
       next.statistics.hp.value = random.fork("statistics.hp").int(range.min, range.max);
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
+    }
+
+    const regenerated = () => this.generate({ ...deepClone(snapshot), generation: { ...snapshot.generation, seed: newSeed } });
+
+    if (scope === "statistics.abilities") {
+      if (next.locks?.["statistics.abilities"]) return next;
+      next.statistics.abilities = regenerated().statistics.abilities;
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
+    }
+
+    if (scope === "combat.attacks" || scope === "attacks") {
+      if (next.locks?.["combat.attacks"]) return next;
+      const generated = regenerated();
+      const lockedById = new Map((next.combat?.attacks ?? []).filter((attack) => attack.locked).map((attack) => [attack.id, attack]));
+      next.combat.attacks = generated.combat.attacks.map((attack) => lockedById.get(attack.id) ?? attack);
+      next.diagnostics = validateBlueprint(next).warnings;
       return next;
     }
 
     if (scope === "defenses") {
       if (next.locks?.defenses) return next;
-      return this.generate({ ...deepClone(snapshot), generation: { ...snapshot.generation, seed: newSeed } });
+      const generated = regenerated();
+      next.statistics.ac = generated.statistics.ac;
+      next.statistics.hp = generated.statistics.hp;
+      next.statistics.perception = generated.statistics.perception;
+      next.statistics.saves = generated.statistics.saves;
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
     }
 
-    throw new Error(`Unsupported reroll scope '${scope}' in Creature Forge 0.1.0.`);
+    throw new Error(`Unsupported reroll scope '${scope}' in the current Creature Forge engine.`);
   }
 }

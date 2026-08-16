@@ -1,8 +1,16 @@
 import { RANKS, SIZES } from "../constants.js";
 import { ROLE_IDS } from "./role-presets.js";
 
+const ABILITIES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
+const ATTACK_KINDS = Object.freeze(["role", "melee", "ranged"]);
+
 function issue(level, code, path, message) {
   return { level, code, path, message };
+}
+
+function validateRank(issues, value, allowed, path, code, label, { allowRole = true } = {}) {
+  if (allowRole && value === "role") return;
+  if (!allowed.includes(value)) issues.push(issue("error", code, path, `Invalid ${label} rank '${value}'.`));
 }
 
 export function validateGenerationRequest(request, { registry } = {}) {
@@ -25,15 +33,23 @@ export function validateGenerationRequest(request, { registry } = {}) {
     if (!exists) issues.push(issue("warning", "CATEGORY_UNREGISTERED", "identity.category", `Category '${category}' is not registered.`));
   }
 
-  const ac = request?.defenses?.ac;
-  if (ac !== "role" && !RANKS.DEFENSE.includes(ac)) issues.push(issue("error", "INVALID_AC_RANK", "defenses.ac", `Invalid AC rank '${ac}'.`));
-  const hp = request?.defenses?.hp;
-  if (hp !== "role" && !RANKS.HP.includes(hp)) issues.push(issue("error", "INVALID_HP_RANK", "defenses.hp", `Invalid HP rank '${hp}'.`));
-  const perception = request?.defenses?.perception;
-  if (perception !== "role" && !RANKS.SAVE.includes(perception)) issues.push(issue("error", "INVALID_PERCEPTION_RANK", "defenses.perception", `Invalid Perception rank '${perception}'.`));
+  for (const ability of ABILITIES) {
+    validateRank(issues, request?.attributes?.[ability], RANKS.ATTRIBUTE, `attributes.${ability}`, "INVALID_ATTRIBUTE_RANK", ability.toUpperCase());
+  }
+  validateRank(issues, request?.defenses?.ac, RANKS.DEFENSE, "defenses.ac", "INVALID_AC_RANK", "AC");
+  validateRank(issues, request?.defenses?.hp, RANKS.HP, "defenses.hp", "INVALID_HP_RANK", "HP");
+  validateRank(issues, request?.defenses?.perception, RANKS.SAVE, "defenses.perception", "INVALID_PERCEPTION_RANK", "Perception");
   for (const save of ["fortitude", "reflex", "will"]) {
-    const rank = request?.defenses?.saves?.[save];
-    if (rank !== "role" && !RANKS.SAVE.includes(rank)) issues.push(issue("error", "INVALID_SAVE_RANK", `defenses.saves.${save}`, `Invalid ${save} rank '${rank}'.`));
+    validateRank(issues, request?.defenses?.saves?.[save], RANKS.SAVE, `defenses.saves.${save}`, "INVALID_SAVE_RANK", save);
+  }
+  validateRank(issues, request?.offense?.attack, RANKS.ATTACK, "offense.attack", "INVALID_ATTACK_RANK", "attack");
+  validateRank(issues, request?.offense?.damage, RANKS.DAMAGE, "offense.damage", "INVALID_DAMAGE_RANK", "damage");
+  if (!ATTACK_KINDS.includes(request?.offense?.kind)) {
+    issues.push(issue("error", "INVALID_ATTACK_KIND", "offense.kind", `Invalid attack kind '${request?.offense?.kind}'.`));
+  }
+  const attackCount = Number(request?.options?.attackCount);
+  if (!Number.isInteger(attackCount) || attackCount < 0 || attackCount > 2) {
+    issues.push(issue("error", "INVALID_ATTACK_COUNT", "options.attackCount", "Attack count must be 0, 1, or 2."));
   }
 
   if (request?.identity?.size === "lg" && level < 1) {
@@ -67,6 +83,49 @@ export function validateBlueprint(blueprint) {
   if (!blueprint?.identity?.category) {
     issues.push(issue("error", "CATEGORY_REQUIRED", "identity.category", "A primary creature category is required."));
   }
+
+  for (const ability of ABILITIES) {
+    const stat = blueprint?.statistics?.abilities?.[ability];
+    if (!stat || !Number.isFinite(Number(stat.value))) {
+      issues.push(issue("error", "INVALID_ABILITY_VALUE", `statistics.abilities.${ability}`, `${ability.toUpperCase()} must have a numeric modifier.`));
+    }
+  }
+
+  const attacks = blueprint?.combat?.attacks ?? [];
+  for (let index = 0; index < attacks.length; index += 1) {
+    const attack = attacks[index];
+    const path = `combat.attacks.${index}`;
+    if (!RANKS.ATTACK.includes(attack?.attack?.rank) || !Number.isFinite(Number(attack?.attack?.value))) {
+      issues.push(issue("error", "INVALID_ATTACK", path, `Attack '${attack?.name ?? index + 1}' has an invalid attack rank or bonus.`));
+    }
+    if (!RANKS.DAMAGE.includes(attack?.damage?.rank) || !String(attack?.damage?.formula ?? "").trim()) {
+      issues.push(issue("error", "INVALID_ATTACK_DAMAGE", path, `Attack '${attack?.name ?? index + 1}' has invalid damage.`));
+    }
+    if (attack?.attack?.rank === "extreme" && attack?.damage?.rank === "extreme") {
+      issues.push(issue("warning", "COUPLED_EXTREME_ATTACK_DAMAGE", path, `Attack '${attack?.name ?? index + 1}' combines extreme accuracy and extreme damage.`));
+    }
+  }
+
+  if (attacks.length === 2) {
+    const [first, second] = attacks;
+    const accuracyDiff = Number(first?.attack?.value) - Number(second?.attack?.value);
+    const damageDiff = Number(first?.damage?.average) - Number(second?.damage?.average);
+    if (!(accuracyDiff > 0 && damageDiff < 0)) {
+      issues.push(issue("warning", "ATTACK_PAIR_NOT_COMPLEMENTARY", "combat.attacks", "Two-attack profiles should normally trade higher accuracy for lower damage and vice versa."));
+    }
+  }
+
+  const extremeStats = [
+    blueprint?.statistics?.ac,
+    blueprint?.statistics?.perception,
+    ...saves,
+    ...Object.values(blueprint?.statistics?.abilities ?? {})
+  ].filter((entry) => entry?.rank === "extreme").length;
+  const level = Number(blueprint?.identity?.level ?? 0);
+  if (level < 11 && extremeStats > 1) {
+    issues.push(issue("warning", "MANY_EXTREME_STATS_LOW_LEVEL", "statistics", "Multiple extreme statistics are unusual below level 11."));
+  }
+
   return {
     valid: !issues.some((entry) => entry.level === "error"),
     errors: issues.filter((entry) => entry.level === "error"),

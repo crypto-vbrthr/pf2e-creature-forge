@@ -26,18 +26,20 @@ External Modules / Encounter Forge / Standalone UI
 
 ### CreatureGenerationRequest v1
 
-The request captures user intent. It stores concept, role, category/subtypes, defense rank choices, random seed, source selections, and high-level options.
+The request captures user intent. 0.1.1 includes identity, role, six ability rank choices, defense ranks, offense profile, seed/variation, source selections, and high-level feature options.
 
 ### CreatureBlueprint v1
 
-The blueprint is the neutral generated result. It is not a Foundry Actor document. This allows Encounter Forge to keep draft creatures without creating world Actors.
+The blueprint is a neutral generated result rather than a Foundry Actor document. `statistics.abilities` and `combat.attacks` now hold real generated data, while later resources remain neutral extension points.
 
 Major sections:
 
 - `metadata`
 - `identity`
-- `statistics`
-- `combat`
+- `statistics.abilities`
+- `statistics.ac/hp/perception/saves/speed`
+- `combat.attacks`
+- `combat.spellcasting`
 - `abilities`
 - `resources.effects`
 - `resources.auras`
@@ -47,15 +49,34 @@ Major sections:
 - `provenance`
 - `diagnostics`
 
-### Content schema v1
+## Core Statistics & Attack Engine
 
-All registrable content has a namespaced stable ID and source metadata. The registry owns duplicate detection and bundle rollback.
+0.1.1 resolves role road maps into level-scaled values. Explicit request ranks override role defaults.
+
+Two-strike generation intentionally creates an internal tradeoff:
+
+```text
+accurate: attack rank up, damage rank down
+heavy:    attack rank down, damage rank up
+```
+
+The engine keeps attack generation separate from Actor compilation. The Blueprint stores semantic attack data, while the compiler maps each generated strike to an embedded PF2E NPC `melee` item.
 
 ## Randomness
 
-All generation randomness flows through `SeededRandom`. Components should use forked streams such as `random.fork("statistics.hp")` so adding a random choice in one subsystem does not unnecessarily scramble unrelated subsystems.
+All generation randomness flows through `SeededRandom`. Components use forked streams such as:
 
-`Math.random()` must not be used by Creature Forge generation code or by bundled providers.
+```text
+statistics.hp
+statistics.abilities
+combat.attacks
+```
+
+This limits accidental cross-system changes when a new random choice is introduced. `Math.random()` is not used by Creature Forge generation code.
+
+## Rerolls and locks
+
+Scoped rerolls create a new seed, regenerate the relevant subsystem, and preserve unrelated Blueprint sections. Attack entries can be individually retained by setting `locked: true` before an attack-scope reroll.
 
 ## Integrations
 
@@ -71,10 +92,6 @@ Creature ability
   +-- Loot request -> Loot Forge -> Item Forge
 ```
 
-The module remains usable if optional integrations are missing. Individual generated content can declare harder integration requirements later.
-
 ## Embedded editor
 
-`api.ui.creatureEditor.create()` returns an editor that mounts into an arbitrary HTMLElement. The host owns persistence and window lifecycle.
-
-No editor instance is global. Multiple editor instances can exist simultaneously.
+`api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v2), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, and persistent bottom action footer. The host owns the surrounding window, tabs, persistence, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.

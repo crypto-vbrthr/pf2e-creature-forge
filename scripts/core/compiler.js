@@ -1,9 +1,49 @@
 import { deepClone } from "./clone.js";
 import { validateBlueprint } from "./validator.js";
+import { resolveAttackNameKey } from "./attack-localization.js";
 
-const ABILITY_DEFAULTS = Object.freeze({
-  str: { mod: 0 }, dex: { mod: 0 }, con: { mod: 0 }, int: { mod: 0 }, wis: { mod: 0 }, cha: { mod: 0 }
-});
+function localizeAttackName(attack) {
+  const nameKey = resolveAttackNameKey(attack);
+  if (nameKey && globalThis.game?.i18n?.localize) {
+    const localized = globalThis.game.i18n.localize(nameKey);
+    if (localized && localized !== nameKey) return localized;
+  }
+  return String(attack?.name ?? "Strike");
+}
+
+function compileMeleeItem(attack) {
+  const damageId = `cf-${String(attack.id ?? "attack").replace(/[^a-z0-9-]/gi, "-").toLowerCase()}`;
+  return {
+    name: localizeAttackName(attack),
+    type: "melee",
+    img: "systems/pf2e/icons/default-icons/melee.svg",
+    system: {
+      attack: { value: "" },
+      attackEffects: { value: [] },
+      bonus: { value: Number(attack.attack.value) },
+      damageRolls: {
+        [damageId]: {
+          damage: String(attack.damage.formula),
+          damageType: String(attack.damage.type ?? "bludgeoning")
+        }
+      },
+      description: { value: "" },
+      publication: { title: "PF2E Creature Forge", authors: "", license: "ORC", remaster: true },
+      range: attack.kind === "ranged" ? Number(attack.range ?? 60) : null,
+      rules: [],
+      slug: null,
+      traits: { value: [...new Set(attack.traits ?? [])] }
+    },
+    flags: {
+      "pf2e-creature-forge": {
+        attackId: attack.id,
+        profile: attack.profile,
+        attackRank: attack.attack.rank,
+        damageRank: attack.damage.rank
+      }
+    }
+  };
+}
 
 export function compileActorSource(blueprint, options = {}) {
   const validation = validateBlueprint(blueprint);
@@ -15,6 +55,11 @@ export function compileActorSource(blueprint, options = {}) {
 
   const name = String(options.name ?? blueprint.identity.name ?? "Creature").trim() || "Creature";
   const hp = Number(blueprint.statistics.hp.value);
+  const abilities = Object.fromEntries(
+    ["str", "dex", "con", "int", "wis", "cha"].map((ability) => [ability, { mod: Number(blueprint.statistics.abilities?.[ability]?.value ?? 0) }])
+  );
+  const attackItems = (blueprint.combat?.attacks ?? []).map(compileMeleeItem);
+
   const source = {
     name,
     type: "npc",
@@ -25,7 +70,7 @@ export function compileActorSource(blueprint, options = {}) {
         rarity: "common",
         size: { value: blueprint.identity.size ?? "med" }
       },
-      abilities: deepClone(ABILITY_DEFAULTS),
+      abilities,
       attributes: {
         ac: { value: Number(blueprint.statistics.ac.value), details: "" },
         adjustment: null,
@@ -57,10 +102,11 @@ export function compileActorSource(blueprint, options = {}) {
       },
       resources: { focus: { value: 0, max: 0 } }
     },
+    items: attackItems,
     flags: {
       "pf2e-creature-forge": {
         blueprintSchemaVersion: blueprint.schemaVersion,
-        generatorVersion: blueprint.metadata?.generatorVersion ?? "0.1.0",
+        generatorVersion: blueprint.metadata?.generatorVersion ?? "0.1.3",
         seed: blueprint.metadata?.seed ?? "",
         blueprint: deepClone(blueprint)
       }

@@ -11,6 +11,14 @@ export const DEFAULT_REQUEST = Object.freeze({
     subtypes: [],
     size: "med"
   },
+  attributes: {
+    str: "role",
+    dex: "role",
+    con: "role",
+    int: "role",
+    wis: "role",
+    cha: "role"
+  },
   defenses: {
     ac: "role",
     hp: "role",
@@ -20,6 +28,12 @@ export const DEFAULT_REQUEST = Object.freeze({
       reflex: "role",
       will: "role"
     }
+  },
+  offense: {
+    attack: "role",
+    damage: "role",
+    kind: "role",
+    damageType: "auto"
   },
   generation: {
     seed: "",
@@ -49,6 +63,7 @@ export function createGenerationRequest(input = {}) {
   request.schemaVersion = REQUEST_SCHEMA_VERSION;
   request.identity.subtypes = [...new Set((request.identity.subtypes ?? []).map((value) => String(value).trim()).filter(Boolean))];
   request.generation.seed = String(request.generation.seed ?? "").trim();
+  request.options.attackCount = Math.max(0, Math.min(2, Number(request.options.attackCount ?? 1)));
   return request;
 }
 
@@ -57,7 +72,7 @@ export function createEmptyBlueprint() {
     schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     metadata: {
       generator: "pf2e-creature-forge",
-      generatorVersion: "0.1.0",
+      generatorVersion: "0.1.3",
       seed: "",
       variation: "balanced",
       requestSnapshot: null,
@@ -73,6 +88,14 @@ export function createEmptyBlueprint() {
       size: "med"
     },
     statistics: {
+      abilities: {
+        str: { rank: "moderate", value: 3 },
+        dex: { rank: "moderate", value: 3 },
+        con: { rank: "moderate", value: 3 },
+        int: { rank: "moderate", value: 3 },
+        wis: { rank: "moderate", value: 3 },
+        cha: { rank: "moderate", value: 3 }
+      },
       ac: { rank: "moderate", value: 15 },
       hp: { rank: "moderate", value: 20, range: { min: 19, max: 21 } },
       perception: { rank: "moderate", value: 7 },
