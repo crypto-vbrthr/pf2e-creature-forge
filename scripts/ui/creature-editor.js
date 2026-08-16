@@ -3,13 +3,9 @@ import { ROLE_IDS } from "../core/role-presets.js";
 import { deepClone } from "../core/clone.js";
 import { CreatureEditorSession } from "./editor-session.js";
 import { resolveAttackNameKey } from "../core/attack-localization.js";
+import { localize } from "../i18n.js";
 
 const ABILITIES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
-
-function localize(key, fallback = key) {
-  const value = globalThis.game?.i18n?.localize?.(key);
-  return value && value !== key ? value : fallback;
-}
 
 function option(value, label, selected) {
   return `<option value="${value}"${String(selected) === String(value) ? " selected" : ""}>${label}</option>`;
@@ -81,6 +77,31 @@ function abilityTypeLabel(ability) {
   const type = ability?.type ?? "action";
   if (type === "action") return `${Number(ability?.actionCost ?? 1)} ${localize("PF2E_CREATURE_FORGE.AbilityType.Actions", "actions")}`;
   return localize(`PF2E_CREATURE_FORGE.AbilityType.${type}`, type);
+}
+
+function traitLabel(trait) {
+  const own = localize(`PF2E_CREATURE_FORGE.Trait.${trait}`, "");
+  if (own) return own;
+  return String(trait ?? "").replaceAll("-", " ");
+}
+
+function effectTimingLabel(timing) {
+  const keys = {
+    "after-use": "PF2E_CREATURE_FORGE.Runtime.Timing.AfterUse",
+    "trigger": "PF2E_CREATURE_FORGE.Runtime.Timing.Trigger",
+    "failed-save": "PF2E_CREATURE_FORGE.Runtime.Timing.FailedSave",
+    "on-hit": "PF2E_CREATURE_FORGE.Runtime.Timing.OnHit",
+    "on-success": "PF2E_CREATURE_FORGE.Runtime.Timing.OnSuccess"
+  };
+  const key = keys[String(timing ?? "")];
+  return key ? localize(key, timing) : String(timing ?? "");
+}
+
+function contentSourceLabel(source) {
+  const moduleId = source?.moduleId ?? "";
+  if (!moduleId) return "";
+  if (moduleId === "pf2e-creature-forge") return localize("PF2E_CREATURE_FORGE.Source.Core", "Creature Forge Core");
+  return globalThis.game?.modules?.get?.(moduleId)?.title ?? moduleId;
 }
 
 function affinityTypeLabel(type) {
@@ -442,6 +463,10 @@ export class EmbeddedCreatureEditor {
     if (!resource || !(host instanceof HTMLElement) || !effectApi?.ui?.effectEditor?.create) return;
     const definition = deepClone(resource.definition);
     if (resource.nameKey) definition.name = localize(resource.nameKey, definition.name ?? resource.name);
+    if (!String(definition.description ?? "").trim() && resource.descriptionKey) {
+      const localizedDescription = localize(resource.descriptionKey, "");
+      if (localizedDescription && localizedDescription !== resource.descriptionKey) definition.description = localizedDescription;
+    }
     this.effectEditor = effectApi.ui.effectEditor.create({
       definition,
       layout: "compact",
@@ -553,9 +578,10 @@ export class EmbeddedCreatureEditor {
         .filter(({ resource }) => resource);
       const effectButtons = linkedEffects.map(({ application, resource }) => {
         const label = localize(resource.nameKey, resource.definition?.name ?? resource.name ?? resource.id);
-        return `<button type="button" class="cf-effect-link" data-cf-action="edit-ability-effect" data-effect-id="${escapeHtml(resource.id)}" ${!effectIntegrationReady || !this.capabilities.effectEditing ? "disabled" : ""}><i class="fa-solid fa-wand-magic-sparkles"></i> ${escapeHtml(label)} <small>${escapeHtml(application.timing ?? "")}</small></button>`;
+        return `<button type="button" class="cf-effect-link" data-cf-action="edit-ability-effect" data-effect-id="${escapeHtml(resource.id)}" ${!effectIntegrationReady || !this.capabilities.effectEditing ? "disabled" : ""}><i class="fa-solid fa-wand-magic-sparkles"></i> ${escapeHtml(label)} <small>${escapeHtml(effectTimingLabel(application.timing))}</small></button>`;
       }).join("");
-      const source = ability.source?.moduleId ? `<small class="cf-ability-source">${escapeHtml(ability.source.moduleId)}</small>` : "";
+      const sourceLabel = contentSourceLabel(ability.source);
+      const source = sourceLabel ? `<small class="cf-ability-source">${escapeHtml(sourceLabel)}</small>` : "";
       return `<article class="cf-ability-card${ability.locked ? " locked" : ""}" data-ability-id="${escapeHtml(ability.id)}">
         <header><div><strong>${escapeHtml(abilityNameLabel(ability))}</strong><small>${escapeHtml(abilityTypeLabel(ability))} · ${escapeHtml(localize(`PF2E_CREATURE_FORGE.AbilityCategory.${ability.category}`, ability.category ?? ""))}</small>${source}</div>
         <div class="cf-ability-controls">
@@ -563,7 +589,7 @@ export class EmbeddedCreatureEditor {
           ${this.capabilities.generation && this.mode !== "view" && !ability.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-ability" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbility", "Reroll ability"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
         </div></header>
         <p>${escapeHtml(abilityDescriptionLabel(ability))}</p>
-        ${ability.traits?.length ? `<div class="cf-ability-tags">${ability.traits.map((trait) => `<span>${escapeHtml(trait)}</span>`).join("")}</div>` : ""}
+        ${ability.traits?.length ? `<div class="cf-ability-tags">${ability.traits.map((trait) => `<span>${escapeHtml(traitLabel(trait))}</span>`).join("")}</div>` : ""}
         ${effectButtons ? `<div class="cf-ability-effects">${effectButtons}</div>` : ""}
       </article>`;
     }).join("");

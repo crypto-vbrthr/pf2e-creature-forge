@@ -1,4 +1,4 @@
-import { BLUEPRINT_SCHEMA_VERSION, REQUEST_SCHEMA_VERSION } from "../constants.js";
+import { BLUEPRINT_SCHEMA_VERSION, MODULE_VERSION, REQUEST_SCHEMA_VERSION } from "../constants.js";
 import { deepClone, deepMerge } from "./clone.js";
 
 export const DEFAULT_REQUEST = Object.freeze({
@@ -126,7 +126,7 @@ export function createEmptyBlueprint() {
     schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     metadata: {
       generator: "pf2e-creature-forge",
-      generatorVersion: "0.3.2",
+      generatorVersion: MODULE_VERSION,
       seed: "",
       variation: "balanced",
       requestSnapshot: null,

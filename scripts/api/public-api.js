@@ -14,6 +14,7 @@ import { validateBlueprint, validateGenerationRequest } from "../core/validator.
 import { ForgeIntegrationHub } from "../integration/adapters.js";
 import { createCreatureEditorUiApi } from "../ui/creature-editor.js";
 import { listAbilityCandidates } from "../core/ability-engine.js";
+import { CreatureEffectRuntime } from "../runtime/effect-runtime.js";
 
 let apiInstance = null;
 
@@ -23,6 +24,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
   const generator = new CreatureGenerator({ registry });
   const discovery = new CompendiumDiscoveryManager({ registry });
   const integrations = new ForgeIntegrationHub();
+  const runtime = new CreatureEffectRuntime({ integrations });
 
   const registerByType = (type) => (definition, options = {}) => registry.register(type, definition, options);
 
@@ -53,7 +55,18 @@ export function initializePublicApi({ openCreatureForge } = {}) {
     validateRequest: (request) => validateGenerationRequest(createGenerationRequest(request), { registry }),
     validate: (blueprint) => validateBlueprint(blueprint),
     compile: (blueprint, options = {}) => compileActorSource(blueprint, options),
-    createActor: (blueprint, options = {}) => createActorFromBlueprint(blueprint, options),
+    createActor: (blueprint, options = {}) => createActorFromBlueprint(blueprint, {
+      ...options,
+      postCreate: options.materializeEffects === false
+        ? options.postCreate
+        : async (actor, sourceBlueprint, compiled) => {
+            const runtimeResult = await runtime.initializeActor(actor, sourceBlueprint);
+            const external = typeof options.postCreate === "function"
+              ? await options.postCreate(actor, sourceBlueprint, compiled)
+              : null;
+            return { creatureForge: runtimeResult, external };
+          }
+    }),
 
     random: {
       createSeed: createRandomSeed,
@@ -89,6 +102,21 @@ export function initializePublicApi({ openCreatureForge } = {}) {
         if (!effectApi?.toItemSource) throw new Error("Effect Forge integration is unavailable.");
         return effectApi.toItemSource(definition, context);
       },
+      toItemSources: async (definition, context = {}) => {
+        const effectApi = integrations.effectApi?.effects;
+        if (!effectApi?.toItemSources) throw new Error("Effect Forge integration is unavailable.");
+        return effectApi.toItemSources(definition, context);
+      },
+      createItem: async (definition, options = {}) => {
+        const effectApi = integrations.effectApi?.effects;
+        if (!effectApi?.createItem) throw new Error("Effect Forge integration is unavailable.");
+        return effectApi.createItem(definition, options);
+      },
+      createItems: async (definition, options = {}) => {
+        const effectApi = integrations.effectApi?.effects;
+        if (!effectApi?.createItems) throw new Error("Effect Forge integration is unavailable.");
+        return effectApi.createItems(definition, options);
+      },
       apply: async (definition, targets, options = {}) => {
         const effectApi = integrations.effectApi?.effects;
         if (!effectApi?.apply) throw new Error("Effect Forge integration is unavailable.");
@@ -104,6 +132,17 @@ export function initializePublicApi({ openCreatureForge } = {}) {
         if (!effectApi?.checkCompatibility) throw new Error("Effect Forge integration is unavailable.");
         return effectApi.checkCompatibility(definition, target, options);
       }
+    },
+
+    runtime: {
+      get available() { return runtime.available; },
+      get materializationAvailable() { return runtime.materializationAvailable; },
+      resolve: (actor, options = {}) => runtime.resolve(actor, options),
+      resolveTargets: (actor, targetMode = "target", explicitTargets = null) => runtime.resolveTargets(actor, targetMode, explicitTargets),
+      applyEffect: (options = {}) => runtime.apply(options),
+      materializeEffects: (actor, blueprint = null) => runtime.materialize(actor, blueprint ?? undefined),
+      refreshActorEffects: (actor, blueprint = null) => runtime.initializeActor(actor, blueprint ?? undefined),
+      cleanupActorEffects: (actor) => runtime.cleanupActorResources(actor)
     },
 
     content: {

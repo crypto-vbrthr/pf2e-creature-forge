@@ -4,6 +4,7 @@ const effect = (slug, nameKey, definition, extra = {}) => ({
   id: `${MODULE_ID}.effect.${slug}`,
   slug,
   nameKey,
+  descriptionKey: extra.descriptionKey ?? `${nameKey}.Description`,
   tags: ["core", "creature-effect", ...(extra.tags ?? [])],
   definition: {
     schemaVersion: 2,

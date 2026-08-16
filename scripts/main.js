@@ -2,6 +2,7 @@ import { MODULE_ID, MODULE_VERSION } from "./constants.js";
 import { getPublicApi, initializePublicApi } from "./api/public-api.js";
 import { registerSettings } from "./settings.js";
 import { initializeCreatureForgeUi, openCreatureForge } from "./ui/creature-forge.js";
+import { initializeEffectRuntimeUi } from "./runtime/effect-runtime.js";
 
 Hooks.once("init", () => {
   registerSettings();
@@ -19,6 +20,10 @@ Hooks.once("ready", () => {
 
   initializeCreatureForgeUi();
   const api = getPublicApi();
+  initializeEffectRuntimeUi({
+    apply: (options) => api.runtime.applyEffect(options),
+    cleanupActorResources: (actor) => api.runtime.cleanupActorEffects(actor)
+  });
   Hooks.callAll("pf2eCreatureForgeReady", api);
   Hooks.callAll("pf2eCreatureForgeContentReady", api.content.getRegistrySnapshot());
   console.info(`${MODULE_ID} | Ready`, {

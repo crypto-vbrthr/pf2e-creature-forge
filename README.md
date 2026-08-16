@@ -2,16 +2,24 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.3.2** hardens the nested **Embedded Effect Editor workflow**. Returning from an ability effect now restores the exact creature scroll position, while Critical Forge 1.0.1-rc.4 provides a self-contained colored/framed embedded Effect Editor surface that remains readable in Creature Forge and other hosts.
+Version **0.3.7** hardens **Localization & Ability Presentation**. Creature Forge now keeps its own DE/EN package strings available as a robust fallback when Foundry does not resolve the module dictionary, while external/system localization continues through Foundry i18n. Ability cards, Effect timing metadata, compiled actions, and applied Effect explanations remain localized consistently.
 
-## What 0.3.2 provides
+## What 0.3.7 provides
+
+- Robust embedded DE/EN fallback localization for Creature Forge-owned UI/content keys, including generated abilities, runtime timing labels, traits, and applied Effect explanations.
+- Built-in linked effects include concise localized descriptions, and manually applied effects append the localized originating ability as a source note.
 
 - Versioned `CreatureGenerationRequest` and `CreatureBlueprint` contracts.
 - Weighted ability generation from category, subtype, role, level, focus tags, and previously selected synergy tags.
 - Seeded ability variation with whole-section and single-slot rerolls plus per-ability locks.
 - Core starter library of creature abilities for animals/beasts, dragons, undead/ghosts, constructs, elementals, fey, fiends, plants/fungi, oozes, swarms, humanoids, and astral/ethereal concepts.
 - Effect-backed ability applications with referenced EffectDefinition schema-v2 resources stored once in `resources.effects`.
-- Direct public Effect Forge bridge for validate/analyze/compile/toItemSource/apply/execute/compatibility operations.
+- Direct public Effect Forge bridge for validate/analyze/compile/toItemSource/toItemSources/createItem/createItems/apply/execute/compatibility operations.
+- Actor creation now materializes each referenced persistent EffectDefinition as world PF2E Effect item resources in a dedicated Creature Forge runtime folder.
+- Generated ability descriptions are rewritten after Actor creation with real `@UUID` links to those Effect items plus a manual **Apply effect** control.
+- Manual runtime honors ability target metadata: self effects apply to the source NPC automatically; target/failed-save effects use the current Foundry target selection.
+- Effect application continues to execute through Effect Forge, including persistent and instant components.
+- Runtime resource items are tagged with source-Actor/effect provenance and are cleaned up automatically when the generated Actor is deleted.
 - Embedded Effect Editor inside a dedicated, wide Creature Editor workspace for editing an ability's referenced effect definition without duplicating Effect Forge UI.
 - External modules can register complete ability/effect bundles and participate in the same weighted generator with provenance.
 - Generated abilities compile to embedded PF2E action items while preserving Creature Forge application metadata for later runtime automation.
@@ -111,6 +119,25 @@ const blueprint = api.generate({
 ```
 
 The same request and seed reproduce deterministic generated values.
+
+### Effect materialization and manual runtime
+
+`api.createActor()` materializes referenced persistent Effect Forge definitions after the NPC exists, then rewrites the generated ability Items with UUID references and manual apply controls. This can be disabled for specialized hosts with `materializeEffects: false`.
+
+```js
+const { actor, runtime } = await api.createActor(blueprint);
+
+await api.runtime.applyEffect({
+  actor,
+  abilityId: "ability-1",
+  effectRef: "pf2e-creature-forge.effect.frightened-1"
+});
+
+await api.runtime.refreshActorEffects(actor);
+await api.runtime.cleanupActorEffects(actor);
+```
+
+Targeted effects use the current Foundry target selection. `target: "self"` effects apply to the creature itself. Persistent materialized reference Items are world Items kept in the dedicated **PF2E Creature Forge – Runtime Effects** folder; instant-only effects remain directly executable but do not need a persistent reference Item.
 
 ### Two-strike profile
 
@@ -260,7 +287,7 @@ editor.unmount();
 editor.destroy();
 ```
 
-`api.ui.creatureEditor.contractVersion` is **5**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`. The public editor exposes the `creature` and `sources` tabs when source selection is enabled, and hosts can switch tabs with `editor.setActiveTab(...)`.
+`api.ui.creatureEditor.contractVersion` is **7**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`. The public editor exposes the `creature` and `sources` tabs when source selection is enabled, and hosts can switch tabs with `editor.setActiveTab(...)`.
 
 ## Integrations
 
@@ -278,6 +305,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.3.2 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill/movement/sense generation, localized strikes, weighted ability selection, and Effect Forge composition/editing. Aura generation, afflictions, spell packages, loot generation, and runtime execution of ability application triggers remain later milestones.
+0.3.7 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing, persistent effect resource materialization, and visually distinct manual effect application controls. Automatic combat-workflow trigger execution, Aura generation, afflictions, spell packages, and loot generation remain later milestones.
 
 See `docs/ROADMAP.md`.

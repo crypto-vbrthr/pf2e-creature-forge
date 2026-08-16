@@ -1,11 +1,12 @@
 import { MODULE_ID } from "../constants.js";
 import { CreatureForgeApp } from "./creature-forge-app.js";
+import { localize } from "../i18n.js";
 
 let app = null;
 
 export async function openCreatureForge() {
   if (!game.user?.isGM) {
-    ui.notifications.warn(game.i18n.localize("PF2E_CREATURE_FORGE.Notifications.GmOnly"));
+    ui.notifications.warn(localize("PF2E_CREATURE_FORGE.Notifications.GmOnly", "Only the GM can open Creature Forge."));
     return null;
   }
   app ??= new CreatureForgeApp();
@@ -45,7 +46,7 @@ function injectButton(appRef, html) {
   button.type = "button";
   button.setAttribute(`data-${MODULE_ID}-button`, "");
   button.className = "pf2e-creature-forge-open";
-  button.innerHTML = `<i class="fa-solid fa-dragon"></i> ${game.i18n.localize("PF2E_CREATURE_FORGE.Open")}`;
+  button.innerHTML = `<i class="fa-solid fa-dragon"></i> ${localize("PF2E_CREATURE_FORGE.Open", "Creature Forge")}`;
   button.addEventListener("click", (event) => {
     event.preventDefault();
     openCreatureForge();

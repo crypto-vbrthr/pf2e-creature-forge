@@ -2,14 +2,11 @@ import { deepClone } from "./clone.js";
 import { validateBlueprint } from "./validator.js";
 import { resolveAttackNameKey } from "./attack-localization.js";
 import { MODULE_VERSION } from "../constants.js";
+import { localize } from "../i18n.js";
 
 function localizeAttackName(attack) {
   const nameKey = resolveAttackNameKey(attack);
-  if (nameKey && globalThis.game?.i18n?.localize) {
-    const localized = globalThis.game.i18n.localize(nameKey);
-    if (localized && localized !== nameKey) return localized;
-  }
-  return String(attack?.name ?? "Strike");
+  return nameKey ? localize(nameKey, attack?.name ?? "Strike") : String(attack?.name ?? "Strike");
 }
 
 function compileMeleeItem(attack) {
@@ -47,13 +44,7 @@ function compileMeleeItem(attack) {
 }
 
 
-function localizeKey(key, fallback = "") {
-  if (key && globalThis.game?.i18n?.localize) {
-    const localized = globalThis.game.i18n.localize(key);
-    if (localized && localized !== key) return localized;
-  }
-  return String(fallback ?? "");
-}
+const localizeKey = localize;
 
 function abilityActionType(ability) {
   if (ability?.type === "reaction") return "reaction";
@@ -62,17 +53,73 @@ function abilityActionType(ability) {
   return "action";
 }
 
+function escapeAttribute(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function effectTimingLabel(timing) {
+  const keyByTiming = {
+    "after-use": "PF2E_CREATURE_FORGE.Runtime.Timing.AfterUse",
+    "trigger": "PF2E_CREATURE_FORGE.Runtime.Timing.Trigger",
+    "failed-save": "PF2E_CREATURE_FORGE.Runtime.Timing.FailedSave",
+    "on-hit": "PF2E_CREATURE_FORGE.Runtime.Timing.OnHit",
+    "on-success": "PF2E_CREATURE_FORGE.Runtime.Timing.OnSuccess"
+  };
+  const key = keyByTiming[String(timing ?? "")];
+  return key ? localizeKey(key, timing) : String(timing ?? "");
+}
+
+function effectRuntimeLine({ ability, application, applicationIndex, resource, runtimeLink, actorUuid, runtimeAvailable }) {
+  const effectName = localizeKey(resource?.nameKey, resource?.definition?.name ?? resource?.name ?? application.ref);
+  const linked = runtimeLink?.primaryUuid
+    ? `@UUID[${runtimeLink.primaryUuid}]{${effectName}}`
+    : `<span class="pf2e-creature-forge-effect-name">${effectName}</span>`;
+  const applyLabel = localizeKey("PF2E_CREATURE_FORGE.Action.ApplyEffect", "Apply effect");
+  const timingLabel = effectTimingLabel(application?.timing);
+  const timing = timingLabel
+    ? `<span class="pf2e-creature-forge-effect-timing"><i class="fa-regular fa-clock"></i> ${escapeAttribute(timingLabel)}</span>`
+    : "";
+  const button = runtimeAvailable && actorUuid
+    ? `<button type="button" class="pf2e-creature-forge-apply-effect" data-cf-actor-uuid="${escapeAttribute(actorUuid)}" data-cf-ability-id="${escapeAttribute(ability?.id)}" data-cf-effect-ref="${escapeAttribute(application.ref)}" data-cf-application-index="${applicationIndex}" title="${escapeAttribute(applyLabel)}" aria-label="${escapeAttribute(applyLabel)}"><i class="fa-solid fa-wand-magic-sparkles"></i><span>${applyLabel}</span></button>`
+    : "";
+  return `<span class="pf2e-creature-forge-runtime-effect"><span class="pf2e-creature-forge-effect-reference"><i class="fa-solid fa-sparkles"></i>${linked}</span>${timing}${button}</span>`;
+}
+
+export function buildAbilityDescription(ability, effectResources = new Map(), {
+  runtimeLinks = {}, actorUuid = null, runtimeAvailable = false
+} = {}) {
+  const description = localizeKey(ability?.descriptionKey, ability?.description ?? "");
+  const effectApplications = (ability?.applications ?? [])
+    .map((application, applicationIndex) => ({ application, applicationIndex }))
+    .filter(({ application }) => application.type === "effect" && application.ref);
+  let effectNote = "";
+  if (effectApplications.length) {
+    const lines = effectApplications.map(({ application, applicationIndex }) => {
+      const resource = effectResources.get(application.ref);
+      if (!resource) return null;
+      return effectRuntimeLine({
+        ability,
+        application,
+        applicationIndex,
+        resource,
+        runtimeLink: runtimeLinks?.[resource.id] ?? runtimeLinks?.[application.ref] ?? null,
+        actorUuid,
+        runtimeAvailable
+      });
+    }).filter(Boolean);
+    if (lines.length) {
+      effectNote = `<div class="pf2e-creature-forge-linked-effects"><strong>${localizeKey("PF2E_CREATURE_FORGE.Editor.LinkedEffects", "Linked effects")}:</strong><div>${lines.join("")}</div></div>`;
+    }
+  }
+  return `${description ? `<p>${description}</p>` : ""}${effectNote}`;
+}
+
 function compileAbilityItem(ability, effectResources = new Map()) {
   const name = localizeKey(ability?.nameKey, ability?.name ?? ability?.contentId ?? "Ability");
-  const description = localizeKey(ability?.descriptionKey, ability?.description ?? "");
-  const effectNames = (ability?.applications ?? [])
-    .filter((application) => application.type === "effect" && application.ref)
-    .map((application) => effectResources.get(application.ref))
-    .filter(Boolean)
-    .map((resource) => localizeKey(resource?.nameKey, resource?.definition?.name ?? resource?.name ?? resource?.id));
-  const effectNote = effectNames.length
-    ? `<p><strong>${localizeKey("PF2E_CREATURE_FORGE.Editor.LinkedEffects", "Linked effects")}:</strong> ${effectNames.join(", ")}</p>`
-    : "";
   const actionType = abilityActionType(ability);
   return {
     name,
@@ -82,7 +129,7 @@ function compileAbilityItem(ability, effectResources = new Map()) {
       actionType: { value: actionType },
       actions: { value: actionType === "action" ? Number(ability?.actionCost ?? 1) : null },
       category: ability?.category ?? "offensive",
-      description: { value: `${description ? `<p>${description}</p>` : ""}${effectNote}` },
+      description: { value: buildAbilityDescription(ability, effectResources) },
       publication: { title: "PF2E Creature Forge", authors: "", license: "ORC", remaster: true },
       rules: [],
       slug: null,
@@ -241,6 +288,9 @@ export function compileActorSource(blueprint, options = {}) {
 export async function createActorFromBlueprint(blueprint, options = {}) {
   if (!globalThis.Actor?.create) throw new Error("Foundry Actor API is unavailable.");
   const compiled = compileActorSource(blueprint, options);
-  const actor = await globalThis.Actor.create(compiled.actorSource, { renderSheet: options.renderSheet ?? true });
-  return { actor, compiled };
+  const actor = await globalThis.Actor.create(compiled.actorSource, { renderSheet: false });
+  let runtime = null;
+  if (typeof options.postCreate === "function") runtime = await options.postCreate(actor, blueprint, compiled);
+  if (options.renderSheet ?? true) actor?.sheet?.render?.(true);
+  return { actor, compiled, runtime };
 }

@@ -1,5 +1,6 @@
 import { MODULE_ID, SETTINGS } from "../constants.js";
 import { getPublicApi } from "../api/public-api.js";
+import { localize } from "../i18n.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -27,7 +28,7 @@ export class CreatureForgeApp extends HandlebarsApplicationMixin(ApplicationV2) 
     id: "pf2e-creature-forge-app",
     classes: ["pf2e-creature-forge", "creature-forge-app"],
     window: {
-      title: "PF2E_CREATURE_FORGE.WindowTitle",
+      title: "PF2E Creature Forge",
       icon: "fa-solid fa-dragon",
       resizable: true
     },
@@ -50,7 +51,9 @@ export class CreatureForgeApp extends HandlebarsApplicationMixin(ApplicationV2) 
     const api = getPublicApi();
     return {
       moduleVersion: api?.moduleVersion ?? "",
-      apiVersion: api?.version ?? ""
+      apiVersion: api?.version ?? "",
+      windowTitle: localize("PF2E_CREATURE_FORGE.WindowTitle", "PF2E Creature Forge"),
+      foundationHint: localize("PF2E_CREATURE_FORGE.FoundationHint", "API-first creature generation with an embeddable editor and extensible content sources.")
     };
   }
 
@@ -76,7 +79,7 @@ export class CreatureForgeApp extends HandlebarsApplicationMixin(ApplicationV2) 
     }
     this.editor.mount(host).catch((error) => {
       console.error(`${MODULE_ID} | Embedded creature editor mount failed.`, error);
-      ui.notifications.error(game.i18n.localize("PF2E_CREATURE_FORGE.Notifications.EditorFailed"));
+      ui.notifications.error(localize("PF2E_CREATURE_FORGE.Notifications.EditorFailed", "The Creature Editor could not be loaded."));
     });
   }
 

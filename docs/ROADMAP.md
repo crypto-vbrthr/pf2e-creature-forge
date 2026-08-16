@@ -76,6 +76,15 @@
 - Additional curated category/subtype definitions from selected sources.
 - Required/preferred capability metadata shared with the later ability selector.
 
+## 0.3.3 - Effect Materialization & Manual Runtime ✅
+
+- Materialize referenced persistent Effect Forge definitions as reusable world PF2E Effect resources after NPC creation.
+- Rewrite generated ability Items with real UUID references once runtime resources exist.
+- Add manual Apply controls using ability target metadata (`self`, selected target, selected targets).
+- Route application through Effect Forge so persistent and instant components use the canonical engine.
+- Track runtime resource provenance on Actor/world Items and clean resources up when the source Actor is deleted.
+- Expose runtime materialize/refresh/apply/cleanup operations through the public API.
+
 ## 0.3.2 - Effect Editor Layout & Scroll Hardening ✅
 
 - Restore the exact creature-tab scroll position after closing nested effect editing.
@@ -105,7 +114,7 @@
 - Ability budget/power analysis beyond count/complexity.
 - Compendium ability normalization/source discovery.
 - Broader curated ability library and dependency diagnostics.
-- Runtime execution of ability application triggers.
+- Automatic runtime execution of ability application triggers (manual runtime available since 0.3.3).
 
 ## 0.4.x - Auras and afflictions
 

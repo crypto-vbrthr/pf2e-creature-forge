@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.3.7 - Localization & Ability Presentation Regression Fix
+
+- Hardened Creature Forge localization with an embedded DE/EN fallback catalog for package-owned keys, while continuing to use Foundry i18n for external/system content.
+- Fixed the regression where unresolved package translations caused most of the Creature Forge UI to fall back to English and the Open/window title controls to show raw localization IDs.
+- Restored localized generated ability names and descriptions in the editor and compiled PF2E Action items.
+- Localized built-in ability trait chips and Effect timing labels instead of showing raw slugs such as `fear`, `mental`, `trigger`, or `failed-save`.
+- Replaced the raw `pf2e-creature-forge` source marker on core ability cards with a localized `Creature Forge Core/Kern` label.
+- Applied Effect definitions now receive their localized name, mechanical explanation, and localized originating ability name even if Foundry did not resolve the module language dictionary.
+- Added regression coverage for missing/stale Foundry package localization, German ability compilation, and applied Effect explanation/source text.
+- Promoted API/module version to 0.3.7.
+
+## 0.3.6 - Applied Effect Explanations
+
+- Added localized explanatory descriptions to all built-in Creature Forge EffectDefinitions.
+- Applied effects now carry their explanation into the PF2E Effect item created by Effect Forge instead of showing an empty description.
+- Manual runtime application appends a small localized source note naming the creature ability that applied the effect.
+- Materialized runtime Effect resources also receive the localized explanation, while remaining ability-agnostic for safe reuse.
+- Explicit descriptions edited through the Embedded Effect Editor continue to take precedence over the built-in description key.
+- External effect content can opt into the same behavior through a `descriptionKey` on the registered effect resource.
+- Embedded Effect Editor opening now resolves a description key into the current Foundry language when the stored definition has no explicit description.
+- Promoted API/module version to 0.3.6.
+
+## 0.3.5 - Effect Runtime Control UX
+
+- Reworked generated ability runtime rows so the linked Effect, timing metadata, and executable apply action are visually separated.
+- Promoted **Apply effect** to a high-contrast red/gold action button with stronger hover, focus, and disabled states.
+- Added a framed linked-effect reference chip and a compact timing badge for faster scanning on PF2E NPC sheets.
+- Localized built-in runtime timing values (`after-use`, `trigger`, `failed-save`, `on-hit`, and `on-success`) instead of exposing raw English slugs.
+- Kept the runtime layout responsive: on narrow sheets the apply action expands to a full-width control instead of crowding the linked-effect row.
+- Kept runtime behavior and Effect Forge application semantics unchanged.
+- Promoted API/module version to 0.3.5.
+
+## 0.3.4 - Runtime Localization & Navigation Fix
+
+- Localized EffectDefinitions immediately before manual application so applied effects use the active Foundry language.
+- Replaced the former navigation-like apply control with a real `button[type=button]`.
+- Captured runtime apply clicks before PF2E/Foundry sheet navigation handlers can interpret them.
+- Added regression coverage for localized application and navigation-free runtime controls.
+- Promoted API/module version to 0.3.4.
+
+## 0.3.3 - Effect Materialization & Manual Runtime
+
+- Added post-creation materialization of ability-linked EffectDefinitions through Critical/Effect Forge.
+- Persistent linked effects now receive real world PF2E Effect Items in a dedicated `PF2E Creature Forge – Runtime Effects` folder instead of remaining Blueprint-only references.
+- Rewrote generated NPC ability descriptions after materialization with actual Foundry `@UUID` links to the linked Effect items.
+- Added a manual **Apply effect** control directly beside each linked effect in generated ability descriptions.
+- Added target resolution for `self`, singular selected-target, and plural selected-target application modes.
+- Routed manual application through Effect Forge `effects.apply()` so persistent and instant components continue to use the canonical Effect Engine.
+- Added runtime source provenance on materialized world effect Items and automatic cleanup when the originating Actor is deleted.
+- Exposed `api.runtime` operations for resolve/apply/materialize/refresh/cleanup plus Effect Forge `toItemSources`, `createItem`, and `createItems` bridge methods.
+- Kept actor creation resilient when Effect Forge materialization is unavailable: ability references remain readable, while runtime apply controls are only emitted when the Effect API is available.
+- Added automated runtime/materialization coverage and expanded the suite to 73 tests.
+- Promoted API/module version to 0.3.3.
+
 ## 0.3.2 - Effect Editor Layout & Scroll Hardening
 
 - Fixed the Creature Editor jumping to the top after closing an embedded ability Effect Editor.

@@ -110,6 +110,7 @@ test("externally registered ability/effect content participates in weighted gene
       effects: [{
         id: "test-horror-pack.effect.sticky",
         slug: "sticky",
+        descriptionKey: "TEST_HORROR_PACK.Effect.Sticky.Description",
         definition: { schemaVersion: 2, id: "test-horror-pack.effect.sticky", name: "Sticky", description: "", img: "icons/svg/net.svg", duration: { value: 1, unit: "rounds", expiry: "turn-end" }, components: [{ type: "condition", slug: "off-guard" }], application: { targetType: "actor", stacking: "replace", incompatibilityMode: "warn" }, metadata: { originModule: "test-horror-pack" } }
       }],
       abilities: [{
@@ -134,6 +135,7 @@ test("externally registered ability/effect content participates in weighted gene
   assert.equal(blueprint.abilities[0].contentId, "test-horror-pack.ability.adhesive-wave");
   assert.equal(blueprint.abilities[0].source.moduleId, "test-horror-pack");
   assert.equal(blueprint.resources.effects[0].id, "test-horror-pack.effect.sticky");
+  assert.equal(blueprint.resources.effects[0].descriptionKey, "TEST_HORROR_PACK.Effect.Sticky.Description");
 });
 
 test("compiler materializes ability definitions as PF2E action items with integration metadata", () => {
@@ -150,4 +152,24 @@ test("compiler materializes ability definitions as PF2E action items with integr
   assert.equal(item.system.actions.value, 1);
   assert.equal(item.flags["pf2e-creature-forge"].contentId, blueprint.abilities[0].contentId);
   assert.deepEqual(item.flags["pf2e-creature-forge"].applications, blueprint.abilities[0].applications);
+});
+
+test("compiler localizes core ability name and description from embedded German catalog when Foundry dictionary is unavailable", () => {
+  const previousGame = globalThis.game;
+  globalThis.game = { i18n: { lang: "de", localize: (key) => key } };
+  try {
+    const { generator } = setup();
+    const blueprint = generator.generate({
+      identity: { name: "Threat", level: 5, role: "custom", category: "humanoid" },
+      abilities: { mode: "auto", count: 1, focus: ["fear"] },
+      generation: { seed: "compile-ability" }
+    });
+    const source = compileActorSource(blueprint).actorSource;
+    const item = source.items.find((entry) => entry.type === "action");
+    assert.equal(item.name, "Drohgebärde");
+    assert.match(item.system.description.value, /Die Kreatur bedroht einen Gegner/);
+    assert.match(item.system.description.value, /Bei misslungenem Rettungswurf/);
+  } finally {
+    globalThis.game = previousGame;
+  }
 });

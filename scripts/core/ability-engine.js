@@ -98,6 +98,7 @@ export function collectAbilityEffectResources(abilities, registry, existingResou
       contentId: registered.id,
       name: registered.name ?? registered.slug ?? registered.id,
       nameKey: registered.nameKey ?? null,
+      descriptionKey: registered.descriptionKey ?? null,
       definition: deepClone(registered.definition ?? registered),
       source: deepClone(registered.source ?? {}),
       locked: false

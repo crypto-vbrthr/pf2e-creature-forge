@@ -1,4 +1,4 @@
-# Public API 0.3.2
+# Public API 0.3.7
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;
@@ -93,6 +93,36 @@ Valid attack/damage ranks are `extreme`, `high`, `moderate`, and `low`. Valid ab
 - `abilities`
 - `ability:<ability-id>`
 
+
+## Effect resources and manual runtime
+
+The Effect Forge bridge exposes both compilation and persistent resource creation:
+
+```js
+await api.effects.toItemSource(definition, context);
+await api.effects.toItemSources(definition, context);
+await api.effects.createItem(definition, options);
+await api.effects.createItems(definition, options);
+await api.effects.apply(definition, targets, options);
+await api.effects.execute(definition, targets, options);
+```
+
+`api.createActor()` runs Creature Forge effect materialization by default. Referenced persistent EffectDefinitions become world PF2E Effect Items and generated ability descriptions receive actual UUID references plus manual application controls. Use `{ materializeEffects: false }` to opt out.
+
+```js
+const { actor, runtime } = await api.createActor(blueprint);
+
+api.runtime.available;
+api.runtime.materializationAvailable;
+api.runtime.resolve(actor, { abilityId, effectRef });
+api.runtime.resolveTargets(actor, targetMode);
+await api.runtime.applyEffect({ actor, abilityId, effectRef, targets });
+await api.runtime.materializeEffects(actor);
+await api.runtime.refreshActorEffects(actor);
+await api.runtime.cleanupActorEffects(actor);
+```
+
+Target modes currently handled by the manual runtime include `self`, singular target modes such as `target` / `failed-save-target`, and plural selected-target modes such as `failed-save-targets`. Automatic hit/save workflow triggering remains a later runtime milestone.
 
 ## Categories, subtypes, and defensive affinities
 
@@ -201,7 +231,9 @@ api.content.registerBundle({
   content: {
     effects: [{
       id: "my-module.effect.sticky",
-      definition: { schemaVersion: 2, id: "my-module.effect.sticky", name: "Sticky", components: [] }
+      nameKey: "MY_MODULE.Effect.Sticky.Name",
+      descriptionKey: "MY_MODULE.Effect.Sticky.Description",
+      definition: { schemaVersion: 2, id: "my-module.effect.sticky", name: "Sticky", description: "", components: [] }
     }],
     abilities: [{
       id: "my-module.ability.adhesive-wave",
@@ -323,7 +355,7 @@ api.integrations.getLootApi();
 
 ```js
 api.ui.openCreatureForge();
-api.ui.creatureEditor.contractVersion; // 5
+api.ui.creatureEditor.contractVersion; // 7
 api.ui.creatureEditor.modes;           // ["create", "edit", "view"]
 api.ui.creatureEditor.layouts;         // ["full", "compact"]
 api.ui.creatureEditor.tabs;            // ["creature", "sources"]
