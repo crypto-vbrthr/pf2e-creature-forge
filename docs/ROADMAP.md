@@ -76,14 +76,36 @@
 - Additional curated category/subtype definitions from selected sources.
 - Required/preferred capability metadata shared with the later ability selector.
 
-## 0.3.x - Abilities and Effect Forge
+## 0.3.2 - Effect Editor Layout & Scroll Hardening ✅
 
-- Ability recipe schema.
-- Weighted selection and synergy graph.
-- Ability budget and complexity.
-- Embedded Effect Editor.
-- Effect Engine compile/apply integration.
-- Granular reroll and locks.
+- Restore the exact creature-tab scroll position after closing nested effect editing.
+- Ignore hidden effect-mode scroll containers when capturing tab scroll state.
+- Consume the self-themed Critical Forge 1.0.1-rc.4 Embedded Effect Editor surface with clearer panels, borders, field colors, buttons, and component accents.
+- Embedded Creature Editor contract v7.
+
+## 0.3.1 - Embedded Effect Editor UX ✅
+
+- Dedicated wide workspace for nested Effect Forge editing.
+- Compact two-column Basic Data / Duration layout with full-width components.
+- Persistent Creature Forge footer and clean return to the previous creature scroll position.
+- Embedded Creature Editor contract v6.
+
+## 0.3.0 - Ability Engine & Effect Forge Integration ✅
+
+- Ability recipe/content schema and localized starter library.
+- Weighted category/subtype/role/level/focus selection with synergy metadata.
+- Seeded section/slot rerolls and per-ability locks.
+- De-duplicated referenced Effect Forge resources.
+- Embedded public Effect Editor.
+- Effect Engine validate/analyze/compile/toItemSource/apply/execute/compatibility bridge.
+- External ability/effect content bundles and PF2E action-item compilation.
+
+## 0.3.x - Ability expansion
+
+- Ability budget/power analysis beyond count/complexity.
+- Compendium ability normalization/source discovery.
+- Broader curated ability library and dependency diagnostics.
+- Runtime execution of ability application triggers.
 
 ## 0.4.x - Auras and afflictions
 

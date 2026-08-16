@@ -6,9 +6,9 @@ const editorUrl = new URL("../scripts/ui/creature-editor.js", import.meta.url);
 const appUrl = new URL("../scripts/ui/creature-forge-app.js", import.meta.url);
 const cssUrl = new URL("../styles/creature-forge.css", import.meta.url);
 
-test("embedded editor v4 keeps source controls in their own tab and primary actions persistent", async () => {
+test("embedded editor v7 keeps source controls separate and presents the public Effect Editor as a dedicated workspace", async () => {
   const source = await readFile(editorUrl, "utf8");
-  assert.match(source, /static CONTRACT_VERSION = 4/);
+  assert.match(source, /static CONTRACT_VERSION = 7/);
   assert.match(source, /this\.root = this\.container\.querySelector\("\[data-cf-editor\]"\)/);
   assert.match(source, /data-cf-editor-scroll/);
   assert.match(source, /data-cf-editor-footer/);
@@ -24,6 +24,16 @@ test("embedded editor v4 keeps source controls in their own tab and primary acti
   assert.match(source, /name="categorySources"/);
   assert.match(source, /name="subtypeSources"/);
   assert.match(source, /persistSourceSelection/);
+  assert.match(source, /effectEditing: true/);
+  assert.match(source, /getEffectApi/);
+  assert.match(source, /effectApi\?\.ui\?\.effectEditor\?\.create/);
+  assert.match(source, /data-cf-effect-editor-host/);
+  assert.match(source, /data-cf-action="edit-ability-effect"/);
+  assert.match(source, /layout: "compact"/);
+  assert.match(source, /cf-effect-mode/);
+  assert.match(source, /cf-effect-workspace-header/);
+  assert.match(source, /cf-effect-workspace-body/);
+  assert.match(source, /BackToCreature/);
 });
 
 test("standalone forge is a larger thin host of public embedded editor", async () => {
@@ -56,4 +66,23 @@ test("compendium pickers are rendered in the dedicated sources panel", async () 
   const renderedSourcePanel = source.slice(source.indexOf('data-cf-tab-panel="sources"'));
   assert.match(renderedSourcePanel, /PF2E_CREATURE_FORGE\.Editor\.Sources/);
   assert.match(renderedSourcePanel, /data-cf-action="refresh-sources"/);
+});
+
+
+test("effect editing replaces the scrolling creature work area and delegates compact editor framing to Effect Forge", async () => {
+  const source = await readFile(cssUrl, "utf8");
+  assert.match(source, /\.cf-editor\.cf-effect-mode \.cf-editor-scroll \{[^}]*display: none/s);
+  assert.match(source, /\.cf-editor \.cf-effect-workspace \{[^}]*flex: 1 1 auto/s);
+  assert.match(source, /\.cf-editor \.cf-effect-workspace-body \{[^}]*overflow: auto/s);
+  assert.match(source, /\.cf-editor \.cf-effect-editor-host \{[^}]*1240px/s);
+  assert.match(source, /Effect Forge compact surface owns colors, borders and component accents/);
+  assert.doesNotMatch(source, /\.cf-effect-editor-compact \.effect-forge-section \{[^}]*background: rgba\(0, 0, 0/s);
+});
+
+
+test("closing effect mode preserves the creature tab scroll position", async () => {
+  const source = await readFile(editorUrl, "utf8");
+  assert.match(source, /previousRenderWasEffectMode/);
+  assert.match(source, /captureScroll && this\.scrollElement && !previousRenderWasEffectMode/);
+  assert.match(source, /hidden element at scrollTop 0/);
 });

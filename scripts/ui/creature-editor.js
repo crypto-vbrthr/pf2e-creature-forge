@@ -69,6 +69,20 @@ function senseLabel(type) {
   return localize(`PF2E_CREATURE_FORGE.Sense.${type}`, type ?? "");
 }
 
+function abilityNameLabel(ability) {
+  return localize(ability?.nameKey, ability?.name ?? ability?.contentId ?? "Ability");
+}
+
+function abilityDescriptionLabel(ability) {
+  return localize(ability?.descriptionKey, ability?.description ?? "");
+}
+
+function abilityTypeLabel(ability) {
+  const type = ability?.type ?? "action";
+  if (type === "action") return `${Number(ability?.actionCost ?? 1)} ${localize("PF2E_CREATURE_FORGE.AbilityType.Actions", "actions")}`;
+  return localize(`PF2E_CREATURE_FORGE.AbilityType.${type}`, type);
+}
+
 function affinityTypeLabel(type) {
   return localize(`PF2E_CREATURE_FORGE.AffinityType.${type}`, String(type ?? "").replaceAll("-", " "));
 }
@@ -113,7 +127,7 @@ function triStateOptions(current) {
 }
 
 export class EmbeddedCreatureEditor {
-  static CONTRACT_VERSION = 4;
+  static CONTRACT_VERSION = 7;
 
   constructor({ api, session = null, request = {}, blueprint = null, mode = "create", layout = "full", activeTab = "creature", capabilities = {}, onChange = null, onGenerate = null } = {}) {
     if (!api) throw new Error("EmbeddedCreatureEditor requires the Creature Forge API.");
@@ -129,6 +143,7 @@ export class EmbeddedCreatureEditor {
       sourceSelection: false,
       persistSourceSelection: false,
       advancedEditing: true,
+      effectEditing: true,
       ...capabilities
     };
     this.onChange = onChange;
@@ -137,6 +152,8 @@ export class EmbeddedCreatureEditor {
     this.root = null;
     this.scrollElement = null;
     this.boundHandler = null;
+    this.effectEditor = null;
+    this.activeEffectId = null;
   }
 
   get value() { return deepClone(this.session.blueprint); }
@@ -149,6 +166,7 @@ export class EmbeddedCreatureEditor {
     const next = tab === "sources" && this.capabilities.sourceSelection ? "sources" : "creature";
     if (next === this.activeTab) return this;
     if (this.scrollElement) this.tabScrollPositions[this.activeTab] = this.scrollElement.scrollTop;
+    this.activeEffectId = null;
     this.activeTab = next;
     this.#render({ captureScroll: false });
     return this;
@@ -178,6 +196,8 @@ export class EmbeddedCreatureEditor {
   }
 
   unmount({ clearContainer = true } = {}) {
+    this.effectEditor?.unmount?.();
+    this.effectEditor = null;
     if (this.root && this.boundHandler) {
       this.root.removeEventListener("change", this.boundHandler);
       this.root.removeEventListener("input", this.boundHandler);
@@ -269,6 +289,11 @@ export class EmbeddedCreatureEditor {
     request.senses.darkvision = get("darkvision")?.value ?? "auto";
     request.senses.scent = get("scent")?.value ?? "auto";
     request.senses.scentRange = number(get("scentRange")?.value ?? 30);
+    request.abilities.mode = get("abilityMode")?.value ?? "auto";
+    const abilityCount = get("abilityCount")?.value ?? "role";
+    request.abilities.count = abilityCount === "role" ? "role" : number(abilityCount);
+    request.abilities.complexity = get("abilityComplexity")?.value ?? "standard";
+    request.abilities.focus = String(get("abilityFocus")?.value ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
     request.generation.seed = get("seed")?.value ?? "";
     request.generation.variation = get("variation")?.value ?? "balanced";
     this.session.setRequest(request);
@@ -337,6 +362,37 @@ export class EmbeddedCreatureEditor {
         this.session.reroll({ scope: "defenses.affinities" });
         this.#render();
         await this.#emitChange("reroll-affinities");
+      } else if (action === "reroll-abilities") {
+        this.session.reroll({ scope: "abilities" });
+        this.activeEffectId = null;
+        this.#render();
+        await this.#emitChange("reroll-abilities");
+      } else if (action === "reroll-ability") {
+        const abilityId = target.closest?.("[data-ability-id]")?.dataset?.abilityId;
+        if (abilityId) {
+          this.session.reroll({ scope: `ability:${abilityId}` });
+          this.activeEffectId = null;
+          this.#render();
+          await this.#emitChange("reroll-ability");
+        }
+      } else if (action === "toggle-ability-lock") {
+        const abilityId = target.closest?.("[data-ability-id]")?.dataset?.abilityId;
+        const ability = this.session.blueprint?.abilities?.find((entry) => entry.id === abilityId);
+        if (ability) {
+          ability.locked = !ability.locked;
+          this.session.dirty = true;
+          this.#render();
+          await this.#emitChange("ability-lock");
+        }
+      } else if (action === "edit-ability-effect" && this.capabilities.effectEditing) {
+        const effectId = target.closest?.("[data-effect-id]")?.dataset?.effectId;
+        if (effectId) {
+          this.activeEffectId = effectId;
+          this.#render();
+        }
+      } else if (action === "close-effect-editor") {
+        this.activeEffectId = null;
+        this.#render();
       } else if (action === "refresh-sources" && this.capabilities.sourceSelection) {
         this.#syncRequestFromForm();
         try {
@@ -356,7 +412,7 @@ export class EmbeddedCreatureEditor {
       return;
     }
 
-    if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="preferredSkills"]'))) {
+    if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="preferredSkills"], input[name="abilityFocus"]'))) {
       this.#syncRequestFromForm();
       if (event.type === "change" && target.matches?.('select[name="categorySources"], select[name="subtypeSources"]')) {
         try {
@@ -376,10 +432,46 @@ export class EmbeddedCreatureEditor {
     }
   }
 
+  async #mountActiveEffectEditor() {
+    this.effectEditor?.unmount?.();
+    this.effectEditor = null;
+    if (!this.activeEffectId || !this.root || !this.capabilities.effectEditing) return;
+    const resource = this.session.blueprint?.resources?.effects?.find((entry) => entry.id === this.activeEffectId);
+    const host = this.root.querySelector(`[data-cf-effect-editor-host="${globalThis.CSS?.escape ? globalThis.CSS.escape(this.activeEffectId) : this.activeEffectId.replaceAll('"', '\\"')}"]`);
+    const effectApi = this.api.integrations.getEffectApi?.();
+    if (!resource || !(host instanceof HTMLElement) || !effectApi?.ui?.effectEditor?.create) return;
+    const definition = deepClone(resource.definition);
+    if (resource.nameKey) definition.name = localize(resource.nameKey, definition.name ?? resource.name);
+    this.effectEditor = effectApi.ui.effectEditor.create({
+      definition,
+      layout: "compact",
+      onChange: (session) => {
+        const updated = session.buildDefinition({ api: effectApi });
+        resource.definition = deepClone(updated);
+        resource.name = updated.name ?? resource.name;
+        this.session.dirty = true;
+        this.#emitChange("effect-change");
+      }
+    });
+    try {
+      await this.effectEditor.mount(host);
+    } catch (error) {
+      console.error("pf2e-creature-forge | Could not mount embedded Effect Editor.", error);
+      host.innerHTML = `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.EffectEditorUnavailable", "Effect Editor could not be opened."))}</p>`;
+    }
+  }
+
   #render({ captureScroll = true } = {}) {
     if (!this.container) return;
     if (!this.capabilities.sourceSelection) this.activeTab = "creature";
-    if (captureScroll && this.scrollElement) this.tabScrollPositions[this.activeTab] = this.scrollElement.scrollTop;
+    // When an embedded Effect Editor is active the normal creature scroll area is
+    // hidden. Browsers report that hidden element at scrollTop 0 in some layouts.
+    // Never let that synthetic zero overwrite the position captured when effect
+    // editing was opened, otherwise closing the Effect Editor jumps to the top.
+    const previousRenderWasEffectMode = Boolean(this.root?.classList?.contains("cf-effect-mode"));
+    if (captureScroll && this.scrollElement && !previousRenderWasEffectMode) {
+      this.tabScrollPositions[this.activeTab] = this.scrollElement.scrollTop;
+    }
     const previousScrollTop = this.tabScrollPositions[this.activeTab] ?? 0;
     if (this.boundHandler && this.root) {
       this.root.removeEventListener("change", this.boundHandler);
@@ -452,17 +544,58 @@ export class EmbeddedCreatureEditor {
         <div class="cf-attack-numbers"><span>${signed(attack.attack.value)} <small>${escapeHtml(rankLabel(attack.attack.rank))}</small></span><span>${escapeHtml(attack.damage.formula)} ${escapeHtml(damageTypeLabel(attack.damage.type))} <small>${escapeHtml(rankLabel(attack.damage.rank))}</small></span></div>
       </li>`).join("");
 
+    const effectResources = new Map((blueprint?.resources?.effects ?? []).map((resource) => [resource.id, resource]));
+    const effectIntegrationReady = Boolean(integrationStatus?.effect?.ready && this.api.integrations.getEffectApi?.()?.ui?.effectEditor?.create);
+    const abilityRows = (blueprint?.abilities ?? []).map((ability) => {
+      const linkedEffects = (ability.applications ?? [])
+        .filter((application) => application.type === "effect" && application.ref)
+        .map((application) => ({ application, resource: effectResources.get(application.ref) }))
+        .filter(({ resource }) => resource);
+      const effectButtons = linkedEffects.map(({ application, resource }) => {
+        const label = localize(resource.nameKey, resource.definition?.name ?? resource.name ?? resource.id);
+        return `<button type="button" class="cf-effect-link" data-cf-action="edit-ability-effect" data-effect-id="${escapeHtml(resource.id)}" ${!effectIntegrationReady || !this.capabilities.effectEditing ? "disabled" : ""}><i class="fa-solid fa-wand-magic-sparkles"></i> ${escapeHtml(label)} <small>${escapeHtml(application.timing ?? "")}</small></button>`;
+      }).join("");
+      const source = ability.source?.moduleId ? `<small class="cf-ability-source">${escapeHtml(ability.source.moduleId)}</small>` : "";
+      return `<article class="cf-ability-card${ability.locked ? " locked" : ""}" data-ability-id="${escapeHtml(ability.id)}">
+        <header><div><strong>${escapeHtml(abilityNameLabel(ability))}</strong><small>${escapeHtml(abilityTypeLabel(ability))} · ${escapeHtml(localize(`PF2E_CREATURE_FORGE.AbilityCategory.${ability.category}`, ability.category ?? ""))}</small>${source}</div>
+        <div class="cf-ability-controls">
+          ${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-ability-lock" title="${escapeHtml(localize(ability.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", ability.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${ability.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}
+          ${this.capabilities.generation && this.mode !== "view" && !ability.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-ability" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbility", "Reroll ability"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
+        </div></header>
+        <p>${escapeHtml(abilityDescriptionLabel(ability))}</p>
+        ${ability.traits?.length ? `<div class="cf-ability-tags">${ability.traits.map((trait) => `<span>${escapeHtml(trait)}</span>`).join("")}</div>` : ""}
+        ${effectButtons ? `<div class="cf-ability-effects">${effectButtons}</div>` : ""}
+      </article>`;
+    }).join("");
+    const activeEffectResource = this.activeEffectId ? effectResources.get(this.activeEffectId) : null;
+    const effectWorkspace = activeEffectResource ? `<section class="cf-effect-workspace" role="dialog" aria-modal="true" aria-label="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.EffectEditor", "Effect Editor"))}">
+      <header class="cf-effect-workspace-header">
+        <div class="cf-effect-workspace-title">
+          <span class="cf-effect-workspace-kicker"><i class="fa-solid fa-wand-magic-sparkles"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilityEffect", "Ability effect"))}</span>
+          <h3>${escapeHtml(localize(activeEffectResource.nameKey, activeEffectResource.definition?.name ?? activeEffectResource.name ?? activeEffectResource.id))}</h3>
+          <p>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.EffectEditorLiveHint", "Changes are applied directly to the creature blueprint."))}</p>
+        </div>
+        <button type="button" class="cf-effect-close" data-cf-action="close-effect-editor" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.CloseEffectEditor", "Close effect editor"))}"><i class="fa-solid fa-xmark"></i><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.BackToCreature", "Back to creature"))}</span></button>
+      </header>
+      <div class="cf-effect-workspace-body">
+        <div class="cf-effect-editor-host cf-effect-editor-compact" data-cf-effect-editor-host="${escapeHtml(activeEffectResource.id)}"></div>
+      </div>
+    </section>` : "";
+
     const immunityRows = affinityRows(blueprint?.defenses?.immunities ?? []);
     const resistanceRows = affinityRows(blueprint?.defenses?.resistances ?? [], { valued: true });
     const weaknessRows = affinityRows(blueprint?.defenses?.weaknesses ?? [], { valued: true });
     const hpAdjustment = Number(blueprint?.defenses?.hpAdjustment?.value ?? 0);
+
+    this.effectEditor?.unmount?.();
+    this.effectEditor = null;
 
     const canGenerate = this.capabilities.generation && this.mode !== "view";
     const canCreateActor = this.capabilities.actorCreation && this.mode !== "view";
     const validationState = validation.request.valid && validation.blueprint.valid ? "valid" : "invalid";
 
     this.container.innerHTML = `
-      <section class="cf-editor cf-layout-${escapeHtml(this.layout)}" data-cf-editor data-cf-editor-contract="${EmbeddedCreatureEditor.CONTRACT_VERSION}">
+      <section class="cf-editor cf-layout-${escapeHtml(this.layout)}${activeEffectResource ? " cf-effect-mode" : ""}" data-cf-editor data-cf-editor-contract="${EmbeddedCreatureEditor.CONTRACT_VERSION}">
         ${this.capabilities.sourceSelection ? `
           <nav class="cf-editor-tabs" role="tablist" aria-label="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Tabs", "Creature Forge sections"))}">
             <button type="button" role="tab" data-cf-tab="creature" aria-selected="${this.activeTab === "creature"}" class="${this.activeTab === "creature" ? "active" : ""}"><i class="fa-solid fa-dragon"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Tab.Creature", "Creature"))}</button>
@@ -528,6 +661,14 @@ export class EmbeddedCreatureEditor {
               <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.DamageType", "Damage type"))}</span><select name="damageType" ${disabled}>${["auto","bludgeoning","piercing","slashing","acid","cold","electricity","fire","force","mental","poison","sonic","spirit","void","vitality"].map((value) => option(value, localize(value === "auto" ? "PF2E_CREATURE_FORGE.Field.Auto" : `PF2E_CREATURE_FORGE.DamageType.${value}`, value), request.offense.damageType)).join("")}</select></label>
             </div>
 
+            <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Abilities", "Abilities"))}</h3>
+            <div class="cf-form-grid">
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityMode", "Ability generation"))}</span><select name="abilityMode" ${disabled}>${["auto","off"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.AbilityMode.${value}`, value), request.abilities.mode)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityCount", "Ability count"))}</span><select name="abilityCount" ${disabled}>${["role",0,1,2,3,4,5].map((value) => option(String(value), value === "role" ? localize("PF2E_CREATURE_FORGE.Editor.RoleDefault", "Role default") : String(value), String(request.abilities.count))).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityComplexity", "Complexity"))}</span><select name="abilityComplexity" ${disabled}>${["simple","standard","complex"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.AbilityComplexity.${value}`, value), request.abilities.complexity)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityFocus", "Focus tags"))}</span><input name="abilityFocus" type="text" value="${escapeHtml((request.abilities.focus ?? []).join(", "))}" placeholder="control, movement" ${disabled}></label>
+            </div>
+
             <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Generation", "Generation"))}</h3>
             <div class="cf-form-grid">
               <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Seed", "Seed"))}</span><input name="seed" type="text" value="${escapeHtml(request.generation.seed)}" placeholder="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AutoSeed", "automatic"))}" ${disabled}></label>
@@ -571,6 +712,9 @@ export class EmbeddedCreatureEditor {
             <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Attacks", "Attacks"))}</h4>${this.capabilities.generation && this.mode !== "view" && (blueprint?.combat?.attacks?.length ?? 0) ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAttacks", "Reroll attacks"))}" data-cf-action="reroll-attacks"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
             ${(blueprint?.combat?.attacks?.length ?? 0) ? `<ul class="cf-attacks">${attackRows}</ul>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAttacks", "No strikes generated."))}</p>`}
 
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Abilities", "Abilities"))}</h4>${canGenerate && (blueprint?.abilities?.length ?? 0) ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbilities", "Reroll abilities"))}" data-cf-action="reroll-abilities"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            ${(blueprint?.abilities?.length ?? 0) ? `<div class="cf-abilities">${abilityRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAbilities", "No abilities generated."))}</p>`}
+
             <div class="cf-seed"><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Seed", "Seed"))}:</strong> <code>${escapeHtml(blueprint?.metadata?.seed ?? "—")}</code></div>
 
             <h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.PlannedComponents", "Planned components"))}</h4>
@@ -609,6 +753,7 @@ export class EmbeddedCreatureEditor {
               </section>
             </div>` : ""}
         </div>
+        ${effectWorkspace}
         ${(canGenerate || canCreateActor) ? `
           <footer class="cf-editor-footer" data-cf-editor-footer>
             <div class="cf-footer-state ${validationState}">
@@ -632,6 +777,7 @@ export class EmbeddedCreatureEditor {
     this.root?.addEventListener("change", this.boundHandler);
     this.root?.addEventListener("input", this.boundHandler);
     this.root?.addEventListener("click", this.boundHandler);
+    if (this.activeEffectId) queueMicrotask(() => this.#mountActiveEffectEditor());
   }
 }
 

@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.3.2 - Effect Editor Layout & Scroll Hardening
+
+- Fixed the Creature Editor jumping to the top after closing an embedded ability Effect Editor.
+- Prevented the hidden creature scroll element used during effect mode from overwriting the previously captured tab scroll position with a synthetic `0`.
+- Kept return-to-creature behavior stable for Effect Editor close and other re-renders originating from effect mode.
+- Refined the wide Effect Editor host workspace and let Critical Forge 1.0.1-rc.4 own its embedded palette, panel framing, field borders, button styling, and component-type colors.
+- Increased the nested Effect Editor content width and kept component controls visually grouped instead of stretching small component fields across the entire workspace.
+- Promoted the Embedded Creature Editor contract to v7 and API/module version to 0.3.2.
+
+## 0.3.1 - Embedded Effect Editor UX
+
+- Reworked ability-effect editing into a dedicated Creature Editor workspace instead of rendering the full Effect Editor inline beneath the ability list.
+- Kept the Creature Forge tabs and persistent bottom action footer visible while an effect is being edited.
+- Switched the public Embedded Effect Editor request to compact layout mode.
+- Presented Effect Forge Basic Data and Duration side by side at wider host sizes, with Components spanning the full width below them.
+- Added a fixed effect-workspace header with a clear "Back to creature" action and live-update hint.
+- Preserved the previous creature-tab scroll position when opening and closing effect editing.
+- Closing or switching Creature Forge tabs now cleanly unmounts the nested Effect Editor.
+- Promoted the Embedded Creature Editor contract to v6 and API/module version to 0.3.1.
+
+## 0.3.0 - Ability Engine & Effect Forge Integration
+
+- Added schema-v3 ability-generation controls (`mode`, `count`, `complexity`, and focus tags).
+- Added a seeded weighted Ability Engine using category, subtype, role, level, focus, and synergy metadata.
+- Added whole-ability and single-slot rerolls, reroll-history integration, and per-ability locks.
+- Added an initial localized core ability library plus reusable Effect Forge schema-v2 effect definitions.
+- Added effect resource de-duplication: abilities reference neutral `resources.effects` definitions by stable content id.
+- Added external ability/effect bundle support through the existing public Content Registry with source provenance.
+- Added public Effect Forge bridge calls for validate, analyze, compile, item-source conversion, apply, instant execute, and compatibility checks.
+- Embedded Critical Forge's public Effect Editor directly inside the Creature Editor for referenced ability effects.
+- Promoted the Embedded Creature Editor contract to v5 with host-controllable `effectEditing` capability.
+- Compiled generated abilities to PF2E action items and preserved application metadata in Creature Forge flags for later runtime trigger work.
+- Promoted request, blueprint, and content schemas to v3 and the public API/module version to 0.3.0.
+- Expanded automated coverage to 68 tests.
+
 ## 0.2.2 - Source Tab & Editor UX
 
 - Moved category/subtype compendium selection out of the main creature form into a dedicated **Sources** tab.

@@ -23,8 +23,9 @@ test("compiler creates a PF2E NPC source with blueprint provenance and strikes",
   assert.deepEqual(compiled.actorSource.system.traits.value, ["animal", "aquatic"]);
   assert.equal(compiled.actorSource.system.abilities.str.mod, blueprint.statistics.abilities.str.value);
   assert.equal(compiled.actorSource.system.abilities.dex.mod, blueprint.statistics.abilities.dex.value);
-  assert.equal(compiled.actorSource.items.length, 2);
-  const item = compiled.actorSource.items[0];
+  const meleeItems = compiled.actorSource.items.filter((entry) => entry.type === "melee");
+  assert.equal(meleeItems.length, 2);
+  const item = meleeItems[0];
   assert.equal(item.type, "melee");
   assert.equal(item.system.bonus.value, blueprint.combat.attacks[0].attack.value);
   const damage = Object.values(item.system.damageRolls)[0];
@@ -39,8 +40,9 @@ test("compiler carries ranged strike range into PF2E melee item source", () => {
   const generator = new CreatureGenerator({ registry });
   const blueprint = generator.generate({ identity: { name: "Sniper", level: 8, role: "sniper", category: "humanoid" }, generation: { seed: "range" } });
   const compiled = compileActorSource(blueprint);
-  assert.equal(compiled.actorSource.items[0].type, "melee");
-  assert.equal(compiled.actorSource.items[0].system.range, 60);
+  const meleeItem = compiled.actorSource.items.find((entry) => entry.type === "melee");
+  assert.equal(meleeItem.type, "melee");
+  assert.equal(meleeItem.system.range, 60);
 });
 
 test("compiler localizes generated and legacy core attack names when Foundry i18n is available", () => {

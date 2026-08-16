@@ -18,8 +18,13 @@ export class ForgeIntegrationHub {
   status() {
     return {
       effect: integrationStatus(IDS.effect, {
+        validate: (api) => typeof api.effects?.validate === "function",
+        analyze: (api) => typeof api.effects?.analyze === "function",
         compile: (api) => typeof api.effects?.compile === "function",
+        toItemSource: (api) => typeof api.effects?.toItemSource === "function",
         apply: (api) => typeof api.effects?.apply === "function",
+        execute: (api) => typeof api.effects?.execute === "function",
+        checkCompatibility: (api) => typeof api.effects?.checkCompatibility === "function",
         editor: (api) => typeof api.ui?.effectEditor?.create === "function"
       }),
       aura: integrationStatus(IDS.aura, {

@@ -90,6 +90,17 @@ export function validateGenerationRequest(request, { registry } = {}) {
     issues.push(issue("error", "INVALID_ATTACK_COUNT", "options.attackCount", "Attack count must be 0, 1, or 2."));
   }
 
+  if (!["auto", "off"].includes(request?.abilities?.mode)) {
+    issues.push(issue("error", "INVALID_ABILITY_MODE", "abilities.mode", "Ability generation mode must be auto or off."));
+  }
+  const abilityCount = request?.abilities?.count;
+  if (abilityCount !== "role" && (!Number.isInteger(Number(abilityCount)) || Number(abilityCount) < 0 || Number(abilityCount) > 5)) {
+    issues.push(issue("error", "INVALID_ABILITY_COUNT", "abilities.count", "Ability count must be 'role' or an integer from 0 to 5."));
+  }
+  if (!["simple", "standard", "complex"].includes(request?.abilities?.complexity)) {
+    issues.push(issue("error", "INVALID_ABILITY_COMPLEXITY", "abilities.complexity", "Ability complexity must be simple, standard, or complex."));
+  }
+
   const skillCount = request?.skills?.count;
   if (skillCount !== "role" && (!Number.isInteger(Number(skillCount)) || Number(skillCount) < 0 || Number(skillCount) > 8)) {
     issues.push(issue("error", "INVALID_SKILL_COUNT", "skills.count", "Skill count must be 'role' or an integer from 0 to 8."));
@@ -207,6 +218,37 @@ export function validateBlueprint(blueprint) {
       issues.push(issue("warning", "ATTACK_PAIR_NOT_COMPLEMENTARY", "combat.attacks", "Two-attack profiles should normally trade higher accuracy for lower damage and vice versa."));
     }
   }
+
+  const generatedAbilities = blueprint?.abilities ?? [];
+  const abilityIds = new Set();
+  const effectResources = new Map((blueprint?.resources?.effects ?? []).map((resource) => [resource.id, resource]));
+  for (let index = 0; index < generatedAbilities.length; index += 1) {
+    const ability = generatedAbilities[index];
+    const path = `abilities.${index}`;
+    if (!String(ability?.id ?? "").trim()) issues.push(issue("error", "ABILITY_ID_REQUIRED", path, "Generated abilities require a stable instance id."));
+    if (abilityIds.has(ability?.id)) issues.push(issue("error", "DUPLICATE_ABILITY_ID", path, `Ability id '${ability?.id}' is duplicated.`));
+    abilityIds.add(ability?.id);
+    if (!String(ability?.contentId ?? "").trim()) issues.push(issue("error", "ABILITY_CONTENT_ID_REQUIRED", path, "Generated abilities require a content id."));
+    if (!["action", "reaction", "free", "passive"].includes(ability?.type)) issues.push(issue("error", "INVALID_ABILITY_TYPE", `${path}.type`, `Unsupported ability type '${ability?.type}'.`));
+    if (ability?.type === "action" && (!Number.isInteger(Number(ability?.actionCost)) || Number(ability.actionCost) < 1 || Number(ability.actionCost) > 3)) {
+      issues.push(issue("error", "INVALID_ABILITY_ACTION_COST", `${path}.actionCost`, "Action abilities require an action cost from 1 to 3."));
+    }
+    for (const application of ability?.applications ?? []) {
+      if (application?.type === "effect") {
+        if (!String(application.ref ?? "").trim()) issues.push(issue("error", "EFFECT_REF_REQUIRED", path, "Effect applications require a resource reference."));
+        else if (!effectResources.has(application.ref)) issues.push(issue("error", "MISSING_EFFECT_RESOURCE", path, `Ability '${ability.contentId}' references missing effect '${application.ref}'.`));
+      }
+    }
+  }
+  for (let index = 0; index < (blueprint?.resources?.effects ?? []).length; index += 1) {
+    const resource = blueprint.resources.effects[index];
+    const definition = resource?.definition;
+    if (!String(resource?.id ?? "").trim()) issues.push(issue("error", "EFFECT_RESOURCE_ID_REQUIRED", `resources.effects.${index}`, "Effect resources require an id."));
+    if (!definition || typeof definition !== "object" || !String(definition?.name ?? "").trim() || !Array.isArray(definition?.components) || !definition.components.length) {
+      issues.push(issue("error", "INVALID_EFFECT_RESOURCE", `resources.effects.${index}`, "Effect resources require an Effect Forge-compatible definition with a name and components."));
+    }
+  }
+  if (generatedAbilities.length > 4) issues.push(issue("warning", "MANY_ABILITIES", "abilities", "More than four generated abilities can make a creature stat block difficult to run."));
 
   const skills = Object.values(blueprint?.statistics?.skills ?? {});
   const highSkills = skills.filter((entry) => entry?.rank === "high").length;

@@ -2,11 +2,19 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.2.2** moves compendium source selection into a dedicated **Sources** tab of the canonical Embedded Creature Editor. Category/subtype discovery remains host-aware: the standalone editor can persist world-default NPC compendium selections, while embedded hosts can keep their source choices request-local.
+Version **0.3.2** hardens the nested **Embedded Effect Editor workflow**. Returning from an ability effect now restores the exact creature scroll position, while Critical Forge 1.0.1-rc.4 provides a self-contained colored/framed embedded Effect Editor surface that remains readable in Creature Forge and other hosts.
 
-## What 0.2.2 provides
+## What 0.3.2 provides
 
 - Versioned `CreatureGenerationRequest` and `CreatureBlueprint` contracts.
+- Weighted ability generation from category, subtype, role, level, focus tags, and previously selected synergy tags.
+- Seeded ability variation with whole-section and single-slot rerolls plus per-ability locks.
+- Core starter library of creature abilities for animals/beasts, dragons, undead/ghosts, constructs, elementals, fey, fiends, plants/fungi, oozes, swarms, humanoids, and astral/ethereal concepts.
+- Effect-backed ability applications with referenced EffectDefinition schema-v2 resources stored once in `resources.effects`.
+- Direct public Effect Forge bridge for validate/analyze/compile/toItemSource/apply/execute/compatibility operations.
+- Embedded Effect Editor inside a dedicated, wide Creature Editor workspace for editing an ability's referenced effect definition without duplicating Effect Forge UI.
+- External modules can register complete ability/effect bundles and participate in the same weighted generator with provenance.
+- Generated abilities compile to embedded PF2E action items while preserving Creature Forge application metadata for later runtime automation.
 - Seeded deterministic random generation. Generation code does not use `Math.random()`.
 - GM Core creature-building tables for AC, HP, saves, Perception, ability modifiers, attack bonuses, attack damage, and skills for levels -1 through 24.
 - Road-map roles: Brute, Magical Striker, Skill Paragon, Skirmisher, Sniper, Soldier, and Spellcaster.
@@ -27,7 +35,7 @@ Version **0.2.2** moves compendium source selection into a dedicated **Sources**
 - Source-aware content resolution: core and external registered content stay available, while compendium-discovered content is visible only when its source is selected.
 - Standalone source selections persist as world defaults; embedded hosts can keep selections local.
 - Compendium pickers live in a dedicated **Sources** tab instead of occupying the primary creature-generation form.
-- Embedded Creature Editor contract v4 plus standalone Creature Forge ApplicationV2 host.
+- Embedded Creature Editor contract v7 plus standalone Creature Forge ApplicationV2 host.
 - The editor owns its internal scrolling and persistent footer, so Generate, Reroll, and optional Create Actor actions remain visible at the bottom.
 - Multiple hosts can mount the same editor implementation; the standalone window contains no second editor implementation.
 - Standalone default size increased to 1280×860, with migration from the old default-sized saved window state.
@@ -130,6 +138,27 @@ api.reroll(blueprint, { scope: "combat.attacks" });
 
 Attack entries with `locked: true` survive an attack-scope reroll.
 
+### Ability generation and Effect Forge
+
+```js
+const blueprint = api.generate({
+  identity: { level: 8, role: "skirmisher", category: "undead", subtypes: ["ghost"] },
+  abilities: { mode: "auto", count: 3, complexity: "standard", focus: ["fear", "movement"] },
+  generation: { seed: "haunting-17" }
+});
+
+api.reroll(blueprint, { scope: "abilities" });
+api.reroll(blueprint, { scope: "ability:ability-2" });
+
+const effect = blueprint.resources.effects[0]?.definition;
+if (effect && api.effects.available) {
+  api.effects.validate(effect);
+  api.effects.analyze(effect, { level: blueprint.identity.level });
+}
+```
+
+Abilities may reference one or more neutral `resources.effects` entries. The Embedded Creature Editor opens Critical Forge's public Embedded Effect Editor for those definitions when the integration is active.
+
 ### Compile or create a PF2E NPC
 
 ```js
@@ -137,7 +166,7 @@ const { actorSource, integrationPlan } = api.compile(blueprint);
 const { actor } = await api.createActor(blueprint, { renderSheet: true });
 ```
 
-0.2.2 compiles the same generated statistics/IWR/strikes as 0.2.0. Compendium discovery affects the semantic category/subtype catalog before generation; future milestones will use the same source framework for abilities, auras, afflictions, spellcasting, and loot.
+0.3.0 additionally compiles generated abilities as action items. Referenced Effect Forge definitions remain neutral resources in the Blueprint so they can be edited, validated, compiled, or applied by the Effect Engine without being incorrectly attached to the creature as self-effects.
 
 ## Compendium category/subtype discovery
 
@@ -207,7 +236,8 @@ const editor = api.ui.creatureEditor.create({
     generation: true,
     actorCreation: false,
     sourceSelection: true,
-    persistSourceSelection: false
+    persistSourceSelection: false,
+    effectEditing: true
   },
   onChange: ({ blueprint, request, validation }) => {
     // Host owns persistence.
@@ -230,7 +260,7 @@ editor.unmount();
 editor.destroy();
 ```
 
-`api.ui.creatureEditor.contractVersion` is **4**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`. The public editor exposes the `creature` and `sources` tabs when source selection is enabled, and hosts can switch tabs with `editor.setActiveTab(...)`.
+`api.ui.creatureEditor.contractVersion` is **5**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`. The public editor exposes the `creature` and `sources` tabs when source selection is enabled, and hosts can switch tabs with `editor.setActiveTab(...)`.
 
 ## Integrations
 
@@ -248,6 +278,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.2.2 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill selection, movement/senses generation, and localized strike path. Ability recipes, Effect Forge composition, auras, afflictions, spell packages, and loot generation remain later milestones.
+0.3.2 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill/movement/sense generation, localized strikes, weighted ability selection, and Effect Forge composition/editing. Aura generation, afflictions, spell packages, loot generation, and runtime execution of ability application triggers remain later milestones.
 
 See `docs/ROADMAP.md`.

@@ -24,13 +24,13 @@ External Modules / Encounter Forge / Standalone UI
 
 ## Contracts
 
-### CreatureGenerationRequest v2
+### CreatureGenerationRequest v3
 
-The request captures user intent. The v2 request includes a `defensiveAffinities` policy/override section plus independent `sources.categories` and `sources.subtypes` arrays. In 0.2.1 these source arrays become active inputs to compendium discovery rather than reserved placeholders.
+The request captures user intent. Schema v3 adds `abilities.mode/count/complexity/focus` to the existing statistics, affinity, mobility, and source controls.
 
-### CreatureBlueprint v2
+### CreatureBlueprint v3
 
-The blueprint is a neutral generated result rather than a Foundry Actor document. `identity.resolvedSubtypes` and `defenses` now preserve resolved conceptual inheritance, IWR entries, affinity provenance, and HP adjustments alongside the existing generated statistics and attacks.
+The blueprint is a neutral generated result rather than a Foundry Actor document. Schema v3 additionally stores selected ability instances plus de-duplicated referenced Effect Forge definitions in `resources.effects`.
 
 Major sections:
 
@@ -110,6 +110,31 @@ category + requested subtypes
 ```
 
 External providers use the same content definitions as the core; the generator contains no module-specific branch for third-party subtypes. Manual request affinities are highest-priority locked entries.
+
+
+## Ability Engine & Effect Forge integration
+
+0.3.0 adds an independent ability-selection layer after concept/stat generation. The registry first filters legal candidates by level/category/subtype/role, then the Ability Engine applies weighted preferences for concept tags, role, focus tags, and synergies with abilities already selected. Dedicated RNG forks keep selection deterministic for a seed while allowing whole-section and slot-level rerolls.
+
+```text
+category + resolved subtypes + role + level
+                 |
+        ContentRegistry.query(ability)
+                 |
+          weighted selection
+                 |
+      ability instances + locks
+                 |
+        referenced effect ids
+                 |
+       resources.effects snapshots
+```
+
+Effects remain neutral resources rather than being embedded on the source creature as self-effects. Ability `applications` describe target/timing intent and reference stable effect ids. The compiler stores those applications on generated action-item flags for later runtime trigger automation.
+
+The Effect Forge adapter delegates validation, analysis, compilation, item-source creation, application, instant execution, and compatibility checks to Critical Forge when available. The canonical Creature Editor mounts Critical Forge's public Embedded Effect Editor into its own surface and owns only the enclosing ability/resource workflow.
+
+External content uses the same registry contract as core content, so third-party bundles can contribute abilities and their effect definitions without engine branches.
 
 ## Skills, Movement & Senses
 

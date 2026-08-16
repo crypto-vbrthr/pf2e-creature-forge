@@ -60,6 +60,12 @@ export const DEFAULT_REQUEST = Object.freeze({
     scent: "auto",
     scentRange: 30
   },
+  abilities: {
+    mode: "auto",
+    count: "role",
+    complexity: "standard",
+    focus: []
+  },
   generation: {
     seed: "",
     variation: "balanced"
@@ -92,6 +98,10 @@ export function createGenerationRequest(input = {}) {
     request.sources[key] = [...new Set((request.sources?.[key] ?? []).map((value) => String(value).trim()).filter(Boolean))];
   }
   request.skills.preferred = [...new Set((request.skills?.preferred ?? []).map((value) => String(value).trim().toLowerCase()).filter(Boolean))];
+  request.abilities.mode = request.abilities?.mode === "off" ? "off" : "auto";
+  if (request.abilities.count !== "role") request.abilities.count = Math.max(0, Math.min(5, Number(request.abilities.count ?? 2)));
+  request.abilities.complexity = ["simple", "standard", "complex"].includes(request.abilities?.complexity) ? request.abilities.complexity : "standard";
+  request.abilities.focus = [...new Set((request.abilities?.focus ?? []).map((value) => String(value).trim().toLowerCase()).filter(Boolean))];
   if (request.skills.count !== "role") request.skills.count = Math.max(0, Math.min(8, Number(request.skills.count ?? 3)));
   for (const type of ["land", "climb", "swim", "fly", "burrow"]) {
     const value = request.movement?.[type];
@@ -116,7 +126,7 @@ export function createEmptyBlueprint() {
     schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     metadata: {
       generator: "pf2e-creature-forge",
-      generatorVersion: "0.2.2",
+      generatorVersion: "0.3.2",
       seed: "",
       variation: "balanced",
       requestSnapshot: null,

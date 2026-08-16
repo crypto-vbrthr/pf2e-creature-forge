@@ -1,4 +1,5 @@
 import { MODULE_ID, MODULE_VERSION } from "../constants.js";
+import { CORE_ABILITIES, CORE_EFFECTS } from "./core-abilities.js";
 
 const category = (slug, label, extra = {}) => ({
   id: `${MODULE_ID}.category.${slug}`,
@@ -206,10 +207,10 @@ export const CORE_CONTENT_BUNDLE = Object.freeze({
     categories,
     subtypes,
     nameTemplates: [],
-    abilities: [],
+    abilities: CORE_ABILITIES,
     auras: [],
     afflictions: [],
-    effects: [],
+    effects: CORE_EFFECTS,
     poisons: [],
     spellProfiles: [],
     spellPackages: [],

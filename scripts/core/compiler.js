@@ -46,6 +46,59 @@ function compileMeleeItem(attack) {
   };
 }
 
+
+function localizeKey(key, fallback = "") {
+  if (key && globalThis.game?.i18n?.localize) {
+    const localized = globalThis.game.i18n.localize(key);
+    if (localized && localized !== key) return localized;
+  }
+  return String(fallback ?? "");
+}
+
+function abilityActionType(ability) {
+  if (ability?.type === "reaction") return "reaction";
+  if (ability?.type === "free") return "free";
+  if (ability?.type === "passive") return "passive";
+  return "action";
+}
+
+function compileAbilityItem(ability, effectResources = new Map()) {
+  const name = localizeKey(ability?.nameKey, ability?.name ?? ability?.contentId ?? "Ability");
+  const description = localizeKey(ability?.descriptionKey, ability?.description ?? "");
+  const effectNames = (ability?.applications ?? [])
+    .filter((application) => application.type === "effect" && application.ref)
+    .map((application) => effectResources.get(application.ref))
+    .filter(Boolean)
+    .map((resource) => localizeKey(resource?.nameKey, resource?.definition?.name ?? resource?.name ?? resource?.id));
+  const effectNote = effectNames.length
+    ? `<p><strong>${localizeKey("PF2E_CREATURE_FORGE.Editor.LinkedEffects", "Linked effects")}:</strong> ${effectNames.join(", ")}</p>`
+    : "";
+  const actionType = abilityActionType(ability);
+  return {
+    name,
+    type: "action",
+    img: ability?.img ?? (actionType === "reaction" ? "systems/pf2e/icons/actions/Reaction.webp" : actionType === "free" ? "systems/pf2e/icons/actions/FreeAction.webp" : actionType === "passive" ? "systems/pf2e/icons/actions/Passive.webp" : "systems/pf2e/icons/actions/OneAction.webp"),
+    system: {
+      actionType: { value: actionType },
+      actions: { value: actionType === "action" ? Number(ability?.actionCost ?? 1) : null },
+      category: ability?.category ?? "offensive",
+      description: { value: `${description ? `<p>${description}</p>` : ""}${effectNote}` },
+      publication: { title: "PF2E Creature Forge", authors: "", license: "ORC", remaster: true },
+      rules: [],
+      slug: null,
+      traits: { value: [...new Set(ability?.traits ?? [])], rarity: "common" }
+    },
+    flags: {
+      "pf2e-creature-forge": {
+        abilityId: ability?.id,
+        contentId: ability?.contentId,
+        family: ability?.family ?? null,
+        applications: deepClone(ability?.applications ?? [])
+      }
+    }
+  };
+}
+
 function compileSkills(skills = {}) {
   return Object.fromEntries(Object.entries(skills).map(([slug, skill]) => [slug, {
     base: Number(skill?.value ?? 0),
@@ -108,6 +161,8 @@ export function compileActorSource(blueprint, options = {}) {
     ["str", "dex", "con", "int", "wis", "cha"].map((ability) => [ability, { mod: Number(blueprint.statistics.abilities?.[ability]?.value ?? 0) }])
   );
   const attackItems = (blueprint.combat?.attacks ?? []).map(compileMeleeItem);
+  const effectResources = new Map((blueprint.resources?.effects ?? []).map((resource) => [resource.id, resource]));
+  const abilityItems = (blueprint.abilities ?? []).map((ability) => compileAbilityItem(ability, effectResources));
   const skills = compileSkills(blueprint.statistics?.skills ?? {});
   const senses = compileSenses(blueprint.statistics?.senses ?? []);
   const otherSpeeds = compileOtherSpeeds(blueprint.statistics?.speed ?? {});
@@ -157,7 +212,7 @@ export function compileActorSource(blueprint, options = {}) {
       },
       resources: { focus: { value: 0, max: 0 } }
     },
-    items: attackItems,
+    items: [...attackItems, ...abilityItems],
     flags: {
       "pf2e-creature-forge": {
         blueprintSchemaVersion: blueprint.schemaVersion,

@@ -12,6 +12,7 @@ import { resolveAttackNameKey } from "./attack-localization.js";
 import { generateSkills } from "./skills.js";
 import { generateMovement, generateSenses } from "./mobility.js";
 import { calculateAffinityHpAdjustment, generateDefensiveAffinities } from "./defensive-affinities.js";
+import { collectAbilityEffectResources, generateAbilities, rerollAbilitySlot } from "./ability-engine.js";
 
 const SAVE_NAMES = Object.freeze(["fortitude", "reflex", "will"]);
 const ABILITY_NAMES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
@@ -256,6 +257,15 @@ export class CreatureGenerator {
     const movement = generateMovement(effectiveRequest, role, level, random.fork("statistics.movement"));
     const senses = generateSenses(effectiveRequest, level, random.fork("statistics.senses"));
     const attacks = generateAttacks(effectiveRequest, role, level, random.fork("combat.attacks"));
+    const generatedAbilities = generateAbilities({
+      request: effectiveRequest,
+      registry: this.registry,
+      level,
+      roleId: request.identity.role,
+      category: request.identity.category,
+      subtypes: affinities.resolvedSubtypes,
+      random: random.fork("abilities")
+    });
 
     const blueprint = createEmptyBlueprint();
     blueprint.metadata = {
@@ -304,6 +314,8 @@ export class CreatureGenerator {
       attacks,
       spellcasting: []
     };
+    blueprint.abilities = deepClone(generatedAbilities.abilities);
+    blueprint.resources.effects = deepClone(generatedAbilities.effects);
     blueprint.loot.policy = request.options.loot ?? "auto";
     blueprint.provenance = [
       {
@@ -329,6 +341,12 @@ export class CreatureGenerator {
         source: "Pathfinder GM Core",
         section: "Building Creatures / Immunities, Weaknesses, Resistances and Category Abilities",
         note: "Defensive affinities are derived from category and subtype definitions. Narrow resistances and weaknesses use the level table; broad resistances and weaknesses can adjust HP."
+      },
+      {
+        kind: "engine",
+        source: "PF2E Creature Forge",
+        section: "Ability Engine",
+        note: "Abilities are selected from registered content using category, subtype, role, level, synergy tags, source filters and seeded weighted randomness. Effect applications are stored as Effect Forge-compatible resources."
       },
       ...[...(request.sources?.categories ?? []), ...(request.sources?.subtypes ?? [])].map((source) => ({
         kind: "content-source",
@@ -421,6 +439,34 @@ export class CreatureGenerator {
       const generated = regenerated();
       const lockedById = new Map((next.combat?.attacks ?? []).filter((attack) => attack.locked).map((attack) => [attack.id, attack]));
       next.combat.attacks = generated.combat.attacks.map((attack) => lockedById.get(attack.id) ?? attack);
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
+    }
+
+    if (scope === "abilities") {
+      if (next.locks?.abilities) return next;
+      const generated = regenerated();
+      const lockedById = new Map((next.abilities ?? []).filter((ability) => ability.locked).map((ability) => [ability.id, ability]));
+      next.abilities = generated.abilities.map((ability) => lockedById.get(ability.id) ?? ability);
+      next.resources.effects = collectAbilityEffectResources(next.abilities, this.registry, [
+        ...(next.resources?.effects ?? []),
+        ...(generated.resources?.effects ?? [])
+      ]);
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
+    }
+
+    if (scope.startsWith("ability:")) {
+      const targetId = scope.slice("ability:".length);
+      const result = rerollAbilitySlot({
+        request: next.metadata.requestSnapshot,
+        registry: this.registry,
+        blueprint: next,
+        targetId,
+        random: random.fork(`ability-slot:${targetId}`)
+      });
+      next.abilities = result.abilities;
+      next.resources.effects = result.effects;
       next.diagnostics = validateBlueprint(next).warnings;
       return next;
     }

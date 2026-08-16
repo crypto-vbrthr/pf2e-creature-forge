@@ -1,4 +1,4 @@
-# Public API 0.2.2
+# Public API 0.3.2
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;
@@ -79,7 +79,7 @@ api.generate({
 
 Valid attack/damage ranks are `extreme`, `high`, `moderate`, and `low`. Valid ability ranks also include `terrible`. Each setting accepts `role` to use the selected role road map.
 
-### Reroll scopes in 0.2.x
+### Reroll scopes in 0.3.0
 
 - `all`
 - `defenses`
@@ -90,11 +90,13 @@ Valid attack/damage ranks are `extreme`, `high`, `moderate`, and `low`. Valid ab
 - `statistics.senses` (alias: `senses`)
 - `combat.attacks` (alias: `attacks`)
 - `defenses.affinities` (alias: `affinities`)
+- `abilities`
+- `ability:<ability-id>`
 
 
 ## Categories, subtypes, and defensive affinities
 
-`CreatureGenerationRequest` schema v2 supports automatic or manual defensive affinities. Core and external category/subtype definitions may expose:
+`CreatureGenerationRequest` schema v3 supports automatic/manual defensive affinities and ability-generation controls. Core and external category/subtype definitions may expose:
 
 ```js
 {
@@ -174,6 +176,65 @@ Automatic skill choice is weighted by role, category, subtype, and the generated
 ```
 
 With two strikes, the first is the accurate profile and the second is the heavy profile. Attack-scope rerolls preserve entries marked `locked: true` by ID.
+
+## Ability Engine
+
+```js
+const request = api.createRequest({
+  identity: { level: 8, role: "skirmisher", category: "undead", subtypes: ["ghost"] },
+  abilities: { mode: "auto", count: 3, complexity: "standard", focus: ["fear", "movement"] }
+});
+
+api.abilities.listCandidates(request);
+const blueprint = api.generate(request);
+api.reroll(blueprint, { scope: "abilities" });
+api.reroll(blueprint, { scope: "ability:ability-2" });
+```
+
+External ability definitions use `abilityType` (`action`, `reaction`, `free`, or `passive`) because the registry reserves top-level `type` for the content type. Typical fields include `actionCost`, `category`, `family`, `baseWeight`, `traits`, `tags`, `selection`, `synergy`, and `applications`. Effect applications reference a registered effect id:
+
+```js
+api.content.registerBundle({
+  id: "my-module.horrors",
+  moduleId: "my-module",
+  version: "1.0.0",
+  content: {
+    effects: [{
+      id: "my-module.effect.sticky",
+      definition: { schemaVersion: 2, id: "my-module.effect.sticky", name: "Sticky", components: [] }
+    }],
+    abilities: [{
+      id: "my-module.ability.adhesive-wave",
+      abilityType: "action",
+      actionCost: 2,
+      family: "adhesive-wave",
+      baseWeight: 80,
+      tags: ["ooze", "control"],
+      selection: { categories: ["ooze"] },
+      applications: [{ type: "effect", ref: "my-module.effect.sticky", target: "failed-save-target", timing: "failed-save" }]
+    }]
+  }
+});
+```
+
+The Blueprint stores selected abilities in `abilities[]` and only referenced effect definitions in `resources.effects[]`.
+
+## Effect Forge bridge
+
+When PF2E Critical Forge / Effect Forge is active:
+
+```js
+api.effects.available;
+api.effects.validate(definition);
+api.effects.analyze(definition, context);
+await api.effects.compile(definition, context);
+await api.effects.toItemSource(definition, context);
+await api.effects.apply(definition, targets, options);
+await api.effects.execute(definition, targets, options);
+await api.effects.checkCompatibility(definition, target, options);
+```
+
+The canonical Embedded Creature Editor uses the external `api.ui.effectEditor.create(...)` implementation for editing referenced effect resources. Creature Forge does not maintain a second Effect Editor.
 
 ## Random service
 
@@ -262,7 +323,7 @@ api.integrations.getLootApi();
 
 ```js
 api.ui.openCreatureForge();
-api.ui.creatureEditor.contractVersion; // 4
+api.ui.creatureEditor.contractVersion; // 5
 api.ui.creatureEditor.modes;           // ["create", "edit", "view"]
 api.ui.creatureEditor.layouts;         // ["full", "compact"]
 api.ui.creatureEditor.tabs;            // ["creature", "sources"]
@@ -283,4 +344,4 @@ editor.unmount();
 editor.destroy();
 ```
 
-The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v4 moves optional source-selection controls into a dedicated `sources` tab. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.
+The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v5 keeps source selection in the dedicated `sources` tab and adds the host-controllable `effectEditing` capability for mounting Critical Forge's public Embedded Effect Editor inside ability cards. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.

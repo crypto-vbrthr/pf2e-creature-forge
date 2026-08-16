@@ -13,6 +13,7 @@ import { listCompendiumSources } from "../core/sources.js";
 import { validateBlueprint, validateGenerationRequest } from "../core/validator.js";
 import { ForgeIntegrationHub } from "../integration/adapters.js";
 import { createCreatureEditorUiApi } from "../ui/creature-editor.js";
+import { listAbilityCandidates } from "../core/ability-engine.js";
 
 let apiInstance = null;
 
@@ -58,6 +59,51 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       createSeed: createRandomSeed,
       create: createRandom,
       SeededRandom
+    },
+
+    abilities: {
+      listCandidates: (request = {}) => {
+        const normalized = createGenerationRequest(request);
+        return listAbilityCandidates({
+          request: normalized,
+          registry,
+          level: normalized.identity.level,
+          roleId: normalized.identity.role,
+          category: normalized.identity.category,
+          subtypes: normalized.identity.subtypes
+        });
+      }
+    },
+
+    effects: {
+      get available() { return Boolean(integrations.effectApi?.effects); },
+      validate: (definition) => integrations.effectApi?.effects?.validate?.(definition) ?? { valid: true, errors: [], warnings: [], unavailable: true },
+      analyze: (definition, context = {}) => integrations.effectApi?.effects?.analyze?.(definition, context) ?? { valid: true, errors: [], warnings: [], unavailable: true },
+      compile: async (definition, context = {}) => {
+        const effectApi = integrations.effectApi?.effects;
+        if (!effectApi?.compile) throw new Error("Effect Forge integration is unavailable.");
+        return effectApi.compile(definition, context);
+      },
+      toItemSource: async (definition, context = {}) => {
+        const effectApi = integrations.effectApi?.effects;
+        if (!effectApi?.toItemSource) throw new Error("Effect Forge integration is unavailable.");
+        return effectApi.toItemSource(definition, context);
+      },
+      apply: async (definition, targets, options = {}) => {
+        const effectApi = integrations.effectApi?.effects;
+        if (!effectApi?.apply) throw new Error("Effect Forge integration is unavailable.");
+        return effectApi.apply(definition, targets, options);
+      },
+      execute: async (definition, targets, options = {}) => {
+        const effectApi = integrations.effectApi?.effects;
+        if (!effectApi?.execute) throw new Error("Effect Forge integration is unavailable.");
+        return effectApi.execute(definition, targets, options);
+      },
+      checkCompatibility: async (definition, target, options = {}) => {
+        const effectApi = integrations.effectApi?.effects;
+        if (!effectApi?.checkCompatibility) throw new Error("Effect Forge integration is unavailable.");
+        return effectApi.checkCompatibility(definition, target, options);
+      }
     },
 
     content: {

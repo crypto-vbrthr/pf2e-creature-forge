@@ -143,3 +143,175 @@
   .cf-editor .cf-tab-heading { flex-direction: column; }
   .cf-editor .cf-source-scope { max-width: none; width: 100%; }
 }
+
+/* 0.3.0 generated ability cards and embedded Effect Forge workspace */
+.cf-editor .cf-abilities { display: grid; gap: .55rem; margin: .45rem 0 1rem; }
+.cf-editor .cf-ability-card { border: 1px solid var(--color-border-light-tertiary, #555); border-radius: 7px; padding: .6rem .7rem; background: rgba(0,0,0,.08); }
+.cf-editor .cf-ability-card.locked { border-style: double; }
+.cf-editor .cf-ability-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: .65rem; }
+.cf-editor .cf-ability-card > header > div:first-child { display: flex; flex-direction: column; gap: .08rem; min-width: 0; }
+.cf-editor .cf-ability-card > header small { opacity: .68; }
+.cf-editor .cf-ability-card p { margin: .45rem 0; line-height: 1.35; }
+.cf-editor .cf-ability-controls { display: flex; gap: .2rem; flex: 0 0 auto; }
+.cf-editor .cf-ability-source { font-size: .68em; }
+.cf-editor .cf-ability-tags { display: flex; gap: .25rem; flex-wrap: wrap; margin-top: .35rem; }
+.cf-editor .cf-ability-tags span { font-size: .72em; border: 1px solid var(--color-border-light-tertiary, #555); border-radius: 999px; padding: .08rem .38rem; opacity: .78; }
+.cf-editor .cf-ability-effects { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+.cf-editor .cf-effect-link { width: auto; padding: .28rem .45rem; font-size: .78em; }
+.cf-editor .cf-effect-link small { margin-left: .25rem; opacity: .62; }
+.cf-editor .cf-effect-workspace { margin: .75rem 0 1rem; padding: .6rem; border: 1px solid var(--color-border-light-primary, #777); border-radius: 8px; background: rgba(0,0,0,.09); }
+.cf-editor .cf-effect-workspace .cf-heading-row { margin-top: 0; }
+.cf-editor .cf-effect-editor-host { margin-top: .55rem; min-height: 18rem; }
+
+/* 0.3.2 embedded Effect Editor UX
+   Effect editing takes over the editor work area while leaving the Creature Forge
+   tabs and sticky footer available. The Effect Forge remains the editor owner and
+   now supplies its own embedded palette; this host only arranges the surface. */
+.cf-editor.cf-effect-mode .cf-editor-scroll {
+  display: none;
+}
+
+.cf-editor .cf-effect-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--color-bg-option, #181818) 97%, transparent);
+}
+
+.cf-editor .cf-effect-workspace-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .72rem 1rem;
+  border-bottom: 1px solid var(--color-border-light-primary, #777);
+  background:
+    linear-gradient(90deg, rgba(117, 66, 178, .13), transparent 45%),
+    color-mix(in srgb, var(--color-bg-option, #202020) 96%, transparent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .18);
+  z-index: 2;
+}
+
+.cf-editor .cf-effect-workspace-title {
+  min-width: 0;
+}
+
+.cf-editor .cf-effect-workspace-title h3 {
+  margin: .08rem 0 .12rem;
+  padding: 0;
+  border: 0;
+}
+
+.cf-editor .cf-effect-workspace-title p {
+  margin: 0;
+  opacity: .66;
+  font-size: .8em;
+}
+
+.cf-editor .cf-effect-workspace-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .72em;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  opacity: .76;
+}
+
+.cf-editor .cf-effect-close {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 10rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  padding: .45rem .7rem;
+}
+
+.cf-editor .cf-effect-workspace-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: .85rem 1rem 1rem;
+  scrollbar-gutter: stable;
+}
+
+.cf-editor .cf-effect-editor-host {
+  width: min(100%, 1240px);
+  min-height: 0;
+  margin: 0 auto;
+}
+
+/* The Effect Forge compact surface owns colors, borders and component accents.
+   Creature Forge only gives the shared surface enough room and a denser field
+   distribution for a nested workspace. */
+.cf-editor .cf-effect-editor-compact > .effect-editor-embedded {
+  width: 100%;
+}
+
+.cf-editor .cf-effect-editor-compact .effect-forge-name-image-row {
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: .8rem;
+}
+
+.cf-editor .cf-effect-editor-compact .effect-forge-image-picker {
+  min-height: 58px;
+}
+
+.cf-editor .cf-effect-editor-compact .effect-forge-image-picker img {
+  width: 58px;
+  height: 58px;
+}
+
+.cf-editor .cf-effect-editor-compact .effect-forge-field textarea {
+  min-height: 5rem;
+}
+
+.cf-editor .cf-effect-editor-compact input[name="effectId"] {
+  font-family: var(--font-mono, monospace);
+  font-size: .82em;
+  opacity: .82;
+}
+
+.cf-editor .cf-effect-editor-compact .effect-forge-component-list {
+  gap: .65rem;
+  max-height: none;
+}
+
+.cf-editor .cf-effect-editor-compact .effect-forge-component-card {
+  margin: 0;
+}
+
+.cf-editor .cf-effect-editor-compact .effect-forge-component-card > .effect-forge-grid,
+.cf-editor .cf-effect-editor-compact .effect-forge-component-card > .effect-forge-component-duration {
+  max-width: 980px;
+}
+
+.cf-editor .cf-effect-editor-compact button {
+  width: auto;
+}
+
+@media (max-width: 930px) {
+  .cf-editor .cf-effect-editor-compact .effect-forge-components-section {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .cf-editor .cf-effect-workspace-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .cf-editor .cf-effect-close {
+    width: 100%;
+  }
+}
