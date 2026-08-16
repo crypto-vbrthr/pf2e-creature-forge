@@ -5,6 +5,8 @@ const ABILITIES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
 const ATTACK_KINDS = Object.freeze(["role", "melee", "ranged"]);
 const SPEED_TOKENS = Object.freeze(["role", "auto", "none", "off"]);
 const SENSE_TOKENS = Object.freeze(["auto", "on", "off", true, false]);
+const AFFINITY_MODES = Object.freeze(["auto", "off"]);
+const HP_COMPENSATION_MODES = Object.freeze(["auto", "off"]);
 
 function issue(level, code, path, message) {
   return { level, code, path, message };
@@ -33,6 +35,38 @@ export function validateGenerationRequest(request, { registry } = {}) {
   } else if (registry) {
     const exists = registry.list("category").some((entry) => entry.slug === category || entry.id === category);
     if (!exists) issues.push(issue("warning", "CATEGORY_UNREGISTERED", "identity.category", `Category '${category}' is not registered.`));
+  }
+  if (registry) {
+    for (const subtype of request?.identity?.subtypes ?? []) {
+      const definition = registry.list("subtype").find((entry) => entry.slug === subtype || entry.id === subtype);
+      if (!definition) {
+        issues.push(issue("warning", "SUBTYPE_UNREGISTERED", "identity.subtypes", `Subtype '${subtype}' is not registered.`));
+        continue;
+      }
+      const supportedCategories = definition.supports?.categories ?? definition.selection?.categories ?? [];
+      if (supportedCategories.length && category && !supportedCategories.includes(category)) {
+        issues.push(issue("warning", "INCOMPATIBLE_SUBTYPE", "identity.subtypes", `Subtype '${definition.slug ?? subtype}' is not normally compatible with category '${category}'.`));
+      }
+    }
+  }
+
+  if (!AFFINITY_MODES.includes(request?.defensiveAffinities?.mode)) {
+    issues.push(issue("error", "INVALID_AFFINITY_MODE", "defensiveAffinities.mode", "Defensive affinity mode must be auto or off."));
+  }
+  if (!HP_COMPENSATION_MODES.includes(request?.defensiveAffinities?.hpCompensation)) {
+    issues.push(issue("error", "INVALID_HP_COMPENSATION_MODE", "defensiveAffinities.hpCompensation", "Affinity HP compensation must be auto or off."));
+  }
+  for (const [kind, entries] of Object.entries({
+    immunities: request?.defensiveAffinities?.immunities ?? [],
+    resistances: request?.defensiveAffinities?.resistances ?? [],
+    weaknesses: request?.defensiveAffinities?.weaknesses ?? []
+  })) {
+    entries.forEach((entry, index) => {
+      if (!String(entry?.type ?? "").trim()) issues.push(issue("error", "INVALID_AFFINITY_TYPE", `defensiveAffinities.${kind}.${index}`, "Defensive affinity entries require a type."));
+      if (kind !== "immunities" && entry?.value !== undefined && (!Number.isFinite(Number(entry.value)) || Number(entry.value) <= 0)) {
+        issues.push(issue("error", "INVALID_AFFINITY_VALUE", `defensiveAffinities.${kind}.${index}.value`, "Resistance and weakness values must be positive numbers when specified."));
+      }
+    });
   }
 
   for (const ability of ABILITIES) {
@@ -107,6 +141,38 @@ export function validateBlueprint(blueprint) {
   }
   if (!blueprint?.identity?.category) {
     issues.push(issue("error", "CATEGORY_REQUIRED", "identity.category", "A primary creature category is required."));
+  }
+
+  const affinityGroups = {
+    immunities: blueprint?.defenses?.immunities ?? [],
+    resistances: blueprint?.defenses?.resistances ?? [],
+    weaknesses: blueprint?.defenses?.weaknesses ?? []
+  };
+  for (const [kind, entries] of Object.entries(affinityGroups)) {
+    for (let index = 0; index < entries.length; index += 1) {
+      const entry = entries[index];
+      if (!String(entry?.type ?? "").trim()) {
+        issues.push(issue("error", "INVALID_AFFINITY_TYPE", `defenses.${kind}.${index}`, "Defensive affinity entries require a type."));
+      }
+      if (kind !== "immunities" && (!Number.isFinite(Number(entry?.value)) || Number(entry.value) <= 0)) {
+        issues.push(issue("error", "INVALID_AFFINITY_VALUE", `defenses.${kind}.${index}`, "Resistance and weakness entries require a positive value."));
+      }
+    }
+  }
+  const immunityTypes = new Set(affinityGroups.immunities.map((entry) => entry.type));
+  for (const kind of ["resistances", "weaknesses"]) {
+    for (const entry of affinityGroups[kind]) {
+      if (immunityTypes.has(entry.type)) {
+        issues.push(issue("warning", "IWR_CONFLICT", `defenses.${kind}`, `Immunity and ${kind === "resistances" ? "resistance" : "weakness"} both exist for '${entry.type}'.`));
+      }
+    }
+  }
+  if (affinityGroups.weaknesses.length > 1) {
+    issues.push(issue("warning", "MULTIPLE_WEAKNESSES", "defenses.weaknesses", "Most creatures should normally have no more than one weakness unless the concept specifically calls for more."));
+  }
+  const broadResistance = affinityGroups.resistances.some((entry) => ["all-damage", "physical"].includes(entry.type));
+  if (broadResistance && Number(blueprint?.defenses?.hpAdjustment?.value ?? 0) >= 0) {
+    issues.push(issue("warning", "BROAD_RESISTANCE_WITHOUT_HP_TRADEOFF", "defenses.hpAdjustment", "Broad resistance usually warrants lower HP or another defensive tradeoff."));
   }
 
   for (const ability of ABILITIES) {

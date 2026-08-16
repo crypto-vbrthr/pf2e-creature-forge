@@ -1,4 +1,4 @@
-# Public API 0.1.4
+# Public API 0.2.0
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;
@@ -47,6 +47,13 @@ api.generate({
     perception: "role",
     saves: { fortitude: "role", reflex: "role", will: "role" }
   },
+  defensiveAffinities: {
+    mode: "auto",
+    hpCompensation: "auto",
+    immunities: [],
+    resistances: [],
+    weaknesses: []
+  },
   offense: {
     attack: "role",
     damage: "role",
@@ -71,7 +78,7 @@ api.generate({
 
 Valid attack/damage ranks are `extreme`, `high`, `moderate`, and `low`. Valid ability ranks also include `terrible`. Each setting accepts `role` to use the selected role road map.
 
-### Reroll scopes in 0.1.4
+### Reroll scopes in 0.2.0
 
 - `all`
 - `defenses`
@@ -81,7 +88,46 @@ Valid attack/damage ranks are `extreme`, `high`, `moderate`, and `low`. Valid ab
 - `statistics.movement` (alias: `movement`)
 - `statistics.senses` (alias: `senses`)
 - `combat.attacks` (alias: `attacks`)
+- `defenses.affinities` (alias: `affinities`)
 
+
+## Categories, subtypes, and defensive affinities
+
+`CreatureGenerationRequest` schema v2 supports automatic or manual defensive affinities. Core and external category/subtype definitions may expose:
+
+```js
+{
+  grantedTraits: ["magical"],
+  impliedSubtypes: ["incorporeal"],
+  defensiveAffinities: [
+    {
+      id: "physical-resistance",
+      kind: "resistance",
+      type: "physical",
+      scale: "minimum",
+      exceptions: ["silver"],
+      priority: 20,
+      when: { minimumLevel: 1 },
+      chance: { conservative: 0.5, balanced: 0.75, experimental: 1 }
+    }
+  ]
+}
+```
+
+`scale` can be `minimum` or `maximum`; values are resolved from the level-based resistance/weakness table. Rules can also use a fixed `value`, `doubleVs`, `hpMultiplier`, `locked`, category/subtype predicates, and `minimumLevel`/`maximumLevel` predicates.
+
+Generated Blueprints expose:
+
+```js
+defenses: {
+  immunities: [{ type: "fire", source: { kind: "subtype", id: "..." } }],
+  resistances: [{ type: "physical", value: 7, exceptions: ["silver"], source: { ... } }],
+  weaknesses: [{ type: "holy", value: 13, source: { ... } }],
+  hpAdjustment: { value: 12, reasons: [...] }
+}
+```
+
+The resolver expands implied subtypes before other generation layers run, so a `ghost` subtype can contribute `incorporeal` behavior to movement, senses, traits, and affinities. Manual request entries have the highest priority and suppress conflicting generated entries.
 
 ## Generated exploration statistics
 

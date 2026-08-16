@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.0 - Categories, Subtypes & Defensive Affinities
+
+- Promoted request, Blueprint, and content schemas to v2 and the public API to 0.2.0.
+- Added category/subtype compatibility metadata, multi-select subtype UI, and immediate category compatibility refresh.
+- Added recursive implied-subtype resolution and category/subtype-granted traits.
+- Added the level -1 through 24 resistance/weakness scaling table with `minimum` and `maximum` bands.
+- Added data-driven immunity, resistance, and weakness rules for core categories and structural/thematic subtypes.
+- Added core profiles including construct, undead, elemental, celestial/fiend, mindless, incorporeal/ghost, swarm, fire/cold, wood, angel/azata, daemon/demon/devil, psychopomp, and protean concepts.
+- Added seeded chance, predicates, priority, exceptions, `doubleVs`, fixed/scaled values, and rule provenance.
+- Added manual affinity overrides, generated/manual conflict resolution, and locked-entry preservation.
+- Added automatic HP tradeoffs for broad resistances and configurable weakness compensation.
+- Added scoped `defenses.affinities` rerolls while preserving unrelated Blueprint sections.
+- Added defensive-affinity validation and source-aware preview UI.
+- Added PF2E NPC compilation for immunity, weakness, and resistance source arrays.
+- Added external subtype/provider coverage demonstrating third-party defensive affinity contributions.
+- Expanded automated coverage to 54 tests.
+
 ## 0.1.4 - Skills, Movement & Senses
 
 - Added the GM Core creature skill table for levels -1 through 24, including seeded values inside low-skill ranges.

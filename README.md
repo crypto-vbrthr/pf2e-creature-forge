@@ -2,9 +2,9 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.1.4** completes the first exploration-facing creature statistics layer: skills, movement modes, and senses are now generated from level, role, category, subtypes, attributes, and seeded variation, then compiled into the PF2E NPC source alongside the existing localized strikes.
+Version **0.2.0** turns categories and subtypes into active generation inputs. They can now contribute traits, implied subtypes, immunities, resistances, weaknesses, and HP tradeoffs while preserving source provenance and deterministic rerolls.
 
-## What 0.1.4 provides
+## What 0.2.0 provides
 
 - Versioned `CreatureGenerationRequest` and `CreatureBlueprint` contracts.
 - Seeded deterministic random generation. Generation code does not use `Math.random()`.
@@ -19,6 +19,13 @@ Version **0.1.4** completes the first exploration-facing creature statistics lay
 - Role/category/subtype-aware skill generation, with explicit count/rank/preference controls.
 - Concept-sensitive land, climb, swim, fly, and burrow movement with manual overrides.
 - Concept-sensitive low-light vision, darkvision, and scent with manual overrides.
+- Category/subtype compatibility metadata and a multi-select subtype editor with immediate category compatibility refresh.
+- Category- and subtype-derived traits, implied subtypes, immunities, resistances, and weaknesses.
+- GM Core resistance/weakness scaling for levels -1 through 24, with minimum/maximum bands usable by core and external providers.
+- Defensive affinity provenance: every generated entry retains the category/subtype/provider rule that created it.
+- Automatic HP tradeoffs for broad resistances and configurable compensation for weaknesses.
+- Manual affinity overrides with conflict resolution and locked-entry preservation.
+- Scoped defensive-affinity rerolls without disturbing unrelated attacks, skills, movement, or senses.
 - Scoped rerolls for HP, defenses, ability modifiers, skills, movement, senses, and attacks.
 - PF2E NPC compilation including skills, Perception senses, land/alternate Speeds, and embedded strike items.
 - Public content registry for categories, subtypes, name templates, abilities, auras, afflictions, effects, poisons, spell profiles/packages, and loot profiles.
@@ -121,6 +128,7 @@ api.reroll(blueprint, { scope: "statistics.skills" });
 api.reroll(blueprint, { scope: "statistics.movement" });
 api.reroll(blueprint, { scope: "statistics.senses" });
 api.reroll(blueprint, { scope: "combat.attacks" });
+api.reroll(blueprint, { scope: "defenses.affinities" });
 ```
 
 Attack entries with `locked: true` survive an attack-scope reroll.
@@ -132,7 +140,41 @@ const { actorSource, integrationPlan } = api.compile(blueprint);
 const { actor } = await api.createActor(blueprint, { renderSheet: true });
 ```
 
-0.1.4 compiles generated skills, senses, land/alternate movement, and localized strikes into the PF2E NPC source. Future milestones will materialize abilities, auras, afflictions, spellcasting, and loot through the corresponding Forge adapters.
+0.2.0 also compiles generated immunities, weaknesses, and resistances into the PF2E NPC source. Future milestones will materialize abilities, auras, afflictions, spellcasting, and loot through the corresponding Forge adapters.
+
+## Defensive affinities
+
+Categories and subtypes can contribute defensive rules without hard-coding them into the generator. A definition may grant traits, imply further subtypes, and provide affinity rules:
+
+```js
+api.content.registerSubtype({
+  id: "my-module.crystal",
+  slug: "crystal",
+  label: "Crystal",
+  supports: { categories: ["construct", "elemental"] },
+  grantedTraits: ["magical"],
+  defensiveAffinities: [
+    { id: "sonic-weakness", kind: "weakness", type: "sonic", scale: "maximum" },
+    { id: "physical-resistance", kind: "resistance", type: "physical", scale: "minimum" }
+  ]
+});
+```
+
+Core definitions include examples such as incorporeal/ghost, swarm, fire/cold, celestial/fiend sanctification, construct, undead, devil, psychopomp, protean, and wood affinities. `when`, `chance`, `priority`, `exceptions`, `doubleVs`, fixed values, and level bounds are supported by the affinity rule resolver.
+
+A request can disable automatic affinities or provide explicit additions:
+
+```js
+defensiveAffinities: {
+  mode: "auto",
+  hpCompensation: "auto",
+  immunities: [{ type: "fear" }],
+  resistances: [{ type: "cold", value: 10 }],
+  weaknesses: []
+}
+```
+
+Manual entries take precedence over generated conflicts and are locked by default.
 
 ## External content bundles
 
@@ -211,6 +253,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.1.4 now owns the core numeric statistics, skill selection, movement/senses generation, and localized strike path. Category/subtype defensive affinities, ability recipes, Effect Forge composition, auras, afflictions, spell packages, loot generation, and semantic compendium indexing remain later milestones.
+0.2.0 now owns core numeric statistics, category/subtype resolution, defensive affinities, skill selection, movement/senses generation, and localized strikes. Ability recipes, Effect Forge composition, auras, afflictions, spell packages, loot generation, and semantic compendium indexing remain later milestones.
 
 See `docs/ROADMAP.md`.

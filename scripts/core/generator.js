@@ -11,6 +11,7 @@ import { deepClone } from "./clone.js";
 import { resolveAttackNameKey } from "./attack-localization.js";
 import { generateSkills } from "./skills.js";
 import { generateMovement, generateSenses } from "./mobility.js";
+import { calculateAffinityHpAdjustment, generateDefensiveAffinities } from "./defensive-affinities.js";
 
 const SAVE_NAMES = Object.freeze(["fortitude", "reflex", "will"]);
 const ABILITY_NAMES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
@@ -228,15 +229,25 @@ export class CreatureGenerator {
     ]));
 
     const hpRange = resolveHpRange(level, hpRank);
-    const hpValue = random.fork("statistics.hp").int(hpRange.min, hpRange.max);
+    const affinities = generateDefensiveAffinities({
+      request,
+      registry: this.registry,
+      level,
+      random: random.fork("defenses.affinities"),
+      hpRank
+    });
+    const effectiveRequest = deepClone(request);
+    effectiveRequest.identity.subtypes = [...affinities.resolvedSubtypes];
+    const hpBaseValue = random.fork("statistics.hp").int(hpRange.min, hpRange.max);
+    const hpValue = Math.max(1, hpBaseValue + Number(affinities.hpAdjustment?.value ?? 0));
     const primaryTrait = resolveTrait(this.registry, "category", request.identity.category);
-    const subtypeTraits = request.identity.subtypes.map((subtype) => resolveTrait(this.registry, "subtype", subtype));
-    const traits = [...new Set([primaryTrait, ...subtypeTraits].filter(Boolean))];
-    const abilities = resolveAbilityStatistics(request, role, level, random.fork("statistics.abilities"));
-    const skills = generateSkills(request, role, level, abilities, random.fork("statistics.skills"));
-    const movement = generateMovement(request, role, level, random.fork("statistics.movement"));
-    const senses = generateSenses(request, level, random.fork("statistics.senses"));
-    const attacks = generateAttacks(request, role, level, random.fork("combat.attacks"));
+    const subtypeTraits = affinities.resolvedSubtypes.map((subtype) => resolveTrait(this.registry, "subtype", subtype));
+    const traits = [...new Set([primaryTrait, ...subtypeTraits, ...(affinities.grantedTraits ?? [])].filter(Boolean))];
+    const abilities = resolveAbilityStatistics(effectiveRequest, role, level, random.fork("statistics.abilities"));
+    const skills = generateSkills(effectiveRequest, role, level, abilities, random.fork("statistics.skills"));
+    const movement = generateMovement(effectiveRequest, role, level, random.fork("statistics.movement"));
+    const senses = generateSenses(effectiveRequest, level, random.fork("statistics.senses"));
+    const attacks = generateAttacks(effectiveRequest, role, level, random.fork("combat.attacks"));
 
     const blueprint = createEmptyBlueprint();
     blueprint.metadata = {
@@ -252,13 +263,20 @@ export class CreatureGenerator {
       role: request.identity.role,
       category: request.identity.category,
       subtypes: [...request.identity.subtypes],
+      resolvedSubtypes: [...affinities.resolvedSubtypes],
       traits,
       size: request.identity.size
     };
     blueprint.statistics = {
       abilities,
       ac: { rank: acRank, value: resolveRankValue(AC_TABLE, level, acRank) },
-      hp: { rank: hpRank, value: hpValue, range: hpRange },
+      hp: {
+        rank: hpRank,
+        value: hpValue,
+        baseValue: hpBaseValue,
+        adjustment: Number(affinities.hpAdjustment?.value ?? 0),
+        range: hpRange
+      },
       perception: { rank: perceptionRank, value: resolveRankValue(PERCEPTION_TABLE, level, perceptionRank) },
       senses,
       skills,
@@ -267,6 +285,12 @@ export class CreatureGenerator {
         value: resolveRankValue(SAVE_TABLE, level, saveRanks[save])
       }])),
       speed: movement
+    };
+    blueprint.defenses = {
+      immunities: deepClone(affinities.immunities),
+      resistances: deepClone(affinities.resistances),
+      weaknesses: deepClone(affinities.weaknesses),
+      hpAdjustment: deepClone(affinities.hpAdjustment)
     };
     blueprint.combat = {
       attacks,
@@ -291,7 +315,19 @@ export class CreatureGenerator {
         source: "Pathfinder GM Core",
         section: "Building Creatures / Perception, Senses, Skills, and Speed",
         note: "Skills use the level/rank skill table; senses and movement are concept-sensitive suggestions with 25-foot land Speed as the humanlike baseline."
-      }
+      },
+      {
+        kind: "rules",
+        source: "Pathfinder GM Core",
+        section: "Building Creatures / Immunities, Weaknesses, Resistances and Category Abilities",
+        note: "Defensive affinities are derived from category and subtype definitions. Narrow resistances and weaknesses use the level table; broad resistances and weaknesses can adjust HP."
+      },
+      ...affinities.hpAdjustment.reasons.map((reason) => ({
+        kind: "balance",
+        source: "PF2E Creature Forge",
+        section: "Defensive Affinity HP Compensation",
+        note: `${reason.kind}:${reason.type} adjusts HP by ${reason.adjustment >= 0 ? "+" : ""}${reason.adjustment}.`
+      }))
     ];
     blueprint.diagnostics = [
       ...requestValidation.warnings,
@@ -320,7 +356,11 @@ export class CreatureGenerator {
     if (scope === "statistics.hp") {
       if (next.locks?.["statistics.hp"]) return next;
       const range = next.statistics.hp.range ?? resolveHpRange(next.identity.level, next.statistics.hp.rank);
-      next.statistics.hp.value = random.fork("statistics.hp").int(range.min, range.max);
+      const baseValue = random.fork("statistics.hp").int(range.min, range.max);
+      const adjustment = Number(next.defenses?.hpAdjustment?.value ?? next.statistics.hp?.adjustment ?? 0);
+      next.statistics.hp.baseValue = baseValue;
+      next.statistics.hp.adjustment = adjustment;
+      next.statistics.hp.value = Math.max(1, baseValue + adjustment);
       next.diagnostics = validateBlueprint(next).warnings;
       return next;
     }
@@ -371,6 +411,31 @@ export class CreatureGenerator {
       return next;
     }
 
+    if (scope === "defenses.affinities" || scope === "affinities") {
+      if (next.locks?.["defenses.affinities"]) return next;
+      const generated = regenerated();
+      const merged = {};
+      for (const kind of ["immunities", "resistances", "weaknesses"]) {
+        const generatedEntries = deepClone(generated.defenses?.[kind] ?? []);
+        const lockedEntries = (next.defenses?.[kind] ?? []).filter((entry) => entry?.locked);
+        const keyOf = (entry) => `${entry.type}|${JSON.stringify(entry.exceptions ?? [])}`;
+        const lockedKeys = new Set(lockedEntries.map(keyOf));
+        merged[kind] = [...generatedEntries.filter((entry) => !lockedKeys.has(keyOf(entry))), ...deepClone(lockedEntries)];
+      }
+      const hpAdjustment = next.metadata?.requestSnapshot?.defensiveAffinities?.hpCompensation === "off"
+        ? { value: 0, reasons: [] }
+        : calculateAffinityHpAdjustment({ affinities: merged, hpRank: next.statistics.hp.rank });
+      next.defenses = { ...merged, hpAdjustment };
+      const baseValue = Number(next.statistics.hp.baseValue ?? next.statistics.hp.value - Number(next.statistics.hp.adjustment ?? blueprint.defenses?.hpAdjustment?.value ?? 0));
+      next.statistics.hp.baseValue = baseValue;
+      next.statistics.hp.adjustment = Number(hpAdjustment.value ?? 0);
+      next.statistics.hp.value = Math.max(1, baseValue + Number(hpAdjustment.value ?? 0));
+      next.identity.resolvedSubtypes = generated.identity.resolvedSubtypes;
+      next.identity.traits = generated.identity.traits;
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
+    }
+
     if (scope === "defenses") {
       if (next.locks?.defenses) return next;
       const generated = regenerated();
@@ -378,6 +443,9 @@ export class CreatureGenerator {
       next.statistics.hp = generated.statistics.hp;
       next.statistics.perception = generated.statistics.perception;
       next.statistics.saves = generated.statistics.saves;
+      next.defenses = generated.defenses;
+      next.identity.resolvedSubtypes = generated.identity.resolvedSubtypes;
+      next.identity.traits = generated.identity.traits;
       next.diagnostics = validateBlueprint(next).warnings;
       return next;
     }

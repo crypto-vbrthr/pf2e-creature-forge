@@ -45,13 +45,22 @@
 - Senses and Perception details.
 - Skill/movement/sense consistency diagnostics and PF2E NPC compilation.
 
-## 0.2.x - Categories and subtypes
+## 0.2.0 - Categories, Subtypes & Defensive Affinities ✅
 
-- Category/subtype compatibility rules.
-- Resistances, immunities, weaknesses.
-- Required and preferred capabilities.
-- Compendium scanner/source profiles.
-- Category and subtype providers from external modules.
+- Category/subtype compatibility metadata and editor selection.
+- Implied subtypes and granted traits.
+- Level-scaled resistances, immunities, and weaknesses.
+- Core affinity profiles for major creature concepts and structural subtypes.
+- Automatic HP tradeoffs/compensation for defensive affinities.
+- Manual overrides, provenance, conflict resolution, locks, and scoped rerolls.
+- External category/subtype affinity providers through the public content registry.
+- PF2E NPC compilation of IWR arrays.
+
+## 0.2.x - Category/source expansion
+
+- Compendium scanner/source profiles for discovered category/subtype content.
+- Additional curated category/subtype definitions from selected sources.
+- Required/preferred capability metadata shared with the later ability selector.
 
 ## 0.3.x - Abilities and Effect Forge
 

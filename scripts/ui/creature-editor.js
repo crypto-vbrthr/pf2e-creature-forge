@@ -69,6 +69,30 @@ function senseLabel(type) {
   return localize(`PF2E_CREATURE_FORGE.Sense.${type}`, type ?? "");
 }
 
+function affinityTypeLabel(type) {
+  return localize(`PF2E_CREATURE_FORGE.AffinityType.${type}`, String(type ?? "").replaceAll("-", " "));
+}
+
+function affinitySourceLabel(entry) {
+  const key = entry?.source?.labelKey;
+  if (key) return localize(key, entry?.source?.contentId ?? "");
+  if (entry?.source?.kind === "manual") return localize("PF2E_CREATURE_FORGE.AffinitySource.Manual", "Manual");
+  return entry?.source?.moduleId ?? entry?.source?.kind ?? "";
+}
+
+function affinityRows(entries = [], { valued = false } = {}) {
+  return entries.map((entry) => {
+    const exceptions = entry.exceptions?.length
+      ? ` · ${localize("PF2E_CREATURE_FORGE.Affinity.Except", "except")} ${entry.exceptions.map(affinityTypeLabel).join(", ")}`
+      : "";
+    const doubled = entry.doubleVs?.length
+      ? ` · ${localize("PF2E_CREATURE_FORGE.Affinity.DoubleVs", "double vs.")} ${entry.doubleVs.map(affinityTypeLabel).join(", ")}`
+      : "";
+    const source = affinitySourceLabel(entry);
+    return `<li class="cf-compact-row"><strong>${escapeHtml(affinityTypeLabel(entry.type))}${valued ? ` ${Number(entry.value ?? 0)}` : ""}</strong><span>${escapeHtml(`${exceptions}${doubled}`.replace(/^ · /, ""))}${source ? `<small>${escapeHtml(source)}</small>` : ""}</span></li>`;
+  }).join("");
+}
+
 function speedOptions(current, { land = false } = {}) {
   const result = [];
   if (land) result.push(option("role", localize("PF2E_CREATURE_FORGE.Editor.RoleDefault", "Role default"), current));
@@ -178,7 +202,7 @@ export class EmbeddedCreatureEditor {
     request.identity.level = number(get("level")?.value);
     request.identity.role = get("role")?.value ?? "custom";
     request.identity.category = get("category")?.value ?? "humanoid";
-    request.identity.subtypes = String(get("subtypes")?.value ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+    request.identity.subtypes = [...(get("subtypes")?.selectedOptions ?? [])].map((entry) => entry.value).filter(Boolean);
     request.identity.size = get("size")?.value ?? "med";
     for (const ability of ABILITIES) request.attributes[ability] = get(ability)?.value ?? "role";
     request.defenses.ac = get("ac")?.value ?? "role";
@@ -187,6 +211,8 @@ export class EmbeddedCreatureEditor {
     request.defenses.saves.fortitude = get("fortitude")?.value ?? "role";
     request.defenses.saves.reflex = get("reflex")?.value ?? "role";
     request.defenses.saves.will = get("will")?.value ?? "role";
+    request.defensiveAffinities.mode = get("affinityMode")?.value ?? "auto";
+    request.defensiveAffinities.hpCompensation = get("affinityHpCompensation")?.value ?? "auto";
     request.offense.attack = get("attackRank")?.value ?? "role";
     request.offense.damage = get("damageRank")?.value ?? "role";
     request.offense.kind = get("attackKind")?.value ?? "role";
@@ -250,6 +276,10 @@ export class EmbeddedCreatureEditor {
         this.session.reroll({ scope: "combat.attacks" });
         this.#render();
         await this.#emitChange("reroll-attacks");
+      } else if (action === "reroll-affinities") {
+        this.session.reroll({ scope: "defenses.affinities" });
+        this.#render();
+        await this.#emitChange("reroll-affinities");
       } else if (action === "create-actor" && this.capabilities.actorCreation) {
         const { actor } = await this.api.createActor(this.session.blueprint, { renderSheet: true });
         globalThis.ui?.notifications?.info?.(localize("PF2E_CREATURE_FORGE.Notifications.ActorCreated", `Created ${actor?.name ?? "creature"}.`));
@@ -257,8 +287,9 @@ export class EmbeddedCreatureEditor {
       return;
     }
 
-    if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="subtypes"], input[name="preferredSkills"]'))) {
+    if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="preferredSkills"]'))) {
       this.#syncRequestFromForm();
+      if (event.type === "change" && target.matches?.('select[name="category"]')) this.#render();
       await this.#emitChange("request-change");
     }
   }
@@ -278,6 +309,18 @@ export class EmbeddedCreatureEditor {
     const validation = this.validate();
     const disabled = this.mode === "view" ? "disabled" : "";
     const categories = this.api.content.list("category").map((entry) => ({ value: entry.slug ?? entry.id, label: localize(entry.label, entry.slug ?? entry.id) }));
+    const subtypeDefinitions = this.api.content.list("subtype")
+      .map((entry) => ({
+        value: entry.slug ?? entry.id,
+        label: localize(entry.label, entry.slug ?? entry.id),
+        supportedCategories: entry.supports?.categories ?? entry.selection?.categories ?? []
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    const selectedSubtypeSet = new Set(request.identity.subtypes ?? []);
+    const subtypeOptions = subtypeDefinitions.map((entry) => {
+      const incompatible = entry.supportedCategories.length && !entry.supportedCategories.includes(request.identity.category);
+      return `<option value="${escapeHtml(entry.value)}"${selectedSubtypeSet.has(entry.value) ? " selected" : ""}${incompatible ? ' data-incompatible="true"' : ""}>${escapeHtml(entry.label)}${incompatible ? ` · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.OtherCategory", "other category"))}` : ""}</option>`;
+    }).join("");
     const integrationStatus = this.api.integrations.getStatus();
     const statusRows = Object.entries(integrationStatus).map(([key, status]) => {
       const state = status.ready ? "ready" : status.active ? "partial" : "missing";
@@ -314,6 +357,11 @@ export class EmbeddedCreatureEditor {
         <div class="cf-attack-numbers"><span>${signed(attack.attack.value)} <small>${escapeHtml(rankLabel(attack.attack.rank))}</small></span><span>${escapeHtml(attack.damage.formula)} ${escapeHtml(damageTypeLabel(attack.damage.type))} <small>${escapeHtml(rankLabel(attack.damage.rank))}</small></span></div>
       </li>`).join("");
 
+    const immunityRows = affinityRows(blueprint?.defenses?.immunities ?? []);
+    const resistanceRows = affinityRows(blueprint?.defenses?.resistances ?? [], { valued: true });
+    const weaknessRows = affinityRows(blueprint?.defenses?.weaknesses ?? [], { valued: true });
+    const hpAdjustment = Number(blueprint?.defenses?.hpAdjustment?.value ?? 0);
+
     const canGenerate = this.capabilities.generation && this.mode !== "view";
     const canCreateActor = this.capabilities.actorCreation && this.mode !== "view";
     const validationState = validation.request.valid && validation.blueprint.valid ? "valid" : "invalid";
@@ -329,7 +377,7 @@ export class EmbeddedCreatureEditor {
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Level", "Level"))}</span><input name="level" type="number" min="-1" max="24" step="1" value="${request.identity.level}" ${disabled}></label>
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Role", "Role"))}</span><select name="role" ${disabled}>${roleOptions(request.identity.role)}</select></label>
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Category", "Category"))}</span><select name="category" ${disabled}>${categories.map((entry) => option(entry.value, entry.label, request.identity.category)).join("")}</select></label>
-              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Subtypes", "Subtypes"))}</span><input name="subtypes" type="text" value="${escapeHtml(request.identity.subtypes.join(", "))}" placeholder="aquatic, fire" ${disabled}></label>
+              <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Subtypes", "Subtypes"))}</span><select name="subtypes" multiple size="7" ${disabled}>${subtypeOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SubtypeHint", "Select one or more subtypes. Category-specific entries are marked."))}</small></label>
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Size", "Size"))}</span><select name="size" ${disabled}>${sizeOptions(request.identity.size)}</select></label>
             </div>
 
@@ -344,6 +392,10 @@ export class EmbeddedCreatureEditor {
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Fortitude", "Fortitude"))}</span><select name="fortitude" ${disabled}>${rankOptions(request.defenses.saves.fortitude, RANKS.SAVE)}</select></label>
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Reflex", "Reflex"))}</span><select name="reflex" ${disabled}>${rankOptions(request.defenses.saves.reflex, RANKS.SAVE)}</select></label>
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Will", "Will"))}</span><select name="will" ${disabled}>${rankOptions(request.defenses.saves.will, RANKS.SAVE)}</select></label>
+            </div>
+            <div class="cf-form-grid cf-affinity-settings">
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.DefensiveAffinities", "Defensive affinities"))}</span><select name="affinityMode" ${disabled}>${["auto","off"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.AffinityMode.${value}`, value), request.defensiveAffinities.mode)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AffinityHpCompensation", "HP compensation"))}</span><select name="affinityHpCompensation" ${disabled}>${["auto","off"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.AffinityHpCompensation.${value}`, value), request.defensiveAffinities.hpCompensation)).join("")}</select></label>
             </div>
 
             <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Skills", "Skills"))}</h3>
@@ -392,12 +444,19 @@ export class EmbeddedCreatureEditor {
             <h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Defenses", "Defenses"))}</h4>
             <dl class="cf-stat-grid">
               <div><dt>RK / AC</dt><dd>${blueprint?.statistics?.ac?.value ?? "—"} <small>${escapeHtml(rankLabel(blueprint?.statistics?.ac?.rank))}</small></dd></div>
-              <div><dt>TP / HP</dt><dd>${blueprint?.statistics?.hp?.value ?? "—"} <small>${escapeHtml(rankLabel(blueprint?.statistics?.hp?.rank))}</small> ${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="Reroll HP" data-cf-action="reroll-hp"><i class="fa-solid fa-dice"></i></button>` : ""}</dd></div>
+              <div><dt>TP / HP</dt><dd>${blueprint?.statistics?.hp?.value ?? "—"} <small>${escapeHtml(rankLabel(blueprint?.statistics?.hp?.rank))}${hpAdjustment ? ` · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Affinity.HpAdjustment", "affinity"))} ${hpAdjustment > 0 ? "+" : ""}${hpAdjustment}` : ""}</small> ${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="Reroll HP" data-cf-action="reroll-hp"><i class="fa-solid fa-dice"></i></button>` : ""}</dd></div>
               <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Perception", "Perception"))}</dt><dd>${signed(blueprint?.statistics?.perception?.value)}</dd></div>
               <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Fortitude", "Fortitude"))}</dt><dd>${signed(blueprint?.statistics?.saves?.fortitude?.value)}</dd></div>
               <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Reflex", "Reflex"))}</dt><dd>${signed(blueprint?.statistics?.saves?.reflex?.value)}</dd></div>
               <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Will", "Will"))}</dt><dd>${signed(blueprint?.statistics?.saves?.will?.value)}</dd></div>
             </dl>
+
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.DefensiveAffinities", "Immunities, Resistances & Weaknesses"))}</h4>${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAffinities", "Reroll defensive affinities"))}" data-cf-action="reroll-affinities"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            <div class="cf-affinity-preview">
+              <div><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Affinity.Immunities", "Immunities"))}</strong>${immunityRows ? `<ul class="cf-compact-list">${immunityRows}</ul>` : `<p class="cf-muted">—</p>`}</div>
+              <div><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Affinity.Resistances", "Resistances"))}</strong>${resistanceRows ? `<ul class="cf-compact-list">${resistanceRows}</ul>` : `<p class="cf-muted">—</p>`}</div>
+              <div><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Affinity.Weaknesses", "Weaknesses"))}</strong>${weaknessRows ? `<ul class="cf-compact-list">${weaknessRows}</ul>` : `<p class="cf-muted">—</p>`}</div>
+            </div>
 
             <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Skills", "Skills"))}</h4>${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollSkills", "Reroll skills"))}" data-cf-action="reroll-skills"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
             ${skillRows ? `<ul class="cf-compact-list">${skillRows}</ul>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoSkills", "No skills generated."))}</p>`}

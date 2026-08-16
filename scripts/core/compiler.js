@@ -60,6 +60,33 @@ function compileSenses(senses = []) {
   });
 }
 
+
+function compileImmunities(entries = []) {
+  return entries.map((entry) => {
+    const source = { type: String(entry.type) };
+    if (entry.exceptions?.length) source.exceptions = deepClone(entry.exceptions);
+    return source;
+  });
+}
+
+function compileWeaknesses(entries = []) {
+  return entries.map((entry) => {
+    const source = { type: String(entry.type), value: Number(entry.value) };
+    if (entry.exceptions?.length) source.exceptions = deepClone(entry.exceptions);
+    if (entry.applyOnce !== undefined) source.applyOnce = Boolean(entry.applyOnce);
+    return source;
+  });
+}
+
+function compileResistances(entries = []) {
+  return entries.map((entry) => {
+    const source = { type: String(entry.type), value: Number(entry.value) };
+    if (entry.exceptions?.length) source.exceptions = deepClone(entry.exceptions);
+    if (entry.doubleVs?.length) source.doubleVs = deepClone(entry.doubleVs);
+    return source;
+  });
+}
+
 function compileOtherSpeeds(speed = {}) {
   return (speed.other ?? [])
     .filter((entry) => Number(entry?.value) > 0)
@@ -99,6 +126,9 @@ export function compileActorSource(blueprint, options = {}) {
         ac: { value: Number(blueprint.statistics.ac.value), details: "" },
         adjustment: null,
         hp: { value: hp, max: hp, temp: 0, details: "" },
+        immunities: compileImmunities(blueprint.defenses?.immunities ?? []),
+        weaknesses: compileWeaknesses(blueprint.defenses?.weaknesses ?? []),
+        resistances: compileResistances(blueprint.defenses?.resistances ?? []),
         speed: { value: Number(blueprint.statistics.speed?.land ?? 25), otherSpeeds, details: "" },
         allSaves: { value: "" }
       },
@@ -130,7 +160,7 @@ export function compileActorSource(blueprint, options = {}) {
     flags: {
       "pf2e-creature-forge": {
         blueprintSchemaVersion: blueprint.schemaVersion,
-        generatorVersion: blueprint.metadata?.generatorVersion ?? "0.1.4",
+        generatorVersion: blueprint.metadata?.generatorVersion ?? "0.2.0",
         seed: blueprint.metadata?.seed ?? "",
         blueprint: deepClone(blueprint)
       }

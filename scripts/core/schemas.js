@@ -29,6 +29,13 @@ export const DEFAULT_REQUEST = Object.freeze({
       will: "role"
     }
   },
+  defensiveAffinities: {
+    mode: "auto",
+    hpCompensation: "auto",
+    immunities: [],
+    resistances: [],
+    weaknesses: []
+  },
   offense: {
     attack: "role",
     damage: "role",
@@ -89,6 +96,14 @@ export function createGenerationRequest(input = {}) {
     else if (/^\d+$/.test(String(value ?? ""))) request.movement[type] = Math.max(0, Number(value));
   }
   request.senses.scentRange = Math.max(5, Math.round(Number(request.senses?.scentRange ?? 30) / 5) * 5);
+  const normalizeAffinityEntries = (entries = []) => entries
+    .filter((entry) => entry && typeof entry === "object" && String(entry.type ?? "").trim())
+    .map((entry) => ({ ...deepClone(entry), type: String(entry.type).trim() }));
+  request.defensiveAffinities.mode = request.defensiveAffinities?.mode === "off" ? "off" : "auto";
+  request.defensiveAffinities.hpCompensation = request.defensiveAffinities?.hpCompensation === "off" ? "off" : "auto";
+  request.defensiveAffinities.immunities = normalizeAffinityEntries(request.defensiveAffinities?.immunities);
+  request.defensiveAffinities.resistances = normalizeAffinityEntries(request.defensiveAffinities?.resistances);
+  request.defensiveAffinities.weaknesses = normalizeAffinityEntries(request.defensiveAffinities?.weaknesses);
   request.options.attackCount = Math.max(0, Math.min(2, Number(request.options.attackCount ?? 1)));
   return request;
 }
@@ -98,7 +113,7 @@ export function createEmptyBlueprint() {
     schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     metadata: {
       generator: "pf2e-creature-forge",
-      generatorVersion: "0.1.4",
+      generatorVersion: "0.2.0",
       seed: "",
       variation: "balanced",
       requestSnapshot: null,
@@ -110,6 +125,7 @@ export function createEmptyBlueprint() {
       role: "custom",
       category: "humanoid",
       subtypes: [],
+      resolvedSubtypes: [],
       traits: ["humanoid"],
       size: "med"
     },
@@ -133,6 +149,12 @@ export function createEmptyBlueprint() {
         will: { rank: "moderate", value: 7 }
       },
       speed: { land: 25, other: [] }
+    },
+    defenses: {
+      immunities: [],
+      resistances: [],
+      weaknesses: [],
+      hpAdjustment: { value: 0, reasons: [] }
     },
     combat: {
       attacks: [],

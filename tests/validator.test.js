@@ -62,3 +62,22 @@ test("blueprint validation detects malformed skills, movement, and senses", () =
   assert.ok(validation.errors.some((entry) => entry.code === "INVALID_OTHER_SPEED"));
   assert.ok(validation.errors.some((entry) => entry.code === "INVALID_SENSE_RANGE"));
 });
+
+test("request validation warns when a registered subtype is used with an incompatible category", async () => {
+  const { ContentRegistry } = await import("../scripts/core/registry.js");
+  const { registerCoreContent } = await import("../scripts/core/core-content.js");
+  const registry = new ContentRegistry();
+  registerCoreContent(registry);
+  const request = createGenerationRequest({ identity: { category: "animal", subtypes: ["devil"] } });
+  const validation = validateGenerationRequest(request, { registry });
+  assert.equal(validation.valid, true);
+  assert.ok(validation.warnings.some((entry) => entry.code === "INCOMPATIBLE_SUBTYPE"));
+});
+
+test("blueprint validation warns about broad resistance without defensive HP tradeoff", () => {
+  const blueprint = createEmptyBlueprint();
+  blueprint.defenses.resistances = [{ type: "physical", value: 5 }];
+  blueprint.defenses.hpAdjustment = { value: 0, reasons: [] };
+  const validation = validateBlueprint(blueprint);
+  assert.ok(validation.warnings.some((entry) => entry.code === "BROAD_RESISTANCE_WITHOUT_HP_TRADEOFF"));
+});

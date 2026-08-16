@@ -99,3 +99,22 @@ test("compiler materializes generated skills, senses, and alternate movement int
     { type: "climb", value: 15 }
   ]);
 });
+
+test("compiler materializes generated immunities, resistances, and weaknesses in current PF2E actor source shape", () => {
+  const registry = new ContentRegistry();
+  registerCoreContent(registry);
+  const generator = new CreatureGenerator({ registry });
+  const blueprint = generator.generate({
+    identity: { name: "Hell Test", level: 10, category: "fiend", subtypes: ["devil"] },
+    generation: { seed: "compile-iwr" }
+  });
+  const source = compileActorSource(blueprint).actorSource;
+  assert.ok(source.system.attributes.immunities.some((entry) => entry.type === "fire"));
+  assert.deepEqual(source.system.attributes.weaknesses.find((entry) => entry.type === "holy"), { type: "holy", value: 13 });
+  assert.deepEqual(source.system.attributes.resistances.find((entry) => entry.type === "physical"), {
+    type: "physical",
+    value: 7,
+    exceptions: ["silver"]
+  });
+  assert.ok(!("source" in source.system.attributes.weaknesses[0]));
+});

@@ -84,3 +84,14 @@
 .cf-editor .cf-compact-list { list-style: none; padding: 0; margin: .45rem 0 1rem; display: grid; gap: .3rem; }
 .cf-editor .cf-compact-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .35rem .5rem; border: 1px solid var(--color-border-light-tertiary, #555); border-radius: 5px; }
 .cf-editor .cf-compact-row small { opacity: .65; }
+.cf-editor select[multiple] { min-height: 8.5rem; }
+.cf-editor select[multiple] option[data-incompatible="true"] { opacity: .62; font-style: italic; }
+.cf-editor label > small { opacity: .62; font-size: .75em; line-height: 1.25; }
+.cf-editor .cf-affinity-settings { padding: .55rem; border: 1px dashed var(--color-border-light-tertiary, #666); border-radius: 6px; }
+.cf-editor .cf-affinity-preview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin: .45rem 0 1rem; }
+.cf-editor .cf-affinity-preview > div { min-width: 0; padding: .45rem; border: 1px solid var(--color-border-light-tertiary, #555); border-radius: 6px; }
+.cf-editor .cf-affinity-preview > div > strong { display: block; margin-bottom: .35rem; font-size: .8em; text-transform: uppercase; opacity: .75; }
+.cf-editor .cf-affinity-preview .cf-compact-list { margin: 0; }
+.cf-editor .cf-affinity-preview .cf-compact-row { align-items: flex-start; flex-direction: column; gap: .15rem; }
+.cf-editor .cf-affinity-preview .cf-compact-row > span { display: flex; flex-direction: column; gap: .1rem; font-size: .82em; }
+@media (max-width: 850px) { .cf-editor .cf-affinity-preview { grid-template-columns: 1fr; } }

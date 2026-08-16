@@ -1,9 +1,9 @@
 export const MODULE_ID = "pf2e-creature-forge";
-export const MODULE_VERSION = "0.1.4";
-export const API_VERSION = "0.1.4";
-export const REQUEST_SCHEMA_VERSION = 1;
-export const BLUEPRINT_SCHEMA_VERSION = 1;
-export const CONTENT_SCHEMA_VERSION = 1;
+export const MODULE_VERSION = "0.2.0";
+export const API_VERSION = "0.2.0";
+export const REQUEST_SCHEMA_VERSION = 2;
+export const BLUEPRINT_SCHEMA_VERSION = 2;
+export const CONTENT_SCHEMA_VERSION = 2;
 
 export const SETTINGS = Object.freeze({
   WINDOW_STATE: "windowState"
