@@ -654,3 +654,60 @@
   font-weight: 600;
 }
 .pf2e-creature-forge-affliction-binding-ok i { color: #88ad47; }
+
+/* 0.5.0 thematic spellcasting */
+.cf-editor .cf-spellcasting-card {
+  --cf-spell-accent: #546fa8;
+  margin: .45rem 0 1rem;
+  padding: .65rem .7rem;
+  border: 1px solid color-mix(in srgb, var(--cf-spell-accent) 58%, var(--color-border-light-tertiary, #555));
+  border-left: 4px solid var(--cf-spell-accent);
+  border-radius: 7px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cf-spell-accent) 11%, transparent), rgba(0,0,0,.045) 48%, transparent);
+}
+.cf-editor .cf-spellcasting-card.locked { border-style: double; }
+.cf-editor .cf-spellcasting-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .7rem;
+  flex-wrap: wrap;
+  padding-bottom: .45rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--cf-spell-accent) 28%, transparent);
+}
+.cf-editor .cf-spellcasting-summary > span { font-size: .82em; opacity: .78; }
+.cf-editor .cf-spell-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+  margin: .42rem 0;
+}
+.cf-editor .cf-spell-tags > span {
+  padding: .06rem .38rem;
+  border: 1px solid color-mix(in srgb, var(--cf-spell-accent, #546fa8) 42%, currentColor 12%);
+  border-radius: 999px;
+  font-size: .72em;
+  opacity: .85;
+}
+.cf-editor .cf-spell-list { display: grid; gap: .38rem; margin-top: .45rem; }
+.cf-editor .cf-spell-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  padding: .38rem .45rem;
+  border: 1px solid color-mix(in srgb, var(--cf-spell-accent, #546fa8) 30%, var(--color-border-light-tertiary, #555));
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--cf-spell-accent, #546fa8) 5%, transparent);
+}
+.cf-editor .cf-spell-row.locked { border-style: double; }
+.cf-editor .cf-spell-main { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.cf-editor .cf-spell-main > img { width: 34px; height: 34px; border: 1px solid rgba(127,127,127,.45); border-radius: 4px; object-fit: cover; }
+.cf-editor .cf-spell-main > div { display: flex; flex-direction: column; min-width: 0; }
+.cf-editor .cf-spell-main strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cf-editor .cf-spell-main small { opacity: .7; }
+.cf-source-grid select[name="spellSources"] { min-height: 11rem; }
+@media (max-width: 720px) {
+  .cf-editor .cf-spell-row { align-items: flex-start; }
+  .cf-editor .cf-spell-main strong { white-space: normal; }
+}

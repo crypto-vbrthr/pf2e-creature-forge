@@ -72,6 +72,15 @@ export const DEFAULT_REQUEST = Object.freeze({
     auras: { mode: "auto" },
     afflictions: { mode: "auto" }
   },
+  spellcasting: {
+    mode: "auto",
+    style: "auto",
+    tradition: "auto",
+    dcRank: "role",
+    highestRank: "auto",
+    breadth: "standard",
+    themes: []
+  },
   generation: {
     seed: "",
     variation: "balanced"
@@ -113,6 +122,17 @@ export function createGenerationRequest(input = {}) {
   const normalizeSpecialMode = (value) => ["auto", "none", "required"].includes(value) ? value : "auto";
   request.specialFeatures.auras.mode = normalizeSpecialMode(request.specialFeatures?.auras?.mode);
   request.specialFeatures.afflictions.mode = normalizeSpecialMode(request.specialFeatures?.afflictions?.mode);
+  const normalizeSpellMode = (value) => ["auto", "none", "required"].includes(value) ? value : (value === "off" ? "none" : value === "on" ? "required" : "auto");
+  request.spellcasting.mode = normalizeSpellMode(request.spellcasting?.mode);
+  if (input?.spellcasting?.mode == null && input?.options?.spellcasting != null) {
+    request.spellcasting.mode = normalizeSpellMode(input.options.spellcasting);
+  }
+  request.spellcasting.style = ["auto", "innate", "prepared", "spontaneous"].includes(request.spellcasting?.style) ? request.spellcasting.style : "auto";
+  request.spellcasting.tradition = ["auto", "arcane", "divine", "occult", "primal"].includes(request.spellcasting?.tradition) ? request.spellcasting.tradition : "auto";
+  request.spellcasting.dcRank = ["role", "moderate", "high", "extreme"].includes(request.spellcasting?.dcRank) ? request.spellcasting.dcRank : "role";
+  if (request.spellcasting.highestRank !== "auto") request.spellcasting.highestRank = Math.max(1, Math.min(10, Number(request.spellcasting.highestRank ?? 1)));
+  request.spellcasting.breadth = ["focused", "standard", "broad"].includes(request.spellcasting?.breadth) ? request.spellcasting.breadth : "standard";
+  request.spellcasting.themes = [...new Set((request.spellcasting?.themes ?? []).map((value) => String(value).trim().toLowerCase()).filter(Boolean))];
   // Backward-compatible 0.3.x option aliases.
   if (input?.specialFeatures?.auras?.mode == null && input?.options?.auras) {
     request.specialFeatures.auras.mode = input.options.auras === "off" || input.options.auras === "none" ? "none" : input.options.auras === "required" || input.options.auras === "on" ? "required" : "auto";
@@ -150,7 +170,7 @@ export function createEmptyBlueprint() {
       requestSnapshot: null,
       rerollHistory: [],
       abilityBudget: { limit: 0, spent: 0, remaining: 0, requestedCount: 0, generatedCount: 0 },
-      specialFeatureBudget: { limit: 0, spent: 0, remaining: 0, abilitySpent: 0, auraSpent: 0, afflictionSpent: 0 }
+      specialFeatureBudget: { limit: 0, spent: 0, remaining: 0, abilitySpent: 0, auraSpent: 0, afflictionSpent: 0, spellcastingSpent: 0 }
     },
     identity: {
       name: "Creature",

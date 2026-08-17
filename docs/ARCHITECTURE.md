@@ -24,13 +24,13 @@ External Modules / Encounter Forge / Standalone UI
 
 ## Contracts
 
-### CreatureGenerationRequest v5
+### CreatureGenerationRequest v6
 
-The request captures user intent. Schema v5 includes statistics, affinities, movement/senses, ability generation, independent source selections, and optional special-feature controls for Aura/Affliction frequency and `auto | none | required` modes.
+The request captures user intent. Schema v6 includes statistics, affinities, movement/senses, ability generation, independent source selections, optional Aura/Affliction controls, and first-class spellcasting configuration with `auto | none | required`, casting style, tradition, DC band, highest rank, breadth, themes, and spell-compendium sources.
 
-### CreatureBlueprint v5
+### CreatureBlueprint v8
 
-The blueprint is a neutral generated result rather than a Foundry Actor document. Schema v5 stores generated ability instances, de-duplicated Effect Forge resources, optional Aura/Affliction resources, library provenance, locks, diagnostics, and shared special-feature power-budget accounting.
+The blueprint is a neutral generated result rather than a Foundry Actor document. Schema v8 stores generated ability instances, de-duplicated Effect Forge resources, optional Aura/Affliction resources, generated spellcasting entries/spells with source provenance, locks, diagnostics, and shared special-feature power-budget accounting.
 
 Major sections:
 
@@ -160,7 +160,7 @@ category + resolved subtypes + role
 
 `required` never bypasses concept/source/budget validity. If no candidate is legal, the Blueprint records a warning and leaves the resource list empty rather than attaching an unrelated Aura or Affliction.
 
-Auras and Afflictions reserve from the same total special-feature budget before ordinary abilities are selected. `metadata.specialFeatureBudget` records total, ability, Aura, and Affliction spend so the balance decision remains inspectable.
+Generation resolves spellcasting first, then optional Auras/Afflictions, then ordinary abilities. All reserve from the same total special-feature budget. `metadata.specialFeatureBudget` records total, spellcasting, ability, Aura, and Affliction spend so the balance decision remains inspectable.
 
 The canonical editor delegates editing to the public Embedded Aura Forge and Affliction Forge editors. Creature Forge owns selection, provenance, rerolls, locking, and Blueprint storage, not their internal schemas or runtime engines. Core definitions are emitted against Aura Forge schema v1 and Affliction Forge schema v2. Affliction stage Effects use unlimited duration because Affliction Forge owns stage lifecycle.
 
@@ -189,6 +189,44 @@ CreatureBlueprint resource
 
 At Actor creation time, hosted delivery is fail-closed. Creature Forge resolves the generated melee/action Item, asks Affliction Forge to persist its native reference, and then reads the reference back from the host. Only a successful round trip is reported as automatic delivery. Missing/ineligible hosts or non-persisted references remain manual and generate diagnostics. This avoids maintaining a second combat-trigger implementation in Creature Forge.
 
+## Spellcasting layer
+
+0.5.0 adds a source-indexed spellcasting layer without coupling the neutral Blueprint to PF2E Item documents. `SpellSourceManager` indexes selected Item compendiums and normalizes ordinary spells/cantrips into language-neutral candidates. Rituals and focus spells are excluded in this milestone.
+
+```text
+category + resolved subtypes + role + explicit themes
+                         |
+                 spellProfile weights
+                         |
+              selected spell compendiums
+                         |
+            valid traditions / rank window
+                         |
+                seeded weighted picks
+                         |
+             combat.spellcasting[]
+```
+
+The engine first decides whether spellcasting is conceptually appropriate, unless the request disables or requires it. It then chooses a valid tradition/style, resolves GM Core DC/attack bands and highest rank, and fills a focused/standard/broad spell set. Priority themes supplied by subtypes, spell profiles, or the request receive stronger weight than broad category/role themes. External modules extend this layer through ordinary `spellProfile` content rather than engine branches.
+
+Spellcasting is resolved before optional Auras/Afflictions so primary spellcaster concepts can reserve their intended budget. Required spellcasting can report a budget warning rather than silently disappearing; automatic spellcasting is omitted when the budget cannot support it.
+
+Compilation/runtime remain separate:
+
+```text
+CreatureBlueprint spellcasting
+        |
+        +-- compiler -> PF2E spellcastingEntry Item source
+        |
+        +-- post-create runtime
+               +-- resolve source UUIDs
+               +-- clone spell Items onto Actor
+               +-- link system.location to spellcasting entry
+               +-- prepare slot/repertoire/innate-use data
+```
+
+The runtime follows the current PF2E NPC document model: prepared spell slots reference embedded spell IDs, innate ranked spells carry per-day uses, and cantrips are left to PF2E's normal auto-heightening behavior. This keeps the generation model stable even if the PF2E document shape changes later; only the compiler/runtime adapter needs to move.
+
 ## Skills, Movement & Senses
 
 0.1.4 adds a separate exploration-stat layer. `skills.js` selects appropriate skills using role/category/subtype/ability affinities and resolves their modifiers from the level/rank skill table. `mobility.js` derives land and alternate movement plus low-light vision, darkvision, and scent from the creature concept, while explicit request values always override automatic suggestions.
@@ -215,6 +253,8 @@ statistics.movement
 statistics.senses
 defenses.affinities
 combat.attacks
+combat.spellcasting
+combat.spell:<id>
 ```
 
 This limits accidental cross-system changes when a new random choice is introduced. `Math.random()` is not used by Creature Forge generation code.
@@ -239,4 +279,4 @@ Creature ability
 
 ## Embedded editor
 
-`api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v10), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, persistent bottom action footer, and its own Creature/Sources sub-tabs. The host owns the surrounding window, higher-level navigation, persistence policy, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.
+`api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v11), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, persistent bottom action footer, and its own Creature/Sources sub-tabs. The host owns the surrounding window, higher-level navigation, persistence policy, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.

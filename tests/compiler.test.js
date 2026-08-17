@@ -120,3 +120,29 @@ test("compiler materializes generated immunities, resistances, and weaknesses in
   });
   assert.ok(!("source" in source.system.attributes.weaknesses[0]));
 });
+
+test("compiler materializes current-shape PF2E NPC spellcasting entries with Creature Forge provenance", () => {
+  const registry = new ContentRegistry();
+  registerCoreContent(registry);
+  const spells = [
+    { id: "pf2e.spells-srd:fire", sourceUuid: "Compendium.pf2e.spells-srd.Item.fire", compendiumId: "pf2e.spells-srd", name: "Fire", img: "fire.webp", slug: "fire", level: 3, traits: ["fire"], traditions: ["arcane"], rarity: "common", cantrip: false, themes: ["fire"], source: {} },
+    { id: "pf2e.spells-srd:cantrip", sourceUuid: "Compendium.pf2e.spells-srd.Item.cantrip", compendiumId: "pf2e.spells-srd", name: "Cantrip", img: "cantrip.webp", slug: "cantrip", level: 0, traits: ["cantrip"], traditions: ["arcane"], rarity: "common", cantrip: true, themes: ["utility"], source: {} }
+  ];
+  const generator = new CreatureGenerator({ registry, spellSources: { listSpells: () => spells } });
+  const blueprint = generator.generate({
+    identity: { name: "Mage", level: 10, role: "spellcaster", category: "humanoid" },
+    spellcasting: { mode: "required", style: "prepared", tradition: "arcane", dcRank: "high", breadth: "focused" },
+    generation: { seed: "compile-spells" }
+  });
+  const source = compileActorSource(blueprint).actorSource;
+  const entry = source.items.find((item) => item.type === "spellcastingEntry");
+  assert.ok(entry);
+  assert.equal(entry.system.prepared.value, "prepared");
+  assert.equal(entry.system.prepared.flexible, false);
+  assert.deepEqual(entry.system.proficiency, { value: 1 });
+  assert.deepEqual(entry.system.spelldc, { dc: 29, value: 21 });
+  assert.deepEqual(entry.system.tradition, { value: "arcane" });
+  assert.deepEqual(entry.system.traits, {});
+  assert.equal(entry.system.showSlotlessLevels.value, false);
+  assert.equal(entry.flags["pf2e-creature-forge"].spellcastingId, "spellcasting-1");
+});

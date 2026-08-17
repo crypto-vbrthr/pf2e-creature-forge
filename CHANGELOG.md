@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0 - Spellcasting & Thematic Spell Selection
+
+- Added first-class spellcasting request/Blueprint contracts with `auto | none | required` generation modes.
+- Added concept-sensitive spellcasting probability, tradition/style selection, thematic weighting, and explicit theme hints.
+- Added GM Core spell DC and spell-attack tables for levels -1 through 24 and automatic highest spell rank by creature level.
+- Added spell-compendium indexing and source selection for normal spells/cantrips; rituals and focus spells are intentionally excluded from this milestone.
+- Added innate, prepared, and spontaneous spellcasting profiles with focused/standard/broad breadth.
+- Added spellcasting power costs to the shared special-feature budget so magic competes with Auras, Afflictions, and ordinary abilities.
+- Added whole-spellcasting and per-spell seeded rerolls/locks with previous-spell exclusion.
+- Added PF2E NPC spellcasting-entry compilation and post-create spell materialization, including prepared slot references, spontaneous rank pools, innate daily uses, and at-will cantrips.
+- Added core spell profiles for elemental, ghost, celestial, fiend, fey, undead, fire/cold/electricity/poison concepts and support for external `spellProfile` registration.
+- Added a dedicated spell-compendium source selector to the canonical Embedded Creature Editor.
+- Extended `api.spells`, `api.sources`, and `api.runtime` for spell discovery, preparation, inspection, power estimation, and Actor materialization/cleanup.
+- Preserved the legacy `options.spellcasting` alias when no first-class `spellcasting.mode` is supplied.
+- Promoted request schema to v6, Blueprint/content schemas to v8, Embedded Creature Editor contract to v11, and API/module version to 0.5.0.
+- Expanded automated regression coverage for source filtering, thematic selection, spell power budgeting, rerolls, compiler shape, and PF2E runtime materialization.
+
 ## 0.4.3 - Affliction Runtime Localization Fix
 
 - Fixed English Affliction delivery UI fragments on otherwise German generated NPC sheets (`Transmits affliction`, `Delivery`, raw trigger/application slugs).

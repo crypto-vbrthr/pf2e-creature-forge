@@ -17,7 +17,8 @@ export function registerSettings() {
       subtypes: [],
       abilities: [],
       auras: [],
-      afflictions: []
+      afflictions: [],
+      spells: []
     }
   });
 }

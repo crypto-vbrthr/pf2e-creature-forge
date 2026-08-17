@@ -185,8 +185,9 @@ export function rerollSpecialFeature({ request, registry, blueprint, kind, rando
   const otherKind = kind === "aura" ? "afflictions" : "auras";
   const other = blueprint.resources?.[otherKind]?.[0] ?? null;
   const abilitySpent = Number(blueprint.metadata?.abilityBudget?.spent ?? 0);
+  const spellcastingSpent = Number(blueprint.combat?.spellcasting?.[0]?.powerCost ?? 0);
   const otherSpent = Number(other?.powerCost ?? 0);
-  const available = Math.max(0, totalBudget - abilitySpent - otherSpent);
+  const available = Math.max(0, totalBudget - abilitySpent - spellcastingSpent - otherSpent);
   const result = pickFeature({
     request, registry, kind,
     level: blueprint.identity.level,

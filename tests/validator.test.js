@@ -81,3 +81,25 @@ test("blueprint validation warns about broad resistance without defensive HP tra
   const validation = validateBlueprint(blueprint);
   assert.ok(validation.warnings.some((entry) => entry.code === "BROAD_RESISTANCE_WITHOUT_HP_TRADEOFF"));
 });
+
+test("request validation rejects invalid spellcasting configuration", () => {
+  const invalid = createGenerationRequest({
+    identity: { level: 10, role: "spellcaster", category: "humanoid" },
+    spellcasting: { mode: "required", style: "scrollmancer", tradition: "chaos", dcRank: "legendary", highestRank: 11, breadth: "enormous" }
+  });
+  // createGenerationRequest normalizes unsupported enum values back to safe defaults,
+  // so validate a deliberately malformed request object to exercise the contract.
+  invalid.spellcasting = { mode: "maybe", style: "scrollmancer", tradition: "chaos", dcRank: "legendary", highestRank: 11, breadth: "enormous", themes: [] };
+  const result = validateGenerationRequest(invalid);
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((entry) => entry.path === "spellcasting.mode"));
+  assert.ok(result.errors.some((entry) => entry.path === "spellcasting.style"));
+  assert.ok(result.errors.some((entry) => entry.path === "spellcasting.tradition"));
+  assert.ok(result.errors.some((entry) => entry.path === "spellcasting.highestRank"));
+});
+
+test("legacy options.spellcasting alias still controls spellcasting mode when no first-class mode is supplied", () => {
+  assert.equal(createGenerationRequest({ options: { spellcasting: "off" } }).spellcasting.mode, "none");
+  assert.equal(createGenerationRequest({ options: { spellcasting: "on" } }).spellcasting.mode, "required");
+  assert.equal(createGenerationRequest({ spellcasting: { mode: "auto" }, options: { spellcasting: "off" } }).spellcasting.mode, "auto");
+});

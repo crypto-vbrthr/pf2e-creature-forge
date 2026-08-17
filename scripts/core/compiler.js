@@ -244,6 +244,47 @@ function compileAfflictionItem(resource) {
   };
 }
 
+
+function spellcastingLabel(entry) {
+  const tradition = localizeKey(`PF2E_CREATURE_FORGE.SpellTradition.${entry.tradition}`, entry.tradition);
+  const style = localizeKey(`PF2E_CREATURE_FORGE.SpellStyle.${entry.style}`, entry.style);
+  return `${tradition} · ${style}`;
+}
+
+function compileSpellcastingEntry(entry) {
+  return {
+    name: spellcastingLabel(entry),
+    type: "spellcastingEntry",
+    img: "systems/pf2e/icons/default-icons/spellcastingEntry.svg",
+    system: {
+      autoHeightenLevel: { value: null },
+      description: { value: "" },
+      prepared: { value: entry.style, flexible: false },
+      // NPC spellcasting statistics are supplied explicitly via spelldc. A base
+      // proficiency rank of 1 matches current PF2E NPC spellcasting entries and
+      // prevents the entry from being interpreted as an untrained character entry.
+      proficiency: { value: 1 },
+      publication: { title: "PF2E Creature Forge", authors: "", license: "ORC", remaster: true },
+      rules: [],
+      showSlotlessLevels: { value: false },
+      slots: {},
+      slug: null,
+      spelldc: { dc: Number(entry.dc), value: Number(entry.attack) },
+      tradition: { value: entry.tradition },
+      traits: {}
+    },
+    flags: {
+      "pf2e-creature-forge": {
+        spellcastingId: entry.id,
+        tradition: entry.tradition,
+        style: entry.style,
+        dcRank: entry.dcRank,
+        powerCost: Number(entry.powerCost ?? 0)
+      }
+    }
+  };
+}
+
 function compileSkills(skills = {}) {
   return Object.fromEntries(Object.entries(skills).map(([slug, skill]) => [slug, {
     base: Number(skill?.value ?? 0),
@@ -309,6 +350,7 @@ export function compileActorSource(blueprint, options = {}) {
   const effectResources = new Map((blueprint.resources?.effects ?? []).map((resource) => [resource.id, resource]));
   const abilityItems = (blueprint.abilities ?? []).map((ability) => compileAbilityItem(ability, effectResources));
   const afflictionItems = (blueprint.resources?.afflictions ?? []).map(compileAfflictionItem);
+  const spellcastingItems = (blueprint.combat?.spellcasting ?? []).map(compileSpellcastingEntry);
   const skills = compileSkills(blueprint.statistics?.skills ?? {});
   const senses = compileSenses(blueprint.statistics?.senses ?? []);
   const otherSpeeds = compileOtherSpeeds(blueprint.statistics?.speed ?? {});
@@ -358,7 +400,7 @@ export function compileActorSource(blueprint, options = {}) {
       },
       resources: { focus: { value: 0, max: 0 } }
     },
-    items: [...attackItems, ...abilityItems, ...afflictionItems],
+    items: [...attackItems, ...abilityItems, ...afflictionItems, ...spellcastingItems],
     flags: {
       "pf2e-creature-forge": {
         blueprintSchemaVersion: blueprint.schemaVersion,

@@ -201,6 +201,20 @@ const subtypes = [
   })
 ];
 
+
+const spellProfiles = [
+  { id: `${MODULE_ID}.spell-profile.fire`, selection: { anySubtypes: ["fire"] }, preferredThemes: ["fire", "area"], traditionWeights: { primal: 25, arcane: 20 } },
+  { id: `${MODULE_ID}.spell-profile.cold`, selection: { anySubtypes: ["cold"] }, preferredThemes: ["cold", "control"], traditionWeights: { primal: 25, arcane: 15 } },
+  { id: `${MODULE_ID}.spell-profile.electricity`, selection: { anySubtypes: ["electricity", "air"] }, preferredThemes: ["electricity", "area", "movement"], traditionWeights: { primal: 25, arcane: 15 } },
+  { id: `${MODULE_ID}.spell-profile.poison`, selection: { anySubtypes: ["poison", "disease"] }, preferredThemes: ["poison", "disease", "control"], traditionWeights: { primal: 20, occult: 10 } },
+  { id: `${MODULE_ID}.spell-profile.ghost`, selection: { anySubtypes: ["ghost", "incorporeal"] }, preferredThemes: ["spirit", "fear", "mental", "void", "darkness", "movement"], traditionWeights: { occult: 35, divine: 15 } },
+  { id: `${MODULE_ID}.spell-profile.celestial`, selection: { categories: ["celestial"] }, preferredThemes: ["holy", "vitality", "healing", "light", "protection"], traditionWeights: { divine: 35, primal: 10 } },
+  { id: `${MODULE_ID}.spell-profile.fiend`, selection: { categories: ["fiend"] }, preferredThemes: ["unholy", "fear", "mental", "fire", "void", "control"], traditionWeights: { divine: 25, occult: 20, arcane: 10 } },
+  { id: `${MODULE_ID}.spell-profile.fey`, selection: { categories: ["fey"] }, preferredThemes: ["illusion", "emotion", "mental", "nature", "movement"], traditionWeights: { primal: 20, occult: 20 } },
+  { id: `${MODULE_ID}.spell-profile.undead`, selection: { categories: ["undead"] }, preferredThemes: ["void", "spirit", "fear", "darkness", "mental"], traditionWeights: { occult: 25, divine: 20 } },
+  { id: `${MODULE_ID}.spell-profile.elemental`, selection: { categories: ["elemental"] }, preferredThemes: ["nature", "area", "control", "movement"], traditionWeights: { primal: 30, arcane: 15 } }
+];
+
 export const CORE_CONTENT_BUNDLE = Object.freeze({
   id: `${MODULE_ID}.core`,
   moduleId: MODULE_ID,
@@ -215,7 +229,7 @@ export const CORE_CONTENT_BUNDLE = Object.freeze({
     afflictions: [],
     effects: [],
     poisons: [],
-    spellProfiles: [],
+    spellProfiles,
     spellPackages: [],
     lootProfiles: []
   }

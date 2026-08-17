@@ -2,9 +2,23 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.4.3** adds the **Affliction Runtime Localization Fix**. All generated Affliction delivery labels, trigger/application metadata, and host-link descriptions now resolve through the same robust embedded DE/EN fallback catalog used by the rest of Creature Forge.
+Version **0.5.0** adds **Spellcasting & Thematic Spell Selection**. Creature Forge can now decide whether spellcasting fits a creature concept, select a tradition and casting style, index spells from chosen PF2E spell compendiums, choose a thematic repertoire, and materialize real PF2E NPC spellcasting entries and spell Items.
 
-## What 0.4.3 provides
+## What 0.5.0 provides
+
+- Optional, seeded, concept-sensitive spellcasting with `auto | none | required` modes.
+- Innate, prepared, and spontaneous creature spellcasting. Focus spells and rituals are deliberately deferred.
+- GM Core spell DC and spell-attack bands from level -1 through 24, plus automatic highest spell rank by creature level.
+- Thematic weighted selection from chosen Item spell compendiums using category, subtype, role, tradition, traits, and explicit theme hints.
+- Source-local spell indexing; the Sources tab has a dedicated spell-compendium selector and embedded hosts keep their own source selection.
+- Focused, standard, and broad spell repertoires with spellcasting participating in the same shared creature power budget as Auras, Afflictions, and abilities.
+- Whole-spellcasting and individual-spell locks/rerolls.
+- PF2E Actor materialization for spellcasting entries plus linked spell Items, prepared slots, spontaneous rank pools, innate daily uses, and at-will cantrips.
+- External modules can register `spellProfile` content to bias tradition/theme selection without replacing the engine.
+- Embedded Creature Editor contract v11; request schema v6; Blueprint/content schemas v8; API/module version 0.5.0.
+- 122 automated tests pass across generation, source indexing, UI contracts, compiler/runtime integration, localization, and regression coverage.
+
+## What 0.4.3 provided
 
 - Localized generated host descriptions such as **Überträgt Leiden** instead of `Transmits affliction`.
 - Localized delivery metadata such as **Bei verursachtem Schaden · Automatisch** instead of `on-damage · automatic`.
@@ -266,7 +280,7 @@ editor.unmount();
 editor.destroy();
 ```
 
-`api.ui.creatureEditor.contractVersion` is **10**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`. The public editor exposes the `creature` and `sources` tabs when source selection is enabled, and hosts can switch tabs with `editor.setActiveTab(...)`.
+`api.ui.creatureEditor.contractVersion` is **11**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`. The public editor exposes the `creature` and `sources` tabs when source selection is enabled, and hosts can switch tabs with `editor.setActiveTab(...)`.
 
 ## Integrations
 
@@ -284,6 +298,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.4.0 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, and optional Aura/Affliction selection/editing/runtime delegation. Automatic combat-workflow trigger execution, spell packages, and loot generation remain later milestones. Affliction delivery binding to generated attacks is also a later 0.4.x hardening step.
+0.5.0 owns the core numeric statistics, category/subtype defensive affinities, source-filtered discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, optional Aura/Affliction selection and verified delivery, plus thematic PF2E spellcasting generation and materialization. Automatic combat-workflow trigger execution, focus-spell generation, advanced hand-curated spell packages, and loot generation remain later milestones.
 
 See `docs/ROADMAP.md`.

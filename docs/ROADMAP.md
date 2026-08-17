@@ -163,12 +163,25 @@
 - Broader Aura/Affliction libraries and additional external dependency diagnostics.
 - Optional automatic runtime triggers after the manual application paths are proven.
 
-## 0.5.x - Spellcasting
+## 0.5.0 - Spellcasting & Thematic Spell Selection ✅
 
-- Spell profiles and packages.
-- Compendium spell indexing.
-- Category/subtype/theme/role weighted spell selection.
+- Optional concept-sensitive spellcasting with `auto | none | required`.
+- GM Core spell DC/attack bands and level-appropriate highest spell rank.
+- Selectable spell-compendium indexing with rituals/focus spells excluded from the normal pool.
+- Category/subtype/theme/role weighted tradition and spell selection.
 - Innate, prepared, and spontaneous creature spellcasting.
+- Focused/standard/broad repertoires plus seeded whole-entry and individual-spell rerolls/locks.
+- Shared power-budget participation before Aura/Affliction/ability selection.
+- PF2E NPC spellcasting-entry compilation and post-create spell Item materialization.
+- Public `api.spells`, spell-source preparation/status, and external `spellProfile` content.
+- Embedded Creature Editor contract v11, request schema v6, Blueprint/content schemas v8.
+
+## 0.5.x - Spellcasting hardening
+
+- Focus-spell generation and Focus Point policy.
+- Optional hand-curated spell packages/signature spell slots.
+- Broader semantic spell tagging and source diagnostics.
+- Additional PF2E runtime edge-case coverage for spontaneous/prepared entries.
 
 ## 0.6.x - Loot
 

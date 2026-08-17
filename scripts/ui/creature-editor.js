@@ -86,6 +86,23 @@ function traitLabel(trait) {
   return String(trait ?? "").replaceAll("-", " ");
 }
 
+function spellTraditionLabel(tradition) {
+  return localize(`PF2E_CREATURE_FORGE.SpellTradition.${tradition}`, String(tradition ?? ""));
+}
+
+function spellStyleLabel(style) {
+  return localize(`PF2E_CREATURE_FORGE.SpellStyle.${style}`, String(style ?? ""));
+}
+
+function spellBreadthLabel(breadth) {
+  return localize(`PF2E_CREATURE_FORGE.SpellBreadth.${breadth}`, String(breadth ?? ""));
+}
+
+function spellRankLabel(spell) {
+  if (spell?.cantrip) return localize("PF2E_CREATURE_FORGE.Spell.Cantrip", "Cantrip");
+  return `${localize("PF2E_CREATURE_FORGE.Spell.Rank", "Rank")} ${Number(spell?.rank ?? spell?.baseRank ?? 1)}`;
+}
+
 function effectTimingLabel(timing) {
   const keys = {
     "after-use": "PF2E_CREATURE_FORGE.Runtime.Timing.AfterUse",
@@ -149,7 +166,7 @@ function triStateOptions(current) {
 }
 
 export class EmbeddedCreatureEditor {
-  static CONTRACT_VERSION = 10;
+  static CONTRACT_VERSION = 11;
 
   constructor({ api, session = null, request = {}, blueprint = null, mode = "create", layout = "full", activeTab = "creature", capabilities = {}, onChange = null, onGenerate = null } = {}) {
     if (!api) throw new Error("EmbeddedCreatureEditor requires the Creature Forge API.");
@@ -297,6 +314,7 @@ export class EmbeddedCreatureEditor {
     if (get("abilitySources")) request.sources.abilities = [...get("abilitySources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     if (get("auraSources")) request.sources.auras = [...get("auraSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     if (get("afflictionSources")) request.sources.afflictions = [...get("afflictionSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
+    if (get("spellSources")) request.sources.spells = [...get("spellSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     request.identity.size = get("size")?.value ?? "med";
     for (const ability of ABILITIES) request.attributes[ability] = get(ability)?.value ?? "role";
     request.defenses.ac = get("ac")?.value ?? "role";
@@ -336,6 +354,14 @@ export class EmbeddedCreatureEditor {
     request.specialFeatures.frequency = get("specialFrequency")?.value ?? "normal";
     request.specialFeatures.auras.mode = get("auraMode")?.value ?? "auto";
     request.specialFeatures.afflictions.mode = get("afflictionMode")?.value ?? "auto";
+    request.spellcasting.mode = get("spellcastingMode")?.value ?? "auto";
+    request.spellcasting.style = get("spellcastingStyle")?.value ?? "auto";
+    request.spellcasting.tradition = get("spellTradition")?.value ?? "auto";
+    request.spellcasting.dcRank = get("spellDcRank")?.value ?? "role";
+    const highestSpellRank = get("spellHighestRank")?.value ?? "auto";
+    request.spellcasting.highestRank = highestSpellRank === "auto" ? "auto" : number(highestSpellRank);
+    request.spellcasting.breadth = get("spellBreadth")?.value ?? "standard";
+    request.spellcasting.themes = String(get("spellThemes")?.value ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
     request.generation.seed = get("seed")?.value ?? "";
     request.generation.variation = get("variation")?.value ?? "balanced";
     this.session.setRequest(request);
@@ -419,6 +445,34 @@ export class EmbeddedCreatureEditor {
         this.activeAfflictionId = null;
         this.#render();
         await this.#emitChange("reroll-afflictions");
+      } else if (action === "reroll-spellcasting") {
+        this.session.reroll({ scope: "spellcasting" });
+        this.#render();
+        await this.#emitChange("reroll-spellcasting");
+      } else if (action === "reroll-spell") {
+        const spellId = target.closest?.("[data-spell-id]")?.dataset?.spellId;
+        if (spellId) {
+          this.session.reroll({ scope: `spell:${spellId}` });
+          this.#render();
+          await this.#emitChange("reroll-spell");
+        }
+      } else if (action === "toggle-spell-lock") {
+        const spellId = target.closest?.("[data-spell-id]")?.dataset?.spellId;
+        const spell = this.session.blueprint?.combat?.spellcasting?.[0]?.spells?.find((entry) => entry.id === spellId);
+        if (spell) {
+          spell.locked = !spell.locked;
+          this.session.dirty = true;
+          this.#render();
+          await this.#emitChange("spell-lock");
+        }
+      } else if (action === "toggle-spellcasting-lock") {
+        const entry = this.session.blueprint?.combat?.spellcasting?.[0];
+        if (entry) {
+          entry.locked = !entry.locked;
+          this.session.dirty = true;
+          this.#render();
+          await this.#emitChange("spellcasting-lock");
+        }
       } else if (action === "toggle-aura-lock") {
         const aura = this.session.blueprint?.resources?.auras?.[0];
         if (aura) {
@@ -502,9 +556,9 @@ export class EmbeddedCreatureEditor {
       return;
     }
 
-    if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="preferredSkills"], input[name="abilityFocus"]'))) {
+    if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="preferredSkills"], input[name="abilityFocus"], input[name="spellThemes"]'))) {
       this.#syncRequestFromForm();
-      if (event.type === "change" && target.matches?.('select[name="categorySources"], select[name="subtypeSources"], select[name="abilitySources"], select[name="auraSources"], select[name="afflictionSources"]')) {
+      if (event.type === "change" && target.matches?.('select[name="categorySources"], select[name="subtypeSources"], select[name="abilitySources"], select[name="auraSources"], select[name="afflictionSources"], select[name="spellSources"]')) {
         try {
           await this.api.sources.ensure(this.session.request.sources);
           this.#reconcileContentSelection();
@@ -647,6 +701,12 @@ export class EmbeddedCreatureEditor {
       const suffix = entry.packageName ? ` · ${entry.packageName}` : "";
       return option(entry.id, escapeHtml(`${entry.label}${suffix}`), selected.includes(entry.id));
     }).join("");
+    const spellCompendiumSources = this.api.spells?.listCompendiums?.() ?? [];
+    const selectedSpellSources = request.sources.spells?.length ? request.sources.spells : (this.api.spells?.getDefaultSourceIds?.() ?? []);
+    const spellSourceOptions = spellCompendiumSources.map((entry) => {
+      const suffix = entry.packageName ? ` · ${entry.packageName}` : "";
+      return option(entry.id, escapeHtml(`${entry.label}${suffix}`), selectedSpellSources.includes(entry.id));
+    }).join("");
     const abilityLibraries = this.api.content.listAbilityLibraries();
     const selectedAbilityLibraries = request.sources.abilities?.length
       ? request.sources.abilities
@@ -732,6 +792,18 @@ export class EmbeddedCreatureEditor {
         <div><strong>${escapeHtml(attackNameLabel(attack))}</strong><small>${escapeHtml(localize(`PF2E_CREATURE_FORGE.AttackProfile.${attack.profile}`, attack.profile))} · ${escapeHtml(localize(`PF2E_CREATURE_FORGE.AttackKind.${attack.kind}`, attack.kind))}</small></div>
         <div class="cf-attack-numbers"><span>${signed(attack.attack.value)} <small>${escapeHtml(rankLabel(attack.attack.rank))}</small></span><span>${escapeHtml(attack.damage.formula)} ${escapeHtml(damageTypeLabel(attack.damage.type))} <small>${escapeHtml(rankLabel(attack.damage.rank))}</small></span></div>
       </li>`).join("");
+
+    const spellcastingEntry = blueprint?.combat?.spellcasting?.[0] ?? null;
+    const spellRows = (spellcastingEntry?.spells ?? []).map((spell) => {
+      const sourceLabel = spell.source?.compendiumLabel ?? spell.source?.label ?? spell.compendiumId ?? "";
+      return `<article class="cf-spell-row${spell.locked ? " locked" : ""}" data-spell-id="${escapeHtml(spell.id)}">
+        <div class="cf-spell-main"><img src="${escapeHtml(spell.img ?? "icons/svg/book.svg")}" alt=""><div><strong>${escapeHtml(spell.name)}</strong><small>${escapeHtml(spellRankLabel(spell))}${sourceLabel ? ` · ${escapeHtml(sourceLabel)}` : ""}</small>${spell.themes?.length ? `<div class="cf-spell-tags">${spell.themes.slice(0, 5).map((theme) => `<span>${escapeHtml(traitLabel(theme))}</span>`).join("")}</div>` : ""}</div></div>
+        <div class="cf-ability-controls">
+          ${canGenerate ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-spell-lock" title="${escapeHtml(localize(spell.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", spell.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${spell.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}
+          ${canGenerate && !spell.locked && !spellcastingEntry?.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-spell" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollSpell", "Reroll spell"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
+        </div>
+      </article>`;
+    }).join("");
 
     const effectResources = new Map((blueprint?.resources?.effects ?? []).map((resource) => [resource.id, resource]));
     const effectIntegrationReady = Boolean(integrationStatus?.effect?.ready && this.api.integrations.getEffectApi?.()?.ui?.effectEditor?.create);
@@ -896,6 +968,18 @@ export class EmbeddedCreatureEditor {
               <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.DamageType", "Damage type"))}</span><select name="damageType" ${disabled}>${["auto","bludgeoning","piercing","slashing","acid","cold","electricity","fire","force","mental","poison","sonic","spirit","void","vitality"].map((value) => option(value, localize(value === "auto" ? "PF2E_CREATURE_FORGE.Field.Auto" : `PF2E_CREATURE_FORGE.DamageType.${value}`, value), request.offense.damageType)).join("")}</select></label>
             </div>
 
+            <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Spellcasting", "Spellcasting"))}</h3>
+            <p class="cf-section-hint">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellcastingHint", "Spellcasting is optional and selected thematically from the active spell compendiums."))}</p>
+            <div class="cf-form-grid">
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SpellcastingMode", "Spellcasting"))}</span><select name="spellcastingMode" ${disabled}>${["auto","none","required"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.SpellcastingMode.${value}`, value), request.spellcasting.mode)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SpellcastingStyle", "Style"))}</span><select name="spellcastingStyle" ${disabled}>${["auto","innate","prepared","spontaneous"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.SpellStyle.${value}`, value), request.spellcasting.style)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SpellTradition", "Tradition"))}</span><select name="spellTradition" ${disabled}>${["auto","arcane","divine","occult","primal"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.SpellTradition.${value}`, value), request.spellcasting.tradition)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SpellDcRank", "Spell DC"))}</span><select name="spellDcRank" ${disabled}>${rankOptions(request.spellcasting.dcRank, ["moderate","high","extreme"], true)}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SpellHighestRank", "Highest rank"))}</span><select name="spellHighestRank" ${disabled}>${option("auto", localize("PF2E_CREATURE_FORGE.Field.Auto", "Automatic"), request.spellcasting.highestRank)}${Array.from({length:10}, (_,i) => option(String(i+1), `${localize("PF2E_CREATURE_FORGE.Spell.Rank", "Rank")} ${i+1}`, request.spellcasting.highestRank)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SpellBreadth", "Breadth"))}</span><select name="spellBreadth" ${disabled}>${["focused","standard","broad"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.SpellBreadth.${value}`, value), request.spellcasting.breadth)).join("")}</select></label>
+              <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SpellThemes", "Additional themes"))}</span><input name="spellThemes" type="text" value="${escapeHtml((request.spellcasting.themes ?? []).join(", "))}" placeholder="fire, fear, illusion" ${disabled}><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellThemeHint", "Optional tags increase the weight of matching spells."))}</small></label>
+            </div>
+
             <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Abilities", "Abilities"))}</h3>
             <div class="cf-form-grid">
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityMode", "Ability generation"))}</span><select name="abilityMode" ${disabled}>${["auto","off"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.AbilityMode.${value}`, value), request.abilities.mode)).join("")}</select></label>
@@ -956,6 +1040,16 @@ export class EmbeddedCreatureEditor {
             <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Attacks", "Attacks"))}</h4>${this.capabilities.generation && this.mode !== "view" && (blueprint?.combat?.attacks?.length ?? 0) ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAttacks", "Reroll attacks"))}" data-cf-action="reroll-attacks"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
             ${(blueprint?.combat?.attacks?.length ?? 0) ? `<ul class="cf-attacks">${attackRows}</ul>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAttacks", "No strikes generated."))}</p>`}
 
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Spellcasting", "Spellcasting"))}</h4><div class="cf-heading-tools">${spellcastingEntry ? `<span class="cf-budget-badge">${escapeHtml(localize("PF2E_CREATURE_FORGE.Ability.Power", "Power"))} ${Number(spellcastingEntry.powerCost ?? 0)}</span>` : ""}${canGenerate && spellcastingEntry ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-spellcasting-lock" title="${escapeHtml(localize(spellcastingEntry.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", spellcastingEntry.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${spellcastingEntry.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}${canGenerate ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollSpellcasting", "Reroll spellcasting"))}" data-cf-action="reroll-spellcasting"><i class="fa-solid fa-dice"></i></button>` : ""}</div></div>
+            ${spellcastingEntry ? `<section class="cf-spellcasting-card${spellcastingEntry.locked ? " locked" : ""}">
+              <div class="cf-spellcasting-summary">
+                <strong>${escapeHtml(spellTraditionLabel(spellcastingEntry.tradition))} · ${escapeHtml(spellStyleLabel(spellcastingEntry.style))}</strong>
+                <span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellDc", "DC"))} ${Number(spellcastingEntry.dc ?? 0)} · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellAttack", "Attack"))} ${signed(spellcastingEntry.attack)} · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellHighestRank", "Highest rank"))} ${Number(spellcastingEntry.highestRank ?? 1)} · ${escapeHtml(spellBreadthLabel(spellcastingEntry.breadth))}</span>
+              </div>
+              ${spellcastingEntry.themes?.length ? `<div class="cf-spell-tags">${spellcastingEntry.themes.map((theme) => `<span>${escapeHtml(traitLabel(theme))}</span>`).join("")}</div>` : ""}
+              ${spellRows ? `<div class="cf-spell-list">${spellRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoSpells", "No spells selected."))}</p>`}
+            </section>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoSpellcasting", "No spellcasting generated."))}</p>`}
+
             <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Abilities", "Abilities"))}</h4><div class="cf-heading-tools">${blueprint?.metadata?.abilityBudget ? `<span class="cf-budget-badge" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilityBudgetHint", "Power spent / budget"))}">${Number(blueprint.metadata.abilityBudget.spent ?? 0)}/${Number(blueprint.metadata.abilityBudget.limit ?? 0)}</span>` : ""}${canGenerate && (blueprint?.abilities?.length ?? 0) ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbilities", "Reroll abilities"))}" data-cf-action="reroll-abilities"><i class="fa-solid fa-dice"></i></button>` : ""}</div></div>
             ${(blueprint?.abilities?.length ?? 0) ? `<div class="cf-abilities">${abilityRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAbilities", "No abilities generated."))}</p>`}
 
@@ -975,6 +1069,7 @@ export class EmbeddedCreatureEditor {
             <div class="cf-component-grid">
               <span>${blueprint?.combat?.attacks?.length ?? 0} ${escapeHtml(localize("PF2E_CREATURE_FORGE.Component.Attacks", "attacks"))}</span>
               <span>${blueprint?.abilities?.length ?? 0} ${escapeHtml(localize("PF2E_CREATURE_FORGE.Component.Abilities", "abilities"))}</span>
+              <span>${blueprint?.combat?.spellcasting?.[0]?.spells?.length ?? 0} ${escapeHtml(localize("PF2E_CREATURE_FORGE.Component.Spells", "spells"))}</span>
               <span>${blueprint?.resources?.auras?.length ?? 0} ${escapeHtml(localize("PF2E_CREATURE_FORGE.Component.Auras", "auras"))}</span>
               <span>${blueprint?.resources?.afflictions?.length ?? 0} ${escapeHtml(localize("PF2E_CREATURE_FORGE.Component.Afflictions", "afflictions"))}</span>
             </div>
@@ -992,7 +1087,7 @@ export class EmbeddedCreatureEditor {
                 <div class="cf-tab-heading">
                   <div>
                     <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Sources", "Content sources"))}</h3>
-                    <p>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SourcesHint", "Choose compendiums for category/subtype discovery and the ability, aura, and affliction libraries available to generation."))}</p>
+                    <p>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SourcesHint", "Choose compendiums for category/subtype discovery, spell selection, and the ability, aura, and affliction libraries available to generation."))}</p>
                   </div>
                   <span class="cf-source-scope">${escapeHtml(localize(this.capabilities.persistSourceSelection ? "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.World" : "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.Host", this.capabilities.persistSourceSelection ? "Saved as world defaults." : "Used only by this editor/request."))}</span>
                 </div>
@@ -1002,10 +1097,11 @@ export class EmbeddedCreatureEditor {
                   <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilitySources", "Ability libraries"))}</span><select name="abilitySources" multiple size="9" ${disabled}>${abilityLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilitySourceHint", "Selected registered libraries contribute abilities and their linked effects. Loose API-registered abilities remain available."))}</small></label>
                   <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AuraSources", "Aura libraries"))}</span><select name="auraSources" multiple size="7" ${disabled}>${auraLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AuraSourceHint", "Selected registered libraries contribute aura definitions. Automatic generation may still choose no aura."))}</small></label>
                   <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AfflictionSources", "Affliction libraries"))}</span><select name="afflictionSources" multiple size="7" ${disabled}>${afflictionLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AfflictionSourceHint", "Selected registered libraries contribute poisons, diseases, curses, and other afflictions."))}</small></label>
+                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SpellSources", "Spell compendiums"))}</span><select name="spellSources" multiple size="9" ${disabled}>${spellSourceOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellSourceHint", "Selected spell compendiums provide the candidates for thematic spell selection."))}</small></label>
                 </div>
                 <div class="cf-source-actions">
                   <button type="button" data-cf-action="refresh-sources" ${disabled}><i class="fa-solid fa-arrows-rotate"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RefreshSources", "Rescan sources"))}</button>
-                  <span class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint", "Core categories/subtypes and loose API-registered extension content remain available; ability, aura, and affliction libraries can be enabled independently."))}</span>
+                  <span class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint", "Core categories/subtypes and loose API-registered extension content remain available; ability, aura, affliction, and spell sources can be controlled independently."))}</span>
                 </div>
               </section>
             </div>` : ""}

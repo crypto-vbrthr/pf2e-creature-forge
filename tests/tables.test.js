@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  AC_TABLE, ATTACK_TABLE, PERCEPTION_TABLE, SAVE_TABLE,
+  AC_TABLE, ATTACK_TABLE, PERCEPTION_TABLE, SAVE_TABLE, SPELL_ATTACK_TABLE, SPELL_DC_TABLE,
   resolveAttackDamage, resolveAttributeValue, resolveHpRange, resolveRankValue, resolveSkillValue
 } from "../scripts/core/tables.js";
 
@@ -48,4 +48,14 @@ test("GM Core skill table resolves fixed and low-range values", () => {
   assert.equal(resolveSkillValue(10, "high"), 22);
   assert.equal(resolveSkillValue(24, "moderate"), 40);
   assert.equal(resolveSkillValue(10, "low", { int: (min, max) => max }), 17);
+});
+
+
+test("GM Core spell DC and spell attack tables resolve representative values", () => {
+  assert.equal(resolveRankValue(SPELL_DC_TABLE, 10, "extreme"), 33);
+  assert.equal(resolveRankValue(SPELL_ATTACK_TABLE, 10, "extreme"), 25);
+  assert.equal(resolveRankValue(SPELL_DC_TABLE, 10, "high"), 29);
+  assert.equal(resolveRankValue(SPELL_ATTACK_TABLE, 10, "high"), 21);
+  assert.equal(resolveRankValue(SPELL_DC_TABLE, 10, "moderate"), 26);
+  assert.equal(resolveRankValue(SPELL_ATTACK_TABLE, 10, "moderate"), 18);
 });

@@ -1,4 +1,4 @@
-# Public API 0.4.3
+# Public API 0.5.0
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;
@@ -19,7 +19,7 @@ api.schemaVersion.content;
 ```js
 api.createRequest(input);
 api.generate(request);        // synchronous; selected compendium sources must already be prepared
-await api.generateAsync(request); // prepares selected category/subtype compendiums first
+await api.generateAsync(request); // prepares selected category/subtype, Affliction-library, and spell sources first
 api.reroll(blueprint, { scope, seed });
 api.validateRequest(request);
 api.validate(blueprint);
@@ -95,8 +95,64 @@ Valid attack/damage ranks are `extreme`, `high`, `moderate`, and `low`. Valid ab
 - `auras`
 - `afflictions`
 - `special-features`
+- `spellcasting` (alias: `combat.spellcasting`)
+- `spell:<spell-id>`
 
+## Spellcasting and thematic spell sources
 
+```js
+const blueprint = await api.generateAsync({
+  identity: {
+    level: 10,
+    role: "spellcaster",
+    category: "undead",
+    subtypes: ["ghost"]
+  },
+  spellcasting: {
+    mode: "required",              // auto | none | required
+    style: "auto",                 // auto | innate | prepared | spontaneous
+    tradition: "auto",             // auto | arcane | divine | occult | primal
+    dcRank: "role",                // role | moderate | high | extreme
+    highestRank: "auto",           // auto | 1..10
+    breadth: "standard",           // focused | standard | broad
+    themes: ["fear", "shadow"]
+  },
+  sources: {
+    spells: ["pf2e.spells-srd"]
+  }
+});
+```
+
+`auto` is deliberately optional: a mundane creature can receive no spellcasting at all. `required` still requires valid spells in the active sources. Automatic tradition and spell selection are constrained by the actually indexed source content and weighted by category, resolved subtypes, role, core/external `spellProfile` content, spell traits, and explicit request themes. Normal spells and cantrips are indexed in 0.5.0; rituals and focus spells are intentionally excluded from this milestone.
+
+Spellcasting uses the same seeded random service and shared power budget as the other special mechanics. `focused`, `standard`, and `broad` control repertoire breadth. Whole spellcasting and individual spell slots can be locked/rerolled with the scopes above.
+
+```js
+api.spells.listCompendiums();
+api.spells.getDefaultSourceIds();
+await api.spells.ensure({ spells: ["pf2e.spells-srd"] });
+api.spells.list(["pf2e.spells-srd"]);
+api.spells.getStatus();
+api.spells.chance(request);
+api.spells.highestRankForLevel(10);
+api.spells.estimatePower(spellcastingEntry);
+
+await api.runtime.materializeSpellcasting(actor, blueprint);
+await api.runtime.cleanupSpellcasting(actor);
+```
+
+`api.createActor()` materializes spellcasting by default; pass `{ materializeSpellcasting: false }` to opt out. The compiler creates PF2E NPC `spellcastingEntry` documents, then the runtime clones selected source spells onto the Actor and links them to the generated entry. Prepared casting receives slot references, spontaneous casting receives rank pools, innate ranked spells receive daily uses, and cantrips remain at-will.
+
+External modules can bias generation without duplicating the spell engine by registering `spellProfile` content:
+
+```js
+api.content.registerSpellProfile({
+  id: "my-module.abyssal-magic",
+  supports: { categories: ["aberration"], subtypes: ["abyssal"] },
+  preferredThemes: ["mental", "fear", "teleportation"],
+  traditionWeights: { occult: 50, arcane: 10 }
+});
+```
 
 ## Ability libraries and power budget
 
@@ -149,7 +205,7 @@ const blueprint = api.generate({
 
 `auto` can deliberately produce no Aura or Affliction. The chance is seeded and concept-sensitive. `required` forces only a matching candidate; if none fits the creature, active libraries, dependencies, and remaining power budget, no unrelated content is inserted and a diagnostic is recorded.
 
-Auras and Afflictions are selected before ordinary abilities and reserve from the same total power budget. The final shared accounting is stored in `blueprint.metadata.specialFeatureBudget`.
+Spellcasting is resolved first, then optional Auras/Afflictions, then ordinary abilities. All of them reserve from the same total power budget. The final shared accounting is stored in `blueprint.metadata.specialFeatureBudget`, including `spellcastingSpent`.
 
 ```js
 api.reroll(blueprint, { scope: "auras" });
@@ -233,7 +289,7 @@ Target modes currently handled by the manual runtime include `self`, singular ta
 
 ## Categories, subtypes, and defensive affinities
 
-`CreatureGenerationRequest` schema v5 supports automatic/manual defensive affinities, ability generation, and optional Aura/Affliction special-feature controls. Core and external category/subtype definitions may expose:
+`CreatureGenerationRequest` schema v6 supports automatic/manual defensive affinities, ability generation, optional Aura/Affliction special-feature controls, and first-class spellcasting configuration/source selection. Core and external category/subtype definitions may expose:
 
 ```js
 {
@@ -482,7 +538,7 @@ api.integrations.getLootApi();
 
 ```js
 api.ui.openCreatureForge();
-api.ui.creatureEditor.contractVersion; // 10
+api.ui.creatureEditor.contractVersion; // 11
 api.ui.creatureEditor.modes;           // ["create", "edit", "view"]
 api.ui.creatureEditor.layouts;         // ["full", "compact"]
 api.ui.creatureEditor.tabs;            // ["creature", "sources"]
@@ -503,4 +559,4 @@ editor.unmount();
 editor.destroy();
 ```
 
-The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v10 keeps source selection in the dedicated `sources` tab and adds host-controllable `effectEditing`, `auraEditing`, and `afflictionEditing` capabilities for mounting the public Forge editors in the same editor workspace. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.
+The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v11 keeps source selection in the dedicated `sources` tab, adds spell-compendium source selection and spellcasting controls/rerolls/locks, and retains host-controllable `effectEditing`, `auraEditing`, and `afflictionEditing` capabilities for mounting the public Forge editors in the same editor workspace. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.

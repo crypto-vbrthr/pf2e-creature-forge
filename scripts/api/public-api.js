@@ -19,18 +19,23 @@ import { CreatureEffectRuntime } from "../runtime/effect-runtime.js";
 import { CreatureSpecialFeatureRuntime } from "../runtime/special-feature-runtime.js";
 import { estimateSpecialPower, specialFeatureChance } from "../core/special-features.js";
 import { resolveAfflictionDelivery, assignAfflictionDeliveries } from "../core/affliction-delivery.js";
+import { SpellSourceManager } from "../core/spell-source-manager.js";
+import { estimateSpellcastingPower, highestSpellRankForLevel, spellcastingChance } from "../core/spellcasting.js";
+import { CreatureSpellRuntime } from "../runtime/spell-runtime.js";
 
 let apiInstance = null;
 
 export function initializePublicApi({ openCreatureForge } = {}) {
   const registry = new ContentRegistry();
   registerCoreContent(registry);
-  const generator = new CreatureGenerator({ registry });
+  const spellSources = new SpellSourceManager();
+  const generator = new CreatureGenerator({ registry, spellSources });
   const discovery = new CompendiumDiscoveryManager({ registry });
   const integrations = new ForgeIntegrationHub();
   const afflictionLibraryBridge = new AfflictionForgeLibraryBridge({ registry, integrations });
   const runtime = new CreatureEffectRuntime({ integrations });
   const specialRuntime = new CreatureSpecialFeatureRuntime({ integrations });
+  const spellRuntime = new CreatureSpellRuntime();
 
   const registerByType = (type) => (definition, options = {}) => registry.register(type, definition, options);
 
@@ -47,7 +52,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
     createRequest: (input = {}) => createGenerationRequest(input),
     generate: (request = {}) => {
       const normalized = createGenerationRequest(request);
-      if (!discovery.isPrepared(normalized.sources) || !afflictionLibraryBridge.isPrepared(normalized.sources)) {
+      if (!discovery.isPrepared(normalized.sources) || !afflictionLibraryBridge.isPrepared(normalized.sources) || !spellSources.isPrepared(normalized.sources)) {
         throw new Error("Creature Forge sources are not prepared. Call api.generateAsync(request) or await api.sources.ensure(request.sources) before synchronous generation.");
       }
       return generator.generate(normalized);
@@ -56,6 +61,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       const normalized = createGenerationRequest(request);
       await discovery.ensure(normalized.sources);
       await afflictionLibraryBridge.ensure(normalized.sources);
+      await spellSources.ensure(normalized.sources);
       return generator.generate(normalized);
     },
     reroll: (blueprint, options = {}) => generator.reroll(blueprint, options),
@@ -67,10 +73,11 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       postCreate: async (actor, sourceBlueprint, compiled) => {
         const effectResult = options.materializeEffects === false ? null : await runtime.initializeActor(actor, sourceBlueprint);
         const specialResult = options.materializeSpecialFeatures === false ? null : await specialRuntime.initializeActor(actor, sourceBlueprint);
+        const spellResult = options.materializeSpellcasting === false ? null : await spellRuntime.materialize(actor, sourceBlueprint);
         const external = typeof options.postCreate === "function"
           ? await options.postCreate(actor, sourceBlueprint, compiled)
           : null;
-        return { creatureForge: { effects: effectResult, specialFeatures: specialResult }, external };
+        return { creatureForge: { effects: effectResult, specialFeatures: specialResult, spellcasting: spellResult }, external };
       }
     }),
 
@@ -100,6 +107,17 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       },
       listLibraries: (filters = {}) => registry.listAbilityLibraries(filters),
       validateDependencies: (definitionOrId) => registry.validateAbilityDependencies(definitionOrId)
+    },
+
+    spells: {
+      listCompendiums: () => spellSources.listCompendiums(),
+      getDefaultSourceIds: () => spellSources.getDefaultSourceIds(),
+      ensure: (sources = {}, options = {}) => spellSources.ensure(sources, options),
+      list: (selectedSources = []) => spellSources.listSpells(selectedSources),
+      getStatus: () => spellSources.status(),
+      chance: (request = {}) => { const normalized = createGenerationRequest(request); return spellcastingChance({ request: normalized, category: normalized.identity.category, subtypes: normalized.identity.subtypes, roleId: normalized.identity.role }); },
+      highestRankForLevel: highestSpellRankForLevel,
+      estimatePower: estimateSpellcastingPower
     },
 
     specialFeatures: {
@@ -207,7 +225,9 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       materializeAuras: (actor, blueprint = null) => specialRuntime.materializeAuras(actor, blueprint ?? undefined),
       materializeAfflictions: (actor, blueprint = null) => specialRuntime.materializeAfflictions(actor, blueprint ?? undefined),
       cleanupActorSpecialFeatures: async (actor) => ({ auras: await specialRuntime.cleanupAuras(actor), afflictions: await specialRuntime.cleanupAfflictions(actor) }),
-      refreshSpecialFeatures: (actor, blueprint = null) => specialRuntime.initializeActor(actor, blueprint ?? undefined)
+      refreshSpecialFeatures: (actor, blueprint = null) => specialRuntime.initializeActor(actor, blueprint ?? undefined),
+      materializeSpellcasting: (actor, blueprint = null) => spellRuntime.materialize(actor, blueprint ?? undefined),
+      cleanupSpellcasting: (actor) => spellRuntime.cleanup(actor)
     },
 
     content: {
@@ -254,17 +274,18 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       listCreatureCompendiums: () => discovery.listCompendiums(),
       discover: (compendiumId, options = {}) => discovery.discover(compendiumId, options),
       ensure: async (sources = {}, options = {}) => {
-        const [compendiums, afflictions] = await Promise.all([
+        const [compendiums, afflictions, spells] = await Promise.all([
           discovery.ensure(sources, options),
-          afflictionLibraryBridge.ensure(sources, options)
+          afflictionLibraryBridge.ensure(sources, options),
+          spellSources.ensure(sources, options)
         ]);
-        return { compendiums, afflictions };
+        return { compendiums, afflictions, spells };
       },
       listContent: (type, options = {}) => discovery.listContent(type, options),
-      getStatus: () => ({ compendiums: discovery.getStatus(), afflictions: afflictionLibraryBridge.status() }),
-      isPrepared: (sources = {}) => discovery.isPrepared(sources) && afflictionLibraryBridge.isPrepared(sources),
+      getStatus: () => ({ compendiums: discovery.getStatus(), afflictions: afflictionLibraryBridge.status(), spells: spellSources.status() }),
+      isPrepared: (sources = {}) => discovery.isPrepared(sources) && afflictionLibraryBridge.isPrepared(sources) && spellSources.isPrepared(sources),
       refreshAfflictionLibraries: (options = {}) => afflictionLibraryBridge.refreshLibraries(options),
-      clearCache: () => { discovery.clearCache(); afflictionLibraryBridge.clearCache(); return true; },
+      clearCache: () => { discovery.clearCache(); afflictionLibraryBridge.clearCache(); spellSources.clearCache(); return true; },
       getDefaults: () => {
         try {
           const stored = globalThis.game?.settings?.get?.(MODULE_ID, SETTINGS.SOURCE_DEFAULTS) ?? {};
@@ -279,10 +300,11 @@ export function initializePublicApi({ openCreatureForge } = {}) {
             // Empty means "use the current default Affliction libraries". This lets
             // Affliction Forge provider libraries discovered after ready participate
             // without baking a stale library list into the request.
-            afflictions
+            afflictions,
+            spells: [...new Set((stored.spells ?? []).map(String).filter(Boolean))]
           };
         } catch {
-          return { categories: [], subtypes: [], abilities: registry.getDefaultAbilityLibraryIds(), auras: registry.getDefaultAuraLibraryIds(), afflictions: [] };
+          return { categories: [], subtypes: [], abilities: registry.getDefaultAbilityLibraryIds(), auras: registry.getDefaultAuraLibraryIds(), afflictions: [], spells: [] };
         }
       },
       setDefaults: async (sources = {}) => {
@@ -291,7 +313,8 @@ export function initializePublicApi({ openCreatureForge } = {}) {
           subtypes: [...new Set((sources.subtypes ?? []).map(String).filter(Boolean))],
           abilities: [...new Set((sources.abilities ?? registry.getDefaultAbilityLibraryIds()).map(String).filter(Boolean))],
           auras: [...new Set((sources.auras ?? registry.getDefaultAuraLibraryIds()).map(String).filter(Boolean))],
-          afflictions: [...new Set((sources.afflictions ?? registry.getDefaultAfflictionLibraryIds()).map(String).filter(Boolean))]
+          afflictions: [...new Set((sources.afflictions ?? registry.getDefaultAfflictionLibraryIds()).map(String).filter(Boolean))],
+          spells: [...new Set((sources.spells ?? []).map(String).filter(Boolean))]
         };
         await globalThis.game?.settings?.set?.(MODULE_ID, SETTINGS.SOURCE_DEFAULTS, value);
         return value;

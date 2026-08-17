@@ -120,6 +120,14 @@ export function validateGenerationRequest(request, { registry } = {}) {
       issues.push(issue("error", "INVALID_SPECIAL_FEATURE_MODE", `specialFeatures.${kind}.mode`, `${kind} mode must be auto, none, or required.`));
     }
   }
+  const spellcasting = request?.spellcasting ?? {};
+  if (!["auto", "none", "required"].includes(spellcasting.mode)) issues.push(issue("error", "INVALID_SPELLCASTING_MODE", "spellcasting.mode", "Spellcasting mode must be auto, none, or required."));
+  if (!["auto", "innate", "prepared", "spontaneous"].includes(spellcasting.style)) issues.push(issue("error", "INVALID_SPELLCASTING_STYLE", "spellcasting.style", "Spellcasting style must be auto, innate, prepared, or spontaneous."));
+  if (!["auto", "arcane", "divine", "occult", "primal"].includes(spellcasting.tradition)) issues.push(issue("error", "INVALID_SPELL_TRADITION", "spellcasting.tradition", "Spell tradition must be auto, arcane, divine, occult, or primal."));
+  if (!["role", "moderate", "high", "extreme"].includes(spellcasting.dcRank)) issues.push(issue("error", "INVALID_SPELL_DC_RANK", "spellcasting.dcRank", "Spell DC rank must be role, moderate, high, or extreme."));
+  if (spellcasting.highestRank !== "auto" && (!Number.isInteger(Number(spellcasting.highestRank)) || Number(spellcasting.highestRank) < 1 || Number(spellcasting.highestRank) > 10)) issues.push(issue("error", "INVALID_HIGHEST_SPELL_RANK", "spellcasting.highestRank", "Highest spell rank must be auto or an integer from 1 to 10."));
+  if (!["focused", "standard", "broad"].includes(spellcasting.breadth)) issues.push(issue("error", "INVALID_SPELL_BREADTH", "spellcasting.breadth", "Spell breadth must be focused, standard, or broad."));
+
   if (registry) {
     for (const libraryId of request?.sources?.auras ?? []) {
       if (!registry.getAuraLibrary?.(libraryId)) issues.push(issue("warning", "UNKNOWN_AURA_LIBRARY", "sources.auras", `Aura library '${libraryId}' is not registered.`));
@@ -223,6 +231,18 @@ export function validateBlueprint(blueprint) {
     }
   }
 
+  for (const [entryIndex, entry] of (blueprint?.combat?.spellcasting ?? []).entries()) {
+    const path = `combat.spellcasting.${entryIndex}`;
+    if (!["arcane", "divine", "occult", "primal"].includes(entry?.tradition)) issues.push(issue("error", "INVALID_BLUEPRINT_SPELL_TRADITION", `${path}.tradition`, "Spellcasting entry has an invalid tradition."));
+    if (!["innate", "prepared", "spontaneous"].includes(entry?.style)) issues.push(issue("error", "INVALID_BLUEPRINT_SPELL_STYLE", `${path}.style`, "Spellcasting entry has an invalid style."));
+    if (!Number.isFinite(Number(entry?.dc)) || !Number.isFinite(Number(entry?.attack))) issues.push(issue("error", "INVALID_BLUEPRINT_SPELL_DC", path, "Spellcasting entry requires numeric spell DC and spell attack modifier."));
+    if (!Number.isInteger(Number(entry?.highestRank)) || Number(entry.highestRank) < 1 || Number(entry.highestRank) > 10) issues.push(issue("error", "INVALID_BLUEPRINT_HIGHEST_SPELL_RANK", `${path}.highestRank`, "Highest spell rank must be from 1 to 10."));
+    for (const [spellIndex, spell] of (entry?.spells ?? []).entries()) {
+      if (!String(spell?.sourceUuid ?? "").trim()) issues.push(issue("error", "SPELL_SOURCE_UUID_REQUIRED", `${path}.spells.${spellIndex}.sourceUuid`, "Generated spells require a source UUID."));
+      if (!spell?.cantrip && (!Number.isInteger(Number(spell?.rank)) || Number(spell.rank) < Number(spell?.baseRank ?? 1) || Number(spell.rank) > Number(entry.highestRank))) issues.push(issue("error", "INVALID_GENERATED_SPELL_RANK", `${path}.spells.${spellIndex}.rank`, "Generated spell rank must be between the spell's base rank and the entry's highest rank."));
+    }
+  }
+
   const attacks = blueprint?.combat?.attacks ?? [];
   for (let index = 0; index < attacks.length; index += 1) {
     const attack = attacks[index];
@@ -316,10 +336,12 @@ export function validateBlueprint(blueprint) {
     const abilitySpent = generatedAbilities.reduce((sum, ability) => sum + Number(ability?.powerCost ?? 0), 0);
     const auraSpent = (blueprint?.resources?.auras ?? []).reduce((sum, entry) => sum + Number(entry?.powerCost ?? 0), 0);
     const afflictionSpent = (blueprint?.resources?.afflictions ?? []).reduce((sum, entry) => sum + Number(entry?.powerCost ?? 0), 0);
-    const spent = abilitySpent + auraSpent + afflictionSpent;
+    const spellcastingSpent = (blueprint?.combat?.spellcasting ?? []).reduce((sum, entry) => sum + Number(entry?.powerCost ?? 0), 0);
+    const spent = abilitySpent + auraSpent + afflictionSpent + spellcastingSpent;
     const limit = Number(specialBudget.limit ?? 0);
-    if (Number.isFinite(limit) && spent > limit) issues.push(issue("warning", "SPECIAL_POWER_BUDGET_EXCEEDED", "metadata.specialFeatureBudget", `Abilities, auras, and afflictions spend ${spent} power against a shared budget of ${limit}.`));
+    if (Number.isFinite(limit) && spent > limit) issues.push(issue("warning", "SPECIAL_POWER_BUDGET_EXCEEDED", "metadata.specialFeatureBudget", `Abilities, auras, afflictions, and spellcasting spend ${spent} power against a shared budget of ${limit}.`));
     if (Number(specialBudget.spent ?? spent) !== spent) issues.push(issue("warning", "SPECIAL_POWER_BUDGET_STALE", "metadata.specialFeatureBudget.spent", "Stored shared power usage does not match generated content."));
+    if (Number(specialBudget.spellcastingSpent ?? spellcastingSpent) !== spellcastingSpent) issues.push(issue("warning", "SPELLCASTING_POWER_BUDGET_STALE", "metadata.specialFeatureBudget.spellcastingSpent", "Stored spellcasting power usage does not match generated spellcasting."));
   }
 
   const uniqueFamilies = new Set();
