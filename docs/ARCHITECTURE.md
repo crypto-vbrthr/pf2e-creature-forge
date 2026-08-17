@@ -285,6 +285,21 @@ Creature ability
   +-- Loot request -> Loot Forge -> Item Forge
 ```
 
+## Loot orchestration
+
+Loot is a separate orchestration layer rather than part of the PF2E compiler. `createLootPlan()` makes the seeded, concept-sensitive channel decision first. `CreatureLootIntegration` then delegates selected channels to Loot Forge/Item Forge without changing their world settings. `CreatureLootRuntime` materializes only carried channels on the NPC and keeps salvage/hoard deferred.
+
+```text
+Creature Blueprint loot plan
+  +-- equipment -> Loot Forge -> NPC inventory
+  +-- signature -> Item Forge -> NPC inventory
+  |                 \-> Loot Forge fallback
+  +-- salvage -> Creature Forge neutral salvage data -> deferred Loot Actor
+  \-- hoard -> Loot Forge -> deferred Loot Actor
+```
+
+Provider failures are diagnostic and channel-local. Locked channels retain both their selection and generated payload during refresh. Exact external item generation is intentionally provider-owned; Creature Forge's seed governs the plan, not the internals of another module.
+
 ## Embedded editor
 
-`api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v11), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, persistent bottom action footer, and its own Creature/Sources sub-tabs. The host owns the surrounding window, higher-level navigation, persistence policy, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.
+`api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v12), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, persistent bottom action footer, and its own Creature/Sources sub-tabs. The host owns the surrounding window, higher-level navigation, persistence policy, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.

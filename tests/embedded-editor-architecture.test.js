@@ -8,7 +8,7 @@ const cssUrl = new URL("../styles/creature-forge.css", import.meta.url);
 
 test("embedded editor v11 exposes Effect, Aura, Affliction, and spellcasting controls with dedicated source selectors", async () => {
   const source = await readFile(editorUrl, "utf8");
-  assert.match(source, /static CONTRACT_VERSION = 11/);
+  assert.match(source, /static CONTRACT_VERSION = 12/);
   assert.match(source, /this\.root = this\.container\.querySelector\("\[data-cf-editor\]"\)/);
   assert.match(source, /data-cf-editor-scroll/);
   assert.match(source, /data-cf-editor-footer/);

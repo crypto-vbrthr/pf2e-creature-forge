@@ -166,7 +166,7 @@ function triStateOptions(current) {
 }
 
 export class EmbeddedCreatureEditor {
-  static CONTRACT_VERSION = 11;
+  static CONTRACT_VERSION = 12;
 
   constructor({ api, session = null, request = {}, blueprint = null, mode = "create", layout = "full", activeTab = "creature", capabilities = {}, onChange = null, onGenerate = null } = {}) {
     if (!api) throw new Error("EmbeddedCreatureEditor requires the Creature Forge API.");
@@ -237,7 +237,12 @@ export class EmbeddedCreatureEditor {
       console.warn("pf2e-creature-forge | Could not prepare compendium discovery sources.", error);
       globalThis.ui?.notifications?.warn?.(localize("PF2E_CREATURE_FORGE.Notifications.SourceScanFailed", "One or more creature compendiums could not be scanned."));
     }
-    if (!this.session.blueprint) this.session.generate();
+    if (!this.session.blueprint) {
+      try { await this.session.generateAsync(); } catch (error) {
+        console.warn("pf2e-creature-forge | Async initial generation failed; using synchronous blueprint plan.", error);
+        this.session.generate();
+      }
+    }
     this.#render();
     return this;
   }
@@ -315,6 +320,7 @@ export class EmbeddedCreatureEditor {
     if (get("auraSources")) request.sources.auras = [...get("auraSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     if (get("afflictionSources")) request.sources.afflictions = [...get("afflictionSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     if (get("spellSources")) request.sources.spells = [...get("spellSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
+    if (get("lootSources")) request.sources.loot = [...get("lootSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     request.identity.size = get("size")?.value ?? "med";
     for (const ability of ABILITIES) request.attributes[ability] = get(ability)?.value ?? "role";
     request.defenses.ac = get("ac")?.value ?? "role";
@@ -362,6 +368,15 @@ export class EmbeddedCreatureEditor {
     request.spellcasting.highestRank = highestSpellRank === "auto" ? "auto" : number(highestSpellRank);
     request.spellcasting.breadth = get("spellBreadth")?.value ?? "standard";
     request.spellcasting.themes = String(get("spellThemes")?.value ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+    request.loot.mode = get("lootMode")?.value ?? "auto";
+    request.loot.equipment.mode = get("lootEquipmentMode")?.value ?? "auto";
+    request.loot.salvage.mode = get("lootSalvageMode")?.value ?? "auto";
+    request.loot.hoard.mode = get("lootHoardMode")?.value ?? "auto";
+    request.loot.signature.mode = get("lootSignatureMode")?.value ?? "auto";
+    request.loot.treasureProfile = get("lootTreasureProfile")?.value ?? "standard";
+    request.loot.hoardProfile = get("lootHoardProfile")?.value ?? "hoard";
+    request.loot.environment = get("lootEnvironment")?.value ?? "generic";
+    request.loot.useItemForge = get("lootUseItemForge") ? Boolean(get("lootUseItemForge")?.checked) : true;
     request.generation.seed = get("seed")?.value ?? "";
     request.generation.variation = get("variation")?.value ?? "balanced";
     this.session.setRequest(request);
@@ -395,14 +410,14 @@ export class EmbeddedCreatureEditor {
       event.preventDefault();
       if (action === "generate") {
         this.#syncRequestFromForm();
-        this.session.generate();
+        await this.session.generateAsync();
         this.#render();
         await this.onGenerate?.({ blueprint: this.value, request: this.request });
         await this.#emitChange("generate");
       } else if (action === "reroll-all") {
         this.#syncRequestFromForm();
         this.session.generate();
-        this.session.reroll({ scope: "all" });
+        await this.session.rerollAsync({ scope: "all" });
         this.#render();
         await this.onGenerate?.({ blueprint: this.value, request: this.request });
         await this.#emitChange("reroll-all");
@@ -410,6 +425,32 @@ export class EmbeddedCreatureEditor {
         this.session.reroll({ scope: "statistics.hp" });
         this.#render();
         await this.#emitChange("reroll-hp");
+      } else if (action === "reroll-loot") {
+        if (this.session.blueprint) {
+          this.session.blueprint = await this.api.loot.refresh(this.session.blueprint);
+          this.session.request = deepClone(this.session.blueprint.metadata.requestSnapshot);
+          this.session.dirty = true;
+          this.#render();
+          await this.#emitChange("reroll-loot");
+        }
+      } else if (action === "reroll-loot-channel") {
+        const channel = target.closest?.("[data-loot-channel]")?.dataset?.lootChannel;
+        if (channel && this.session.blueprint?.loot?.channels?.[channel] && !this.session.blueprint.loot.channels[channel].locked) {
+          this.session.blueprint = await this.api.loot.refreshChannel(this.session.blueprint, channel);
+          this.session.request = deepClone(this.session.blueprint.metadata.requestSnapshot);
+          this.session.dirty = true;
+          this.#render();
+          await this.#emitChange("reroll-loot-channel");
+        }
+      } else if (action === "toggle-loot-lock") {
+        const channel = target.closest?.("[data-loot-channel]")?.dataset?.lootChannel;
+        const entry = channel ? this.session.blueprint?.loot?.channels?.[channel] : null;
+        if (entry) {
+          entry.locked = !entry.locked;
+          this.session.dirty = true;
+          this.#render();
+          await this.#emitChange("loot-lock");
+        }
       } else if (action === "reroll-skills") {
         this.session.reroll({ scope: "statistics.skills" });
         this.#render();
@@ -565,7 +606,7 @@ export class EmbeddedCreatureEditor {
 
     if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="preferredSkills"], input[name="abilityFocus"], input[name="spellThemes"]'))) {
       this.#syncRequestFromForm();
-      if (event.type === "change" && target.matches?.('select[name="categorySources"], select[name="subtypeSources"], select[name="abilitySources"], select[name="auraSources"], select[name="afflictionSources"], select[name="spellSources"]')) {
+      if (event.type === "change" && target.matches?.('select[name="categorySources"], select[name="subtypeSources"], select[name="abilitySources"], select[name="auraSources"], select[name="afflictionSources"], select[name="spellSources"], select[name="lootSources"]')) {
         try {
           await this.api.sources.ensure(this.session.request.sources);
           this.#reconcileContentSelection();
@@ -713,6 +754,12 @@ export class EmbeddedCreatureEditor {
     const spellSourceOptions = spellCompendiumSources.map((entry) => {
       const suffix = entry.packageName ? ` · ${entry.packageName}` : "";
       return option(entry.id, escapeHtml(`${entry.label}${suffix}`), selectedSpellSources.includes(entry.id));
+    }).join("");
+    const lootCompendiumSources = this.api.loot?.listCompendiums?.() ?? [];
+    const selectedLootSources = request.sources.loot ?? [];
+    const lootSourceOptions = lootCompendiumSources.map((entry) => {
+      const suffix = entry.packageName ? ` · ${entry.packageName}` : "";
+      return option(entry.id, escapeHtml(`${entry.label}${suffix}`), selectedLootSources.includes(entry.id));
     }).join("");
     const abilityLibraries = this.api.content.listAbilityLibraries();
     const selectedAbilityLibraries = request.sources.abilities?.length
@@ -869,6 +916,22 @@ export class EmbeddedCreatureEditor {
       </article>`;
     }).join("");
 
+    const lootPlan = blueprint?.loot ?? null;
+    const lootChannelRows = ["equipment", "signature", "salvage", "hoard"].map((channel) => {
+      const entry = lootPlan?.channels?.[channel];
+      if (!entry) return "";
+      const label = localize(`PF2E_CREATURE_FORGE.Loot.Channel.${channel}`, channel);
+      const status = entry.selected
+        ? (entry.result ? localize("PF2E_CREATURE_FORGE.Loot.Status.Generated", "Generated") : localize("PF2E_CREATURE_FORGE.Loot.Status.Planned", "Planned"))
+        : localize("PF2E_CREATURE_FORGE.Loot.Status.None", "None");
+      const items = entry.result?.items ?? [];
+      const salvage = entry.result?.entries ?? [];
+      const names = [...items.slice(0, 3).map((item) => item?.name).filter(Boolean), ...salvage.slice(0, 3).map((item) => localize(item?.nameKey, item?.fallbackName ?? ""))].filter(Boolean);
+      const count = items.length + salvage.length;
+      const details = names.length ? names.join(", ") : count ? `${count}` : entry.reason ?? "";
+      return `<article class="cf-loot-channel${entry.selected ? " selected" : ""}${entry.locked ? " locked" : ""}" data-loot-channel="${escapeHtml(channel)}"><div><strong>${escapeHtml(label)}</strong><small>${escapeHtml(status)}${entry.mode === "required" ? ` · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Required", "required"))}` : ""}</small></div><span class="cf-loot-details">${escapeHtml(details || "—")}</span>${canGenerate ? `<div class="cf-ability-controls"><button type="button" class="cf-icon-button" data-cf-action="toggle-loot-lock" title="${escapeHtml(localize(entry.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", entry.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${entry.locked ? "fa-lock" : "fa-lock-open"}"></i></button>${!entry.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-loot-channel" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollLootChannel", "Reroll loot channel"))}"><i class="fa-solid fa-dice"></i></button>` : ""}</div>` : ""}</article>`;
+    }).join("");
+
     const activeEffectResource = this.activeEffectId ? effectResources.get(this.activeEffectId) : null;
     const activeAuraResource = this.activeAuraId ? (blueprint?.resources?.auras ?? []).find((entry) => entry.id === this.activeAuraId) : null;
     const activeAfflictionResource = this.activeAfflictionId ? (blueprint?.resources?.afflictions ?? []).find((entry) => entry.id === this.activeAfflictionId) : null;
@@ -1004,6 +1067,20 @@ export class EmbeddedCreatureEditor {
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AfflictionMode", "Afflictions"))}</span><select name="afflictionMode" ${disabled}>${["auto","none","required"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.SpecialFeatureMode.${value}`, value), request.specialFeatures.afflictions.mode)).join("")}</select></label>
             </div>
 
+            <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Loot", "Loot & equipment"))}</h3>
+            <p class="cf-section-hint">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.LootHint", "Loot is concept-driven. Carried equipment and signature items are added to the NPC; salvage and hoards remain deferred loot."))}</p>
+            <div class="cf-form-grid cf-loot-settings">
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.LootMode", "Loot"))}</span><select name="lootMode" ${disabled}>${["auto","none","required"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.LootMode.${value}`, value), request.loot.mode)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Channel.equipment", "Carried equipment"))}</span><select name="lootEquipmentMode" ${disabled}>${["auto","none","required"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.LootMode.${value}`, value), request.loot.equipment.mode)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Channel.signature", "Signature item"))}</span><select name="lootSignatureMode" ${disabled}>${["auto","none","required"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.LootMode.${value}`, value), request.loot.signature.mode)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Channel.salvage", "Body salvage"))}</span><select name="lootSalvageMode" ${disabled}>${["auto","none","required"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.LootMode.${value}`, value), request.loot.salvage.mode)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Channel.hoard", "Hoard / environment"))}</span><select name="lootHoardMode" ${disabled}>${["auto","none","required"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.LootMode.${value}`, value), request.loot.hoard.mode)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.LootProfile", "Equipment profile"))}</span><select name="lootTreasureProfile" ${disabled}>${["poor","standard","rich","boss","hoard"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.Loot.Profile.${value}`, value), request.loot.treasureProfile)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.HoardProfile", "Hoard profile"))}</span><select name="lootHoardProfile" ${disabled}>${["poor","standard","rich","boss","hoard"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.Loot.Profile.${value}`, value), request.loot.hoardProfile)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.LootEnvironment", "Environment"))}</span><input name="lootEnvironment" type="text" value="${escapeHtml(request.loot.environment ?? "generic")}" ${disabled}></label>
+              <label class="cf-checkbox-label"><input name="lootUseItemForge" type="checkbox" ${request.loot.useItemForge !== false ? "checked" : ""} ${disabled}><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.UseItemForge", "Use Item Forge for signature items"))}</span></label>
+            </div>
+
             <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Generation", "Generation"))}</h3>
             <div class="cf-form-grid">
               <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Seed", "Seed"))}</span><input name="seed" type="text" value="${escapeHtml(request.generation.seed)}" placeholder="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AutoSeed", "automatic"))}" ${disabled}></label>
@@ -1070,6 +1147,10 @@ export class EmbeddedCreatureEditor {
             <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Afflictions", "Afflictions"))}</h4>${canGenerate ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAffliction", "Reroll affliction"))}" data-cf-action="reroll-afflictions"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
             ${afflictionRows ? `<div class="cf-special-list">${afflictionRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAffliction", "No affliction generated."))}</p>`}
 
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Loot", "Loot & equipment"))}</h4>${canGenerate ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollLoot", "Reroll loot"))}" data-cf-action="reroll-loot"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            ${lootChannelRows ? `<div class="cf-loot-list">${lootChannelRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoLoot", "No loot planned."))}</p>`}
+            ${lootPlan?.summary ? `<div class="cf-loot-summary"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Carried", "Carried"))}: ${Number(lootPlan.summary.carriedItemCount ?? 0)}</span><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Deferred", "Deferred"))}: ${Number(lootPlan.summary.deferredItemCount ?? 0)}</span></div>` : ""}
+
             <div class="cf-seed"><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Seed", "Seed"))}:</strong> <code>${escapeHtml(blueprint?.metadata?.seed ?? "—")}</code></div>
 
             <h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.PlannedComponents", "Planned components"))}</h4>
@@ -1079,6 +1160,7 @@ export class EmbeddedCreatureEditor {
               <span>${blueprint?.combat?.spellcasting?.[0]?.spells?.length ?? 0} ${escapeHtml(localize("PF2E_CREATURE_FORGE.Component.Spells", "spells"))}</span>
               <span>${blueprint?.resources?.auras?.length ?? 0} ${escapeHtml(localize("PF2E_CREATURE_FORGE.Component.Auras", "auras"))}</span>
               <span>${blueprint?.resources?.afflictions?.length ?? 0} ${escapeHtml(localize("PF2E_CREATURE_FORGE.Component.Afflictions", "afflictions"))}</span>
+              <span>${Number(blueprint?.loot?.summary?.carriedItemCount ?? 0)} ${escapeHtml(localize("PF2E_CREATURE_FORGE.Component.LootItems", "carried loot items"))}</span>
             </div>
 
             <h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Integrations", "Forge integrations"))}</h4>
@@ -1105,6 +1187,7 @@ export class EmbeddedCreatureEditor {
                   <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AuraSources", "Aura libraries"))}</span><select name="auraSources" multiple size="7" ${disabled}>${auraLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AuraSourceHint", "Selected registered libraries contribute aura definitions. Automatic generation may still choose no aura."))}</small></label>
                   <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AfflictionSources", "Affliction libraries"))}</span><select name="afflictionSources" multiple size="7" ${disabled}>${afflictionLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AfflictionSourceHint", "Selected registered libraries contribute poisons, diseases, curses, and other afflictions."))}</small></label>
                   <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SpellSources", "Spell compendiums"))}</span><select name="spellSources" multiple size="9" ${disabled}>${spellSourceOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellSourceHint", "Selected spell compendiums provide the candidates for thematic spell selection."))}</small></label>
+                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.LootSources", "Loot & item compendiums"))}</span><select name="lootSources" multiple size="9" ${disabled}>${lootSourceOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.LootSourceHint", "Selected item compendiums are passed to Loot Forge and Item Forge without changing their world defaults."))}</small></label>
                 </div>
                 <div class="cf-source-actions">
                   <button type="button" data-cf-action="refresh-sources" ${disabled}><i class="fa-solid fa-arrows-rotate"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RefreshSources", "Rescan sources"))}</button>

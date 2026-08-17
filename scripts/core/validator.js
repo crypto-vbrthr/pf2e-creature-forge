@@ -127,6 +127,14 @@ export function validateGenerationRequest(request, { registry } = {}) {
   if (!["role", "moderate", "high", "extreme"].includes(spellcasting.dcRank)) issues.push(issue("error", "INVALID_SPELL_DC_RANK", "spellcasting.dcRank", "Spell DC rank must be role, moderate, high, or extreme."));
   if (spellcasting.highestRank !== "auto" && (!Number.isInteger(Number(spellcasting.highestRank)) || Number(spellcasting.highestRank) < 1 || Number(spellcasting.highestRank) > 10)) issues.push(issue("error", "INVALID_HIGHEST_SPELL_RANK", "spellcasting.highestRank", "Highest spell rank must be auto or an integer from 1 to 10."));
   if (!["focused", "standard", "broad"].includes(spellcasting.breadth)) issues.push(issue("error", "INVALID_SPELL_BREADTH", "spellcasting.breadth", "Spell breadth must be focused, standard, or broad."));
+  const loot = request?.loot ?? {};
+  const lootModes = ["auto", "none", "required"];
+  if (!lootModes.includes(loot.mode)) issues.push(issue("error", "INVALID_LOOT_MODE", "loot.mode", "Loot mode must be auto, none, or required."));
+  for (const channel of ["equipment", "salvage", "hoard", "signature"]) {
+    if (!lootModes.includes(loot?.[channel]?.mode)) issues.push(issue("error", "INVALID_LOOT_CHANNEL_MODE", `loot.${channel}.mode`, `Loot ${channel} mode must be auto, none, or required.`));
+  }
+  if (!["poor", "standard", "rich", "boss", "hoard"].includes(loot.treasureProfile)) issues.push(issue("error", "INVALID_LOOT_PROFILE", "loot.treasureProfile", "Loot treasure profile is invalid."));
+  if (!["poor", "standard", "rich", "boss", "hoard"].includes(loot.hoardProfile)) issues.push(issue("error", "INVALID_HOARD_PROFILE", "loot.hoardProfile", "Hoard treasure profile is invalid."));
 
   if (registry) {
     for (const libraryId of request?.sources?.auras ?? []) {
@@ -368,6 +376,23 @@ export function validateBlueprint(blueprint) {
   }
   if ((blueprint?.resources?.auras ?? []).length > 1) issues.push(issue("warning", "MULTIPLE_GENERATED_AURAS", "resources.auras", "The 0.4.x generator normally creates at most one aura."));
   if ((blueprint?.resources?.afflictions ?? []).length > 1) issues.push(issue("warning", "MULTIPLE_GENERATED_AFFLICTIONS", "resources.afflictions", "The 0.4.x generator normally creates at most one affliction."));
+
+  const loot = blueprint?.loot;
+  if (!loot || typeof loot !== "object") {
+    issues.push(issue("error", "LOOT_PLAN_REQUIRED", "loot", "CreatureBlueprint requires a loot plan."));
+  } else {
+    if (!["auto", "none", "required"].includes(loot.policy)) issues.push(issue("error", "INVALID_BLUEPRINT_LOOT_POLICY", "loot.policy", "Blueprint loot policy must be auto, none, or required."));
+    if (Number(blueprint?.schemaVersion ?? 0) >= 9) {
+      for (const channel of ["equipment", "salvage", "hoard", "signature"]) {
+        const entry = loot?.channels?.[channel];
+        if (!entry) issues.push(issue("error", "LOOT_CHANNEL_REQUIRED", `loot.channels.${channel}`, `Blueprint loot channel '${channel}' is missing.`));
+        else if (!["auto", "none", "required"].includes(entry.mode)) issues.push(issue("error", "INVALID_BLUEPRINT_LOOT_CHANNEL_MODE", `loot.channels.${channel}.mode`, `Blueprint loot channel '${channel}' has an invalid mode.`));
+      }
+    }
+    if (loot.generated && loot?.channels?.signature?.selected && !(loot?.channels?.signature?.result?.items?.length) && !(loot?.diagnostics ?? []).some((entry) => entry.channel === "signature")) {
+      issues.push(issue("warning", "SIGNATURE_ITEM_EMPTY", "loot.channels.signature", "Signature loot was selected but no signature item was generated."));
+    }
+  }
   const abilityBudget = blueprint?.metadata?.abilityBudget ?? null;
   if (abilityBudget) {
     const spent = generatedAbilities.reduce((sum, ability) => sum + Number(ability?.powerCost ?? 0), 0);

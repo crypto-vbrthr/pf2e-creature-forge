@@ -34,6 +34,21 @@ export class CreatureEditorSession {
     return this.blueprint;
   }
 
+  async generateAsync() {
+    this.blueprint = await this.api.generateAsync(this.request);
+    this.request = deepClone(this.blueprint.metadata.requestSnapshot);
+    this.dirty = true;
+    return this.blueprint;
+  }
+
+  async rerollAsync(options = {}) {
+    if (!this.blueprint) return this.generateAsync();
+    this.blueprint = await (this.api.rerollAsync ? this.api.rerollAsync(this.blueprint, options) : this.api.reroll(this.blueprint, options));
+    this.request = deepClone(this.blueprint.metadata.requestSnapshot);
+    this.dirty = true;
+    return this.blueprint;
+  }
+
   reroll(options = {}) {
     if (!this.blueprint) return this.generate();
     this.blueprint = this.api.reroll(this.blueprint, options);

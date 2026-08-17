@@ -22,6 +22,9 @@ import { resolveAfflictionDelivery, assignAfflictionDeliveries } from "../core/a
 import { SpellSourceManager } from "../core/spell-source-manager.js";
 import { estimateSpellcastingPower, highestSpellRankForLevel, spellcastingChance } from "../core/spellcasting.js";
 import { CreatureSpellRuntime } from "../runtime/spell-runtime.js";
+import { CreatureLootIntegration } from "../integration/loot-integration.js";
+import { CreatureLootRuntime } from "../runtime/loot-runtime.js";
+import { createLootPlan, lootChannelChance } from "../core/loot.js";
 
 let apiInstance = null;
 
@@ -56,6 +59,8 @@ export function initializePublicApi({ openCreatureForge } = {}) {
   const runtime = new CreatureEffectRuntime({ integrations });
   const specialRuntime = new CreatureSpecialFeatureRuntime({ integrations });
   const spellRuntime = new CreatureSpellRuntime();
+  const lootIntegration = new CreatureLootIntegration({ integrations });
+  const lootRuntime = new CreatureLootRuntime({ integrations });
 
   const registerByType = (type) => (definition, options = {}) => registry.register(type, definition, options);
 
@@ -82,15 +87,32 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       await discovery.ensure(normalized.sources);
       await afflictionLibraryBridge.ensure(normalized.sources);
       await spellSources.ensure(normalized.sources);
-      return generator.generate(normalized);
+      const blueprint = generator.generate(normalized);
+      return lootIntegration.generateForBlueprint(blueprint, normalized);
     },
     reroll: (blueprint, options = {}) => generator.reroll(blueprint, options),
+    rerollAsync: async (blueprint, options = {}) => {
+      const rerolled = generator.reroll(blueprint, options);
+      const scope = String(options.scope ?? "all");
+      if (scope === "all" || scope === "loot" || scope.startsWith("loot:")) {
+        return lootIntegration.generateForBlueprint(rerolled, rerolled?.metadata?.requestSnapshot ?? {});
+      }
+      return rerolled;
+    },
     validateRequest: (request) => validateGenerationRequest(createGenerationRequest(request), { registry }),
     validate: (blueprint) => validateBlueprint(blueprint),
     compile: (blueprint, options = {}) => compileActorSource(blueprint, options),
-    createActor: (blueprint, options = {}) => createActorFromBlueprint(blueprint, {
-      ...options,
-      postCreate: async (actor, sourceBlueprint, compiled) => {
+    createActor: async (blueprint, options = {}) => {
+      let sourceBlueprint = blueprint;
+      if (sourceBlueprint?.loot && sourceBlueprint.loot.generated !== true) {
+        sourceBlueprint = await lootIntegration.generateForBlueprint(
+          sourceBlueprint,
+          sourceBlueprint?.metadata?.requestSnapshot ?? {}
+        );
+      }
+      return createActorFromBlueprint(sourceBlueprint, {
+        ...options,
+        postCreate: async (actor, sourceBlueprint, compiled) => {
         const diagnostics = [];
         const effectResult = await runRuntimeStep(
           "effects",
@@ -110,11 +132,18 @@ export function initializePublicApi({ openCreatureForge } = {}) {
           () => spellRuntime.materialize(actor, sourceBlueprint),
           diagnostics
         );
+        const lootResult = await runRuntimeStep(
+          "loot",
+          options.materializeLoot !== false,
+          () => lootRuntime.materialize(actor, sourceBlueprint),
+          diagnostics
+        );
         const runtimeStatus = {
           schemaVersion: 1,
           effects: options.materializeEffects === false ? "skipped" : effectResult ? "ready" : "failed",
           specialFeatures: options.materializeSpecialFeatures === false ? "skipped" : specialResult ? "ready" : "failed",
           spellcasting: options.materializeSpellcasting === false ? "skipped" : spellResult ? "ready" : "failed",
+          loot: options.materializeLoot === false ? "skipped" : lootResult ? "ready" : "failed",
           diagnostics
         };
         if (typeof actor?.update === "function") {
@@ -137,9 +166,10 @@ export function initializePublicApi({ openCreatureForge } = {}) {
         const external = typeof options.postCreate === "function"
           ? await options.postCreate(actor, sourceBlueprint, compiled)
           : null;
-        return { creatureForge: { effects: effectResult, specialFeatures: specialResult, spellcasting: spellResult, diagnostics, runtimeStatus }, external };
-      }
-    }),
+          return { creatureForge: { effects: effectResult, specialFeatures: specialResult, spellcasting: spellResult, loot: lootResult, diagnostics, runtimeStatus }, external };
+        }
+      });
+    },
 
     random: {
       createSeed: createRandomSeed,
@@ -178,6 +208,31 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       chance: (request = {}) => { const normalized = createGenerationRequest(request); return spellcastingChance({ request: normalized, category: normalized.identity.category, subtypes: normalized.identity.subtypes, roleId: normalized.identity.role }); },
       highestRankForLevel: highestSpellRankForLevel,
       estimatePower: estimateSpellcastingPower
+    },
+
+    loot: {
+      plan: (request = {}, blueprint = null) => {
+        const normalized = createGenerationRequest(request);
+        const base = blueprint ?? generator.generate(normalized);
+        const random = new SeededRandom(`${base?.metadata?.seed ?? normalized.generation.seed ?? "loot"}:loot-plan`);
+        return createLootPlan({ request: normalized, blueprint: base, random });
+      },
+      chance: (channel, request = {}) => {
+        const normalized = createGenerationRequest(request);
+        return lootChannelChance({ channel, category: normalized.identity.category, roleId: normalized.identity.role, variation: normalized.generation.variation, level: normalized.identity.level, hasSpellcasting: normalized.spellcasting.mode !== "none" });
+      },
+      generate: (blueprint, request = null) => lootIntegration.generateForBlueprint(blueprint, request ?? blueprint?.metadata?.requestSnapshot ?? {}),
+      refresh: async (blueprint) => {
+        const planned = generator.reroll(blueprint, { scope: "loot" });
+        return lootIntegration.generateForBlueprint(planned, planned?.metadata?.requestSnapshot ?? {});
+      },
+      refreshChannel: async (blueprint, channel) => {
+        const planned = generator.reroll(blueprint, { scope: `loot:${channel}` });
+        return lootIntegration.generateForBlueprint(planned, planned?.metadata?.requestSnapshot ?? {});
+      },
+      listCompendiums: () => listCompendiumSources({ documentName: "Item" }),
+      getStatus: () => ({ lootForgeAvailable: lootIntegration.available, itemForgeAvailable: lootIntegration.itemForgeAvailable }),
+      createLootActor: (actorOrBlueprint, options = {}) => lootRuntime.createDeferredLootActor(actorOrBlueprint, options)
     },
 
     specialFeatures: {
@@ -288,7 +343,11 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       refreshSpecialFeatures: (actor, blueprint = null) => specialRuntime.initializeActor(actor, blueprint ?? undefined),
       materializeSpellcasting: (actor, blueprint = null) => spellRuntime.materialize(actor, blueprint ?? undefined),
       refreshSpellcasting: (actor, blueprint = null) => spellRuntime.materialize(actor, blueprint ?? undefined),
-      cleanupSpellcasting: (actor) => spellRuntime.cleanup(actor)
+      cleanupSpellcasting: (actor) => spellRuntime.cleanup(actor),
+      materializeLoot: (actor, blueprint = null) => lootRuntime.materialize(actor, blueprint ?? undefined),
+      refreshLoot: (actor, blueprint = null) => lootRuntime.materialize(actor, blueprint ?? undefined),
+      cleanupCarriedLoot: (actor) => lootRuntime.cleanupCarried(actor),
+      createDeferredLootActor: (actorOrBlueprint, options = {}) => lootRuntime.createDeferredLootActor(actorOrBlueprint, options)
     },
 
     content: {
@@ -343,7 +402,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
         return { compendiums, afflictions, spells };
       },
       listContent: (type, options = {}) => discovery.listContent(type, options),
-      getStatus: () => ({ compendiums: discovery.getStatus(), afflictions: afflictionLibraryBridge.status(), spells: spellSources.status() }),
+      getStatus: () => ({ compendiums: discovery.getStatus(), afflictions: afflictionLibraryBridge.status(), spells: spellSources.status(), loot: { integration: lootIntegration.available, itemForge: lootIntegration.itemForgeAvailable } }),
       isPrepared: (sources = {}) => discovery.isPrepared(sources) && afflictionLibraryBridge.isPrepared(sources) && spellSources.isPrepared(sources),
       refreshAfflictionLibraries: (options = {}) => afflictionLibraryBridge.refreshLibraries(options),
       clearCache: () => { discovery.clearCache(); afflictionLibraryBridge.clearCache(); spellSources.clearCache(); return true; },
@@ -362,10 +421,11 @@ export function initializePublicApi({ openCreatureForge } = {}) {
             // Affliction Forge provider libraries discovered after ready participate
             // without baking a stale library list into the request.
             afflictions,
-            spells: [...new Set((stored.spells ?? []).map(String).filter(Boolean))]
+            spells: [...new Set((stored.spells ?? []).map(String).filter(Boolean))],
+            loot: [...new Set((stored.loot ?? []).map(String).filter(Boolean))]
           };
         } catch {
-          return { categories: [], subtypes: [], abilities: registry.getDefaultAbilityLibraryIds(), auras: registry.getDefaultAuraLibraryIds(), afflictions: [], spells: [] };
+          return { categories: [], subtypes: [], abilities: registry.getDefaultAbilityLibraryIds(), auras: registry.getDefaultAuraLibraryIds(), afflictions: [], spells: [], loot: [] };
         }
       },
       setDefaults: async (sources = {}) => {
@@ -375,7 +435,8 @@ export function initializePublicApi({ openCreatureForge } = {}) {
           abilities: [...new Set((sources.abilities ?? registry.getDefaultAbilityLibraryIds()).map(String).filter(Boolean))],
           auras: [...new Set((sources.auras ?? registry.getDefaultAuraLibraryIds()).map(String).filter(Boolean))],
           afflictions: [...new Set((sources.afflictions ?? registry.getDefaultAfflictionLibraryIds()).map(String).filter(Boolean))],
-          spells: [...new Set((sources.spells ?? []).map(String).filter(Boolean))]
+          spells: [...new Set((sources.spells ?? []).map(String).filter(Boolean))],
+          loot: [...new Set((sources.loot ?? []).map(String).filter(Boolean))]
         };
         await globalThis.game?.settings?.set?.(MODULE_ID, SETTINGS.SOURCE_DEFAULTS, value);
         return value;

@@ -18,7 +18,8 @@ export function registerSettings() {
       abilities: [],
       auras: [],
       afflictions: [],
-      spells: []
+      spells: [],
+      loot: []
     }
   });
 }

@@ -81,6 +81,17 @@ export const DEFAULT_REQUEST = Object.freeze({
     breadth: "standard",
     themes: []
   },
+  loot: {
+    mode: "auto",
+    equipment: { mode: "auto" },
+    salvage: { mode: "auto" },
+    hoard: { mode: "auto" },
+    signature: { mode: "auto" },
+    treasureProfile: "standard",
+    hoardProfile: "hoard",
+    environment: "generic",
+    useItemForge: true
+  },
   generation: {
     seed: "",
     variation: "balanced"
@@ -133,6 +144,16 @@ export function createGenerationRequest(input = {}) {
   if (request.spellcasting.highestRank !== "auto") request.spellcasting.highestRank = Math.max(1, Math.min(10, Number(request.spellcasting.highestRank ?? 1)));
   request.spellcasting.breadth = ["focused", "standard", "broad"].includes(request.spellcasting?.breadth) ? request.spellcasting.breadth : "standard";
   request.spellcasting.themes = [...new Set((request.spellcasting?.themes ?? []).map((value) => String(value).trim().toLowerCase()).filter(Boolean))];
+  const normalizeLootMode = (value) => ["auto", "none", "required"].includes(value) ? value : (value === "off" ? "none" : value === "on" ? "required" : "auto");
+  request.loot.mode = normalizeLootMode(request.loot?.mode ?? request.options?.loot);
+  for (const channel of ["equipment", "salvage", "hoard", "signature"]) {
+    request.loot[channel] ??= { mode: "auto" };
+    request.loot[channel].mode = normalizeLootMode(request.loot[channel]?.mode);
+  }
+  request.loot.treasureProfile = ["poor", "standard", "rich", "boss", "hoard"].includes(request.loot?.treasureProfile) ? request.loot.treasureProfile : "standard";
+  request.loot.hoardProfile = ["poor", "standard", "rich", "boss", "hoard"].includes(request.loot?.hoardProfile) ? request.loot.hoardProfile : "hoard";
+  request.loot.environment = String(request.loot?.environment ?? "generic").trim() || "generic";
+  request.loot.useItemForge = request.loot?.useItemForge !== false;
   // Backward-compatible 0.3.x option aliases.
   if (input?.specialFeatures?.auras?.mode == null && input?.options?.auras) {
     request.specialFeatures.auras.mode = input.options.auras === "off" || input.options.auras === "none" ? "none" : input.options.auras === "required" || input.options.auras === "on" ? "required" : "auto";
@@ -220,8 +241,21 @@ export function createEmptyBlueprint() {
       afflictions: []
     },
     loot: {
+      schemaVersion: 2,
       policy: "auto",
-      result: null
+      generated: false,
+      environment: "generic",
+      treasureProfile: "standard",
+      useItemForge: true,
+      sourceCompendiums: [],
+      channels: {
+        equipment: { mode: "auto", selected: false, chance: 0, reason: "", result: null },
+        salvage: { mode: "auto", selected: false, chance: 0, reason: "", result: null },
+        hoard: { mode: "auto", selected: false, chance: 0, reason: "", result: null },
+        signature: { mode: "auto", selected: false, chance: 0, reason: "", result: null }
+      },
+      diagnostics: [],
+      summary: { selectedChannels: [], generatedChannels: [], carriedItemCount: 0, deferredItemCount: 0, totalValueGp: 0 }
     },
     locks: {},
     provenance: [],

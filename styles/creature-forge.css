@@ -711,3 +711,46 @@
   .cf-editor .cf-spell-row { align-items: flex-start; }
   .cf-editor .cf-spell-main strong { white-space: normal; }
 }
+
+/* 0.6.0 loot, equipment and signature item integration */
+.cf-editor .cf-loot-settings { margin-top: .45rem; }
+.cf-editor .cf-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .42rem;
+  min-height: 2rem;
+}
+.cf-editor .cf-checkbox-label input[type="checkbox"] { margin: 0; }
+.cf-editor .cf-loot-list { display: grid; gap: .4rem; margin-top: .55rem; }
+.cf-editor .cf-loot-channel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  padding: .42rem .5rem;
+  border: 1px solid color-mix(in srgb, #9a7b43 28%, var(--color-border-light-tertiary, #555));
+  border-radius: 5px;
+  background: rgba(154,123,67,.045);
+}
+.cf-editor .cf-loot-channel.selected {
+  border-left: 4px solid #9a7b43;
+  background: linear-gradient(90deg, rgba(154,123,67,.12), transparent 65%);
+}
+.cf-editor .cf-loot-channel > div { display: flex; flex-direction: column; min-width: 0; }
+.cf-editor .cf-loot-channel small { opacity: .7; }
+.cf-editor .cf-loot-channel > span { text-align: right; font-size: .86em; opacity: .82; }
+.cf-editor .cf-loot-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: .55rem;
+  padding-top: .4rem;
+  border-top: 1px solid rgba(127,127,127,.22);
+  font-size: .86em;
+  opacity: .82;
+}
+.cf-source-grid select[name="lootSources"] { min-height: 11rem; }
+@media (max-width: 720px) {
+  .cf-editor .cf-loot-channel { align-items: flex-start; flex-direction: column; }
+  .cf-editor .cf-loot-channel > span { text-align: left; }
+}

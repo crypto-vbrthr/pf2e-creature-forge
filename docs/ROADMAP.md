@@ -198,12 +198,21 @@
 - Broader semantic spell tagging and source diagnostics.
 - Additional PF2E runtime edge-case coverage for spontaneous/prepared entries.
 
-## 0.6.x - Loot
+## 0.6.0 - Loot, Equipment & Signature Items Integration ✅
 
-- Concept-sensitive loot policy.
-- Carried gear vs. corpse loot vs. hoard hints.
-- Embedded Loot Forge.
-- Direct Item Forge delegation for signature items.
+- Concept-sensitive `auto | none | required` loot policy.
+- Separate carried equipment, signature item, body salvage, and hoard/environment channels.
+- Loot Forge delegation for equipment/hoards and Item Forge delegation with fallback for signature items.
+- Host-local Item-compendium sources.
+- Carried-loot Actor runtime plus deferred Loot Actor creation for salvage/hoards.
+- Whole/channel rerolls and channel locks.
+- Embedded Creature Editor contract v12; request schema v7; Blueprint/content schemas v9.
+
+## 0.6.x - Loot hardening
+
+- Optional embedded Loot Forge editing workflow for hand-tuning a generated hoard/inventory.
+- Stronger semantic equipment-to-generated-strike binding where a carried weapon should visibly define an NPC attack.
+- Additional salvage profiles supplied by external content packs.
 
 ## 0.7.x - Content packs
 

@@ -2,7 +2,21 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.5.2** is a broader **Core Review & Runtime Hardening** release. The review concentrates on failure isolation after Actor creation, repeatable runtime refreshes, stale generated documents, malformed runtime references, and cross-integration cleanup. It deliberately does not add a new creature feature layer.
+Version **0.6.0** adds **Loot, Equipment & Signature Items Integration**. Loot is concept-sensitive and split into carried equipment, signature items, body salvage, and hoard/environment treasure instead of treating every creature as a walking treasure chest. Loot Forge and Item Forge remain the canonical generators when available.
+
+## What 0.6.0 adds
+
+- Four independent loot channels: **carried equipment**, **signature item**, **body salvage**, and **hoard/environment loot**.
+- `auto | none | required` policy at both the overall loot level and per channel. Automatic selection is category/role/level sensitive and can legitimately produce no loot.
+- Loot Forge generates carried equipment and hoard treasure; Item Forge is preferred for a signature item with Loot Forge fallback. Body salvage is generated locally from creature category/level.
+- Carried equipment/signature items are materialized on the generated NPC. Salvage and hoard remain deferred and can be turned into a separate Loot Actor through the public runtime/API.
+- Dedicated Item-compendium selection in the Sources tab. Embedded editors keep this selection request-local unless the host explicitly persists source defaults.
+- Seeded loot-channel planning, whole-loot and per-channel rerolls, plus per-channel locks. Provider-generated item payloads keep the provider's own random policy.
+- `api.createActor()` automatically enriches a synchronous/unresolved loot plan before Actor compilation, so API callers do not have to remember a separate loot-generation step.
+- Signature generation fails soft: Item Forge errors/empty results fall back to Loot Forge when possible and retain diagnostics.
+- Actor refresh removes only Creature Forge-owned carried loot and preserves unrelated manually added inventory.
+- Embedded Creature Editor contract v12; request schema v7; Blueprint/content schemas v9; API/module version 0.6.0.
+- 140 automated tests pass.
 
 ## What 0.5.2 changes
 
@@ -318,6 +332,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.5.2 owns the core numeric statistics, category/subtype defensive affinities, source-filtered discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, optional Aura/Affliction selection and verified delivery, plus thematic PF2E spellcasting generation and materialization. Automatic combat-workflow trigger execution, focus-spell generation, advanced hand-curated spell packages, and loot generation remain later milestones.
+0.6.0 owns the core numeric statistics, category/subtype defensive affinities, source-filtered discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, optional Aura/Affliction selection and verified delivery, thematic PF2E spellcasting, plus concept-sensitive loot orchestration across Loot Forge and Item Forge. Automatic combat-workflow trigger execution, focus-spell generation, advanced hand-curated spell packages, embedded Loot Forge hand-editing, and strong weapon-to-strike binding remain later milestones.
 
 See `docs/ROADMAP.md`.

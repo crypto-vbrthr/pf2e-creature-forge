@@ -16,6 +16,7 @@ import { collectAbilityEffectResources, generateAbilities, rerollAbilitySlot, re
 import { generateSpecialFeatures, rerollSpecialFeature } from "./special-features.js";
 import { assignAfflictionDeliveries } from "./affliction-delivery.js";
 import { generateSpellcasting, rerollSpellcasting, rerollSpellSlot } from "./spellcasting.js";
+import { createLootPlan, rerollLootPlan, rerollLootChannel } from "./loot.js";
 
 const SAVE_NAMES = Object.freeze(["fortitude", "reflex", "will"]);
 const ABILITY_NAMES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
@@ -360,7 +361,7 @@ export class CreatureGenerator {
     blueprint.resources.auras = deepClone(generatedSpecialFeatures.auras);
     blueprint.resources.afflictions = deepClone(generatedSpecialFeatures.afflictions);
     assignAfflictionDeliveries(blueprint);
-    blueprint.loot.policy = request.options.loot ?? "auto";
+    blueprint.loot = createLootPlan({ request: effectiveRequest, blueprint, random: random.fork("loot") });
     blueprint.provenance = [
       {
         kind: "rules",
@@ -428,6 +429,12 @@ export class CreatureGenerator {
         section: "Building Creatures / Spell DC and Spell Attack Modifier",
         note: "Generated spell DC and spell attack modifiers use the creature-building spell statistics table."
       }] : []),
+      ...(blueprint.loot?.summary?.selectedChannels?.length ? [{
+        kind: "engine",
+        source: "PF2E Creature Forge",
+        section: "Loot Planning",
+        note: "Loot channels are selected independently from creature concept, role, level, and seeded variation. Carried equipment/signature items are separate from salvage and hoard loot."
+      }] : []),
       ...affinities.hpAdjustment.reasons.map((reason) => ({
         kind: "balance",
         source: "PF2E Creature Forge",
@@ -440,6 +447,7 @@ export class CreatureGenerator {
       ...(generatedAbilities.diagnostics ?? []),
       ...(generatedSpecialFeatures.diagnostics ?? []),
       ...(generatedSpellcasting.diagnostics ?? []),
+      ...(blueprint.loot?.diagnostics ?? []),
       ...validateBlueprint(blueprint).warnings
     ];
     return blueprint;
@@ -461,6 +469,21 @@ export class CreatureGenerator {
     next.metadata.rerollHistory.push({ scope, previousSeed: blueprint.metadata.seed, seed: newSeed });
     next.metadata.requestSnapshot.generation.seed = newSeed;
     const random = new SeededRandom(newSeed);
+
+    if (scope === "loot") {
+      if (next.locks?.loot) return next;
+      next.loot = rerollLootPlan({ request: next.metadata.requestSnapshot, blueprint: next, random: random.fork("loot") });
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
+    }
+
+    if (scope.startsWith("loot:")) {
+      if (next.locks?.loot) return next;
+      const channel = scope.slice("loot:".length);
+      next.loot = rerollLootChannel({ request: next.metadata.requestSnapshot, blueprint: next, random: random.fork(`loot.${channel}`), channel });
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
+    }
 
     if (scope === "statistics.hp") {
       if (next.locks?.["statistics.hp"]) return next;

@@ -31,7 +31,7 @@ test("createActor isolates optional runtime integration failures and still runs 
   const previousGame = globalThis.game;
   const previousActor = globalThis.Actor;
   const previousFolder = globalThis.Folder;
-  const moduleRecord = { id: "pf2e-creature-forge", version: "0.5.2", active: true, api: null };
+  const moduleRecord = { id: "pf2e-creature-forge", version: "0.6.0", active: true, api: null };
   const effectModule = {
     id: "pf2e-critical-forge", active: true, version: "test",
     api: { effects: { apply: async () => [], createItems: async () => [] } }
