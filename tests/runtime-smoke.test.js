@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 test("module init/ready smoke test exposes API and fires hooks", async () => {
   const once = new Map();
   const calls = [];
-  const moduleRecord = { id: "pf2e-creature-forge", version: "0.4.0", active: true, api: null };
+  const moduleRecord = { id: "pf2e-creature-forge", version: "0.4.1", active: true, api: null };
   globalThis.HTMLElement = class HTMLElement {};
   globalThis.document = { querySelector: () => null };
   globalThis.foundry = {

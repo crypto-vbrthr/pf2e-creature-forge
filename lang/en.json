@@ -468,5 +468,16 @@
   "PF2E_CREATURE_FORGE.Affliction.SporeFever.Stage1.Description": "Spores irritate the victim's senses.",
   "PF2E_CREATURE_FORGE.Affliction.SporeFever.Stage2.Description": "The infection blooms aggressively.",
   "PF2E_CREATURE_FORGE.Affliction.InfernalTaint.Stage1.Description": "Unholy influence clouds the victim's resolve.",
-  "PF2E_CREATURE_FORGE.Affliction.InfernalTaint.Stage2.Description": "The corruption deepens."
+  "PF2E_CREATURE_FORGE.Affliction.InfernalTaint.Stage2.Description": "The corruption deepens.",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionDelivery": "Delivery",
+  "PF2E_CREATURE_FORGE.Runtime.TransmitsAffliction": "Transmits affliction",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.OnUse": "On use",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.OnHit": "On hit",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.OnDamage": "On damage dealt",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.FailedSave": "On failed save",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.CriticalFailure": "On critical failure",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.Manual": "Manual",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Automatic": "Automatic",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Prompt": "Prompt",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Manual": "Manual"
 }

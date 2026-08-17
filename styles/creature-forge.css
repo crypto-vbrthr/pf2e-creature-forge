@@ -617,3 +617,18 @@
   .pf2e-creature-forge-affliction-runtime { flex-wrap: wrap; }
   .pf2e-creature-forge-affliction-runtime button.pf2e-creature-forge-apply-affliction { flex: 1 0 100%; width: 100%; margin-left: 0; }
 }
+
+/* 0.4.1 Affliction delivery/runtime presentation. */
+.pf2e-creature-forge-affliction-delivery,
+.pf2e-creature-forge-host-afflictions {
+  margin: .45rem 0;
+  padding: .4rem .55rem;
+  border: 1px solid color-mix(in srgb, #788d31 52%, currentColor 12%);
+  border-left: 4px solid #5b711d;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(102,122,36,.12), transparent 72%);
+}
+.pf2e-creature-forge-affliction-delivery span,
+.pf2e-creature-forge-host-afflictions span { margin-left: .35rem; opacity: .78; font-size: .9em; }
+.pf2e-creature-forge-host-afflictions > div { margin-top: .25rem; }
+.pf2e-creature-forge-host-afflictions i { color: #a9bc4d; margin-right: .2rem; }

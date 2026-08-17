@@ -2,7 +2,7 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.4.0** adds **Auras & Afflictions Integration**. Auras and afflictions are optional, concept-sensitive special features that participate in the same seeded variation and shared power budget as generated abilities. They can be disabled, generated automatically, or required explicitly.
+Version **0.4.1** hardens **Affliction Delivery & Aura/Affliction Runtime** on top of the 0.4.0 integration. Auras and afflictions are optional, concept-sensitive special features that participate in the same seeded variation and shared power budget as generated abilities. They can be disabled, generated automatically, or required explicitly.
 
 ## What 0.4.0 provides
 
@@ -281,6 +281,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.4.0 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, and optional Aura/Affliction selection/editing/runtime delegation. Automatic combat-workflow trigger execution, spell packages, and loot generation remain later milestones. Affliction delivery binding to generated attacks is also a later 0.4.x hardening step.
+0.4.0 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, and optional Aura/Affliction selection/editing/runtime delegation. Automatic combat-workflow trigger execution, spell packages, and loot generation remain later milestones. 0.4.1 binds compatible generated Afflictions to attacks or abilities through actor-local Affliction Forge templates and references; unsupported concepts keep a manual fallback.
 
 See `docs/ROADMAP.md`.

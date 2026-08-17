@@ -14,6 +14,7 @@ import { generateMovement, generateSenses } from "./mobility.js";
 import { calculateAffinityHpAdjustment, generateDefensiveAffinities } from "./defensive-affinities.js";
 import { collectAbilityEffectResources, generateAbilities, rerollAbilitySlot, resolveAbilityPowerBudget } from "./ability-engine.js";
 import { generateSpecialFeatures, rerollSpecialFeature } from "./special-features.js";
+import { assignAfflictionDeliveries } from "./affliction-delivery.js";
 
 const SAVE_NAMES = Object.freeze(["fortitude", "reflex", "will"]);
 const ABILITY_NAMES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
@@ -340,6 +341,7 @@ export class CreatureGenerator {
     blueprint.resources.effects = deepClone(generatedAbilities.effects);
     blueprint.resources.auras = deepClone(generatedSpecialFeatures.auras);
     blueprint.resources.afflictions = deepClone(generatedSpecialFeatures.afflictions);
+    assignAfflictionDeliveries(blueprint);
     blueprint.loot.policy = request.options.loot ?? "auto";
     blueprint.provenance = [
       {
@@ -483,6 +485,7 @@ export class CreatureGenerator {
       const generated = regenerated();
       const lockedById = new Map((next.combat?.attacks ?? []).filter((attack) => attack.locked).map((attack) => [attack.id, attack]));
       next.combat.attacks = generated.combat.attacks.map((attack) => lockedById.get(attack.id) ?? attack);
+      assignAfflictionDeliveries(next);
       next.diagnostics = validateBlueprint(next).warnings;
       return next;
     }
@@ -511,6 +514,7 @@ export class CreatureGenerator {
         ...(result.effects ?? [])
       ]);
       next.metadata.abilityBudget = deepClone(result.budget);
+      assignAfflictionDeliveries(next);
       next.metadata.specialFeatureBudget = {
         ...(next.metadata.specialFeatureBudget ?? {}),
         spent: featureSpent + result.budget.spent,
@@ -534,6 +538,7 @@ export class CreatureGenerator {
         random: random.fork(scope)
       });
       next.resources[scope] = result.feature ? [result.feature] : [];
+      assignAfflictionDeliveries(next);
       const totalBudget = Number(next.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(next.metadata.requestSnapshot, next.identity.role));
       const auraSpent = Number(next.resources?.auras?.[0]?.powerCost ?? 0);
       const afflictionSpent = Number(next.resources?.afflictions?.[0]?.powerCost ?? 0);
@@ -568,6 +573,7 @@ export class CreatureGenerator {
       });
       next.resources.auras = result.auras;
       next.resources.afflictions = result.afflictions;
+      assignAfflictionDeliveries(next);
       next.metadata.specialFeatureBudget = {
         limit: totalBudget,
         spent: abilitySpent + result.budget.spent,
@@ -591,6 +597,7 @@ export class CreatureGenerator {
       });
       next.abilities = result.abilities;
       next.resources.effects = result.effects;
+      assignAfflictionDeliveries(next);
       next.metadata.abilityBudget = deepClone(result.budget);
       const totalBudget = Number(next.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(next.metadata.requestSnapshot, next.identity.role));
       const auraSpent = Number(next.resources?.auras?.[0]?.powerCost ?? 0);

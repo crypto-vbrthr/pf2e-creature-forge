@@ -58,7 +58,7 @@ const afflictionStage = (number, { name = "", description = "", effect = null, d
   reactions: []
 });
 
-const affliction = (slug, nameKey, descriptionKey, { selection = {}, tags = [], themes = [], type = "disease", powerCost = 3, baseWeight = 50, traits = [], delivery = {}, stages = [] } = {}) => ({
+const affliction = (slug, nameKey, descriptionKey, { selection = {}, tags = [], themes = [], type = "disease", powerCost = 3, baseWeight = 50, traits = [], delivery = {}, deliveryProfile = null, stages = [] } = {}) => ({
   id: `${MODULE_ID}.affliction.${slug}`,
   slug,
   nameKey,
@@ -67,6 +67,7 @@ const affliction = (slug, nameKey, descriptionKey, { selection = {}, tags = [], 
   selection,
   powerCost,
   baseWeight,
+  deliveryProfile,
   definition: {
     schemaVersion: 2,
     id: `${MODULE_ID}.affliction.${slug}`,
@@ -80,7 +81,7 @@ const affliction = (slug, nameKey, descriptionKey, { selection = {}, tags = [], 
     themes,
     saveDefaults: { execution: "player", visibility: "public" },
     identification: { initialState: "identified" },
-    delivery: { injuryPoison: type === "poison", ...delivery },
+    delivery: { injuryPoison: false, ...delivery },
     multipleExposure: "default",
     restrictions: { conditionLocks: [], healing: "none", unhealableDamageTypes: [], blockedCapabilities: [] },
     checks: [{ id: "primary", label: "", kind: "save", statistic: "fortitude", dcMode: "fixed", dc: 15, policy: null }],
@@ -173,6 +174,7 @@ export const CORE_AFFLICTIONS = [
   affliction("predator-venom", "PF2E_CREATURE_FORGE.Affliction.PredatorVenom.Name", "PF2E_CREATURE_FORGE.Affliction.PredatorVenom.Description", {
     type: "poison", traits: ["poison"], themes: ["venom"], tags: ["poison", "venom", "predator"],
     selection: { categories: ["animal", "beast", "aberration"], anySubtypes: ["poison"], minimumLevel: 1 }, powerCost: 3, baseWeight: 100,
+    deliveryProfile: { hostOrder: ["attack"], trigger: "on-damage", application: "automatic", preferredDamageTypes: ["piercing", "slashing"], preferredAttackNames: ["Bite", "Jaws", "Maw", "Claw"] },
     stages: [
       afflictionStage(1, { name: "Stage 1", description: "The venom weakens the victim.", effect: embeddedEffect("predator-venom-1", "Venom", [{ type: "condition", slug: "enfeebled", value: 1 }]) }),
       afflictionStage(2, { name: "Stage 2", description: "The venom severely weakens the victim.", effect: embeddedEffect("predator-venom-2", "Venom", [{ type: "condition", slug: "enfeebled", value: 2 }]) })
@@ -181,6 +183,7 @@ export const CORE_AFFLICTIONS = [
   affliction("grave-rot", "PF2E_CREATURE_FORGE.Affliction.GraveRot.Name", "PF2E_CREATURE_FORGE.Affliction.GraveRot.Description", {
     type: "disease", traits: ["disease"], themes: ["undead", "decay"], tags: ["undead", "disease", "decay"],
     selection: { categories: ["undead"], minimumLevel: 2 }, powerCost: 3, baseWeight: 75,
+    deliveryProfile: { hostOrder: ["attack", "ability"], trigger: "on-hit", application: "automatic", preferredAttackNames: ["Bite", "Jaws", "Claw", "Touch"] },
     stages: [
       afflictionStage(1, { name: "Stage 1", description: "Necrotic weakness spreads through the body.", effect: embeddedEffect("grave-rot-1", "Grave Rot", [{ type: "condition", slug: "enfeebled", value: 1 }]) }),
       afflictionStage(2, { name: "Stage 2", description: "The victim's strength withers further.", effect: embeddedEffect("grave-rot-2", "Grave Rot", [{ type: "condition", slug: "enfeebled", value: 2 }, { type: "condition", slug: "sickened", value: 1 }]) })
@@ -189,6 +192,7 @@ export const CORE_AFFLICTIONS = [
   affliction("spore-fever", "PF2E_CREATURE_FORGE.Affliction.SporeFever.Name", "PF2E_CREATURE_FORGE.Affliction.SporeFever.Description", {
     type: "disease", traits: ["disease", "fungus"], themes: ["spore", "fungus"], tags: ["fungus", "spore", "disease"],
     selection: { categories: ["fungus", "plant"], minimumLevel: 1 }, powerCost: 3, baseWeight: 100,
+    deliveryProfile: { hostOrder: ["ability", "attack"], trigger: "on-use", application: "automatic", preferredAbilityTags: ["spore", "fungus", "area"], preferredAttackNames: ["Spore Lash", "Tendril"] },
     stages: [
       afflictionStage(1, { name: "Stage 1", description: "Spores irritate the victim's senses.", effect: embeddedEffect("spore-fever-1", "Spore Fever", [{ type: "condition", slug: "sickened", value: 1 }]) }),
       afflictionStage(2, { name: "Stage 2", description: "The infection blooms aggressively.", effect: embeddedEffect("spore-fever-2", "Spore Fever", [{ type: "condition", slug: "sickened", value: 2 }]) })
@@ -197,6 +201,7 @@ export const CORE_AFFLICTIONS = [
   affliction("infernal-taint", "PF2E_CREATURE_FORGE.Affliction.InfernalTaint.Name", "PF2E_CREATURE_FORGE.Affliction.InfernalTaint.Description", {
     type: "curse", traits: ["curse", "unholy"], themes: ["fiend", "corruption"], tags: ["fiend", "curse", "unholy"],
     selection: { categories: ["fiend"], minimumLevel: 5 }, powerCost: 4, baseWeight: 60,
+    deliveryProfile: { hostOrder: ["ability", "attack"], trigger: "on-use", application: "prompt", preferredAbilityTags: ["fiend", "unholy", "mental", "fear", "control"] },
     stages: [
       afflictionStage(1, { name: "Stage 1", description: "Unholy influence clouds the victim's resolve.", effect: embeddedEffect("infernal-taint-1", "Infernal Taint", [{ type: "modifier", selector: "will", value: -1, modifierType: "status" }]) }),
       afflictionStage(2, { name: "Stage 2", description: "The corruption deepens.", effect: embeddedEffect("infernal-taint-2", "Infernal Taint", [{ type: "condition", slug: "stupefied", value: 1 }]) })

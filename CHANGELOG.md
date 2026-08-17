@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.1 – Affliction Delivery & Aura/Affliction Runtime Hardening
+
+- Added concept-sensitive Affliction delivery plans that bind generated poisons, diseases, and curses to compatible generated attacks or abilities when possible.
+- Intrinsic creature venoms now use normal Affliction references instead of consumable injury-poison coating semantics.
+- Materializes generated Affliction definitions as actor-local Affliction Forge template Items, avoiding world-library clutter.
+- Attaches Affliction Forge references to generated melee/action host Items, allowing Affliction Forge's own combat-trigger runtime to process on-use, on-hit, and on-damage delivery.
+- Added localized delivery summaries to both the Affliction ability and its host attack/ability, while keeping manual application as a fallback.
+- Added idempotent cleanup/rebinding for generated Affliction references and actor-local templates.
+- Aura materialization now validates definitions before assignment and reconciles the actor after assignment.
+- Public runtime API now exposes Affliction materialization and special-feature cleanup.
+- Blueprint/content schema v6; API/module 0.4.1.
+
 ## 0.4.0 - Auras & Afflictions Integration
 
 - Added optional concept-sensitive Aura and Affliction generation with independent `auto`, `none`, and `required` modes.

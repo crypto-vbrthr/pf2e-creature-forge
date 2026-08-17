@@ -40,6 +40,10 @@ export class ForgeIntegrationHub {
         createDefinition: (api) => typeof api.definitions?.create === "function",
         validateDefinition: (api) => typeof api.definitions?.validate === "function",
         applyDefinition: (api) => typeof api.engine?.applyDefinition === "function",
+        buildTemplateSource: (api) => typeof api.documents?.buildTemplateSource === "function",
+        createReference: (api) => typeof api.references?.create === "function",
+        addReference: (api) => typeof api.references?.add === "function",
+        triggerRuntime: (api) => typeof api.triggers?.status === "function",
         editor: (api) => typeof api.ui?.afflictionEditor?.create === "function"
       }),
       item: integrationStatus(IDS.item, {

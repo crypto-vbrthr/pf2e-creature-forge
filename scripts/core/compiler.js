@@ -154,7 +154,28 @@ function afflictionTypeLabel(type) {
   return localizeKey(key, String(type ?? "disease"));
 }
 
-export function buildAfflictionDescription(resource, { actorUuid = null, runtimeAvailable = false } = {}) {
+function afflictionTriggerLabel(trigger) {
+  const map = {
+    "on-use": "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.OnUse",
+    "on-hit": "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.OnHit",
+    "on-damage": "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.OnDamage",
+    "failed-save": "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.FailedSave",
+    "critical-failure": "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.CriticalFailure",
+    manual: "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.Manual"
+  };
+  return localizeKey(map[String(trigger ?? "manual")] ?? map.manual, String(trigger ?? "manual"));
+}
+
+function afflictionApplicationLabel(application) {
+  const map = {
+    automatic: "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Automatic",
+    prompt: "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Prompt",
+    manual: "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Manual"
+  };
+  return localizeKey(map[String(application ?? "manual")] ?? map.manual, String(application ?? "manual"));
+}
+
+export function buildAfflictionDescription(resource, { actorUuid = null, runtimeAvailable = false, binding = null } = {}) {
   const definition = resource?.definition ?? {};
   const description = localizeKey(resource?.descriptionKey, resource?.description ?? definition?.description ?? "");
   const applyLabel = localizeKey("PF2E_CREATURE_FORGE.Action.ApplyAffliction", "Apply affliction");
@@ -162,7 +183,31 @@ export function buildAfflictionDescription(resource, { actorUuid = null, runtime
   const button = runtimeAvailable && actorUuid
     ? `<button type="button" class="pf2e-creature-forge-apply-affliction" data-cf-actor-uuid="${escapeAttribute(actorUuid)}" data-cf-affliction-ref="${escapeAttribute(resource?.id)}" title="${escapeAttribute(applyLabel)}"><i class="fa-solid fa-biohazard"></i><span>${applyLabel}</span></button>`
     : "";
-  return `${description ? `<p>${description}</p>` : ""}<div class="pf2e-creature-forge-affliction-runtime"><span class="pf2e-creature-forge-affliction-type"><i class="fa-solid fa-biohazard"></i> ${escapeAttribute(type)}</span>${button}</div>`;
+  let delivery = "";
+  if (binding?.mode === "hosted" && binding.hostItemUuid) {
+    const label = localizeKey("PF2E_CREATURE_FORGE.Runtime.AfflictionDelivery", "Delivery");
+    const trigger = afflictionTriggerLabel(binding.delivery?.trigger);
+    const application = afflictionApplicationLabel(binding.delivery?.application);
+    const hostName = escapeAttribute(binding.hostName ?? binding.delivery?.hostId ?? "Host");
+    delivery = `<div class="pf2e-creature-forge-affliction-delivery"><strong>${label}:</strong> @UUID[${binding.hostItemUuid}]{${hostName}} <span>${escapeAttribute(trigger)} · ${escapeAttribute(application)}</span></div>`;
+  } else if (resource?.delivery?.mode === "manual" || binding?.mode === "manual") {
+    delivery = `<div class="pf2e-creature-forge-affliction-delivery"><strong>${localizeKey("PF2E_CREATURE_FORGE.Runtime.AfflictionDelivery", "Delivery")}:</strong> ${escapeAttribute(afflictionTriggerLabel("manual"))}</div>`;
+  }
+  return `${description ? `<p>${description}</p>` : ""}${delivery}<div class="pf2e-creature-forge-affliction-runtime"><span class="pf2e-creature-forge-affliction-type"><i class="fa-solid fa-biohazard"></i> ${escapeAttribute(type)}</span>${button}</div>`;
+}
+
+export function buildAfflictionHostDescription(current = "", linked = []) {
+  const stripped = String(current ?? "").replace(/<div class="pf2e-creature-forge-host-afflictions"[\s\S]*?<\/div>/g, "").trim();
+  if (!linked.length) return stripped;
+  const title = localizeKey("PF2E_CREATURE_FORGE.Runtime.TransmitsAffliction", "Transmits affliction");
+  const rows = linked.map(({ binding, resource }) => {
+    const name = localizeKey(resource?.nameKey, resource?.definition?.name ?? resource?.name ?? binding.afflictionRef);
+    const trigger = afflictionTriggerLabel(binding.delivery?.trigger);
+    const application = afflictionApplicationLabel(binding.delivery?.application);
+    const link = binding.templateUuid ? `@UUID[${binding.templateUuid}]{${name}}` : escapeAttribute(name);
+    return `<div><i class="fa-solid fa-biohazard"></i> ${link} <span>${escapeAttribute(trigger)} · ${escapeAttribute(application)}</span></div>`;
+  }).join("");
+  return `${stripped}${stripped ? "" : ""}<div class="pf2e-creature-forge-host-afflictions"><strong>${title}:</strong>${rows}</div>`;
 }
 
 function compileAfflictionItem(resource) {

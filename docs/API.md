@@ -1,4 +1,4 @@
-# Public API 0.4.0
+# Public API 0.4.1
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;

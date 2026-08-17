@@ -17,6 +17,7 @@ import { estimateAbilityPower, listAbilityCandidates, resolveAbilityPowerBudget 
 import { CreatureEffectRuntime } from "../runtime/effect-runtime.js";
 import { CreatureSpecialFeatureRuntime } from "../runtime/special-feature-runtime.js";
 import { estimateSpecialPower, specialFeatureChance } from "../core/special-features.js";
+import { resolveAfflictionDelivery, assignAfflictionDeliveries } from "../core/affliction-delivery.js";
 
 let apiInstance = null;
 
@@ -112,7 +113,9 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       listAuras: (filters = {}) => registry.list("aura", filters),
       listAfflictions: (filters = {}) => registry.list("affliction", filters),
       listAuraLibraries: (filters = {}) => registry.listAuraLibraries(filters),
-      listAfflictionLibraries: (filters = {}) => registry.listAfflictionLibraries(filters)
+      listAfflictionLibraries: (filters = {}) => registry.listAfflictionLibraries(filters),
+      resolveAfflictionDelivery: (resource, blueprint) => resolveAfflictionDelivery(resource, blueprint),
+      assignAfflictionDeliveries: (blueprint) => assignAfflictionDeliveries(blueprint)
     },
 
     auras: {
@@ -192,6 +195,8 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       cleanupActorEffects: (actor) => runtime.cleanupActorResources(actor),
       applyAffliction: (options = {}) => specialRuntime.applyAffliction(options),
       materializeAuras: (actor, blueprint = null) => specialRuntime.materializeAuras(actor, blueprint ?? undefined),
+      materializeAfflictions: (actor, blueprint = null) => specialRuntime.materializeAfflictions(actor, blueprint ?? undefined),
+      cleanupActorSpecialFeatures: async (actor) => ({ auras: await specialRuntime.cleanupAuras(actor), afflictions: await specialRuntime.cleanupAfflictions(actor) }),
       refreshSpecialFeatures: (actor, blueprint = null) => specialRuntime.initializeActor(actor, blueprint ?? undefined)
     },
 

@@ -104,6 +104,7 @@ function materialize(entry, kind, level) {
     powerCost: estimateSpecialPower(entry, kind),
     definition: kind === "aura" ? scaleAuraDefinition(entry, level) : scaleAfflictionDefinition(entry, level),
     source: deepClone(entry.source ?? {}),
+    deliveryProfile: kind === "affliction" ? deepClone(entry.deliveryProfile ?? null) : null,
     locked: false
   };
 }

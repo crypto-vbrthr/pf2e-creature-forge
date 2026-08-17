@@ -468,5 +468,16 @@
   "PF2E_CREATURE_FORGE.Affliction.SporeFever.Stage1.Description": "Sporen reizen die Sinne des Opfers.",
   "PF2E_CREATURE_FORGE.Affliction.SporeFever.Stage2.Description": "Die Infektion breitet sich aggressiv aus.",
   "PF2E_CREATURE_FORGE.Affliction.InfernalTaint.Stage1.Description": "Unheiliger Einfluss trübt die Entschlossenheit des Opfers.",
-  "PF2E_CREATURE_FORGE.Affliction.InfernalTaint.Stage2.Description": "Die Verderbnis vertieft sich."
+  "PF2E_CREATURE_FORGE.Affliction.InfernalTaint.Stage2.Description": "Die Verderbnis vertieft sich.",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionDelivery": "Übertragung",
+  "PF2E_CREATURE_FORGE.Runtime.TransmitsAffliction": "Überträgt Leiden",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.OnUse": "Bei Einsatz",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.OnHit": "Bei Treffer",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.OnDamage": "Bei verursachtem Schaden",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.FailedSave": "Bei misslungenem Rettungswurf",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.CriticalFailure": "Bei kritischem Fehlschlag",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.Manual": "Manuell",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Automatic": "Automatisch",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Prompt": "Mit Bestätigung",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Manual": "Manuell"
 }

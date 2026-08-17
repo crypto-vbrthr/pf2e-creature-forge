@@ -175,3 +175,8 @@
 ## 1.0
 
 - Release hardening, migration policy, API stability commitment, and complete documentation.
+
+
+## 0.4.1 - Affliction Delivery & Aura/Affliction Runtime Hardening ✅
+
+Generated Afflictions can bind to compatible attacks/abilities using actor-local Affliction Forge templates and native Affliction references. Aura assignment validates and reconciles actor-local definitions.

@@ -292,9 +292,14 @@ export function validateBlueprint(blueprint) {
     if (!definition || typeof definition !== "object" || !String(definition?.name ?? "").trim() || !Array.isArray(definition?.stages) || !definition.stages.length) {
       issues.push(issue("error", "INVALID_AFFLICTION_RESOURCE", `resources.afflictions.${index}`, "Affliction resources require an Affliction Forge-compatible definition with a name and at least one stage."));
     }
+    const delivery = resource?.delivery;
+    if (delivery && !["hosted", "manual"].includes(delivery.mode)) issues.push(issue("error", "INVALID_AFFLICTION_DELIVERY", `resources.afflictions.${index}.delivery`, "Affliction delivery mode must be hosted or manual."));
+    if (delivery?.mode === "hosted" && (!String(delivery.hostId ?? "").trim() || !["attack", "ability"].includes(delivery.hostType))) {
+      issues.push(issue("error", "INVALID_AFFLICTION_DELIVERY_HOST", `resources.afflictions.${index}.delivery`, "Hosted Affliction delivery requires a valid attack or ability host."));
+    }
   }
-  if ((blueprint?.resources?.auras ?? []).length > 1) issues.push(issue("warning", "MULTIPLE_GENERATED_AURAS", "resources.auras", "The 0.4.0 generator normally creates at most one aura."));
-  if ((blueprint?.resources?.afflictions ?? []).length > 1) issues.push(issue("warning", "MULTIPLE_GENERATED_AFFLICTIONS", "resources.afflictions", "The 0.4.0 generator normally creates at most one affliction."));
+  if ((blueprint?.resources?.auras ?? []).length > 1) issues.push(issue("warning", "MULTIPLE_GENERATED_AURAS", "resources.auras", "The 0.4.x generator normally creates at most one aura."));
+  if ((blueprint?.resources?.afflictions ?? []).length > 1) issues.push(issue("warning", "MULTIPLE_GENERATED_AFFLICTIONS", "resources.afflictions", "The 0.4.x generator normally creates at most one affliction."));
   const abilityBudget = blueprint?.metadata?.abilityBudget ?? null;
   if (abilityBudget) {
     const spent = generatedAbilities.reduce((sum, ability) => sum + Number(ability?.powerCost ?? 0), 0);
