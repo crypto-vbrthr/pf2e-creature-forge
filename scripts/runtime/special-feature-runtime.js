@@ -79,7 +79,12 @@ export class CreatureSpecialFeatureRuntime {
       try { resolved = api.instances.resolve?.(actor, instance.id) ?? null; } catch { resolved = null; }
       const definition = resolved?.definition ?? instance?.definitionSnapshot ?? null;
       const id = String(definition?.id ?? instance?.definitionId ?? "");
-      const owned = instance?.definitionScope === "actor" && (id.startsWith(`${MODULE_ID}.`) || definition?.metadata?.createdBy === MODULE_ID || definition?.metadata?.originModule === MODULE_ID);
+      const owned = instance?.definitionScope === "actor" && (
+        id.startsWith(`${MODULE_ID}.`)
+        || definition?.metadata?.createdBy === MODULE_ID
+        || definition?.metadata?.originModule === MODULE_ID
+        || definition?.metadata?.creatureForge?.originModule === MODULE_ID
+      );
       if (!owned) continue;
       try { removed.push(await api.instances.remove(actor, instance.id)); } catch (error) { console.warn(`${MODULE_ID} | Could not remove actor-local generated aura.`, error); }
     }
@@ -94,6 +99,16 @@ export class CreatureSpecialFeatureRuntime {
     for (const resource of blueprint.resources?.auras ?? []) {
       try {
         const definition = localizedAura(resource);
+        definition.metadata = {
+          ...(definition.metadata ?? {}),
+          creatureForge: {
+            ...(definition.metadata?.creatureForge ?? {}),
+            originModule: MODULE_ID,
+            resourceId: resource.id,
+            contentId: resource.contentId ?? resource.id,
+            actorUuid: actor.uuid ?? null
+          }
+        };
         const report = this.integrations.auraApi?.definitions?.validate?.(definition);
         if (!definitionValid(report)) throw new Error((report?.errors ?? []).map((entry) => entry?.message ?? String(entry)).join(" ") || "Invalid Aura definition.");
         const assigned = await this.integrations.auraApi.instances.assignDefinition(actor, definition, { enabled: true });
@@ -113,13 +128,25 @@ export class CreatureSpecialFeatureRuntime {
     const api = this.integrations?.afflictionApi;
     const result = { referencesRemoved: 0, templatesRemoved: 0 };
     if (!actor || !api) return result;
-    if (api.references?.list && api.references?.set) {
+    if (api.references?.list && (api.references?.set || api.references?.remove)) {
       for (const item of itemsOf(actor)) {
-        const refs = api.references.list(item) ?? [];
-        const kept = refs.filter((reference) => reference?.metadata?.originModule !== MODULE_ID);
-        if (kept.length === refs.length) continue;
-        await api.references.set(item, kept);
-        result.referencesRemoved += refs.length - kept.length;
+        try {
+          const refs = api.references.list(item) ?? [];
+          const owned = refs.filter((reference) => reference?.metadata?.originModule === MODULE_ID);
+          if (!owned.length) continue;
+          if (api.references.set) {
+            const kept = refs.filter((reference) => reference?.metadata?.originModule !== MODULE_ID);
+            await api.references.set(item, kept);
+            result.referencesRemoved += owned.length;
+          } else {
+            for (const reference of owned) {
+              await api.references.remove(item, reference.id);
+              result.referencesRemoved += 1;
+            }
+          }
+        } catch (error) {
+          console.warn(`${MODULE_ID} | Could not clean generated Affliction references from '${item?.name ?? item?.id ?? "item"}'.`, error);
+        }
       }
     }
     const templateIds = itemsOf(actor)

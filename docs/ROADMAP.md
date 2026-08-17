@@ -164,6 +164,14 @@
 - Optional automatic runtime triggers after the manual application paths are proven.
 
 
+## 0.5.2 - Core Review & Runtime Hardening ✅
+
+- Isolate optional post-create Effect, Aura/Affliction, and spell runtime failures and expose consolidated Actor/runtime diagnostics.
+- Add ownership-aware, idempotent spell refresh that preserves manual spells and prevents ghost prepared-slot references.
+- Harden external actor-local Aura ownership cleanup and Affliction reference/host-description refresh behavior.
+- Expand Blueprint identity/runtime-reference validation.
+- Add a broad level/role/category regression matrix and explicit partial-runtime tests.
+
 ## 0.5.1 - Required Special Feature Budget Fix ✅
 
 - Required Auras/Afflictions may overrun an exhausted shared budget with explicit diagnostics, matching required spellcasting semantics.

@@ -100,3 +100,27 @@ test("generated Affliction delivery descriptions localize runtime metadata in Ge
     globalThis.game = previous;
   }
 });
+
+
+test("Affliction host description refresh replaces its generated block without leaving malformed legacy markup", async () => {
+  const { buildAfflictionHostDescription } = await import("../scripts/core/compiler.js");
+  const resource = { id: "test.venom", definition: { name: "Venom", afflictionType: "poison", stages: [{ number: 1, name: "Stage 1" }] } };
+  const binding = {
+    afflictionRef: "test.venom",
+    mode: "hosted",
+    templateUuid: "Compendium.test.Item.venom",
+    delivery: { trigger: "on-damage", application: "automatic" }
+  };
+  const base = "<p>Original strike text.</p>";
+  const once = buildAfflictionHostDescription(base, [{ binding, resource }]);
+  const twice = buildAfflictionHostDescription(once, [{ binding, resource }]);
+  assert.equal(twice, once);
+  assert.equal((twice.match(/pf2e-creature-forge:host-afflictions:start/g) ?? []).length, 1);
+  assert.equal((twice.match(/pf2e-creature-forge-host-afflictions/g) ?? []).length, 1);
+
+  const legacy = `${base}<div class="pf2e-creature-forge-host-afflictions"><strong>Transmits affliction:</strong><div>Old row</div></div>`;
+  const migrated = buildAfflictionHostDescription(legacy, [{ binding, resource }]);
+  assert.match(migrated, /Original strike text/);
+  assert.doesNotMatch(migrated, /Old row/);
+  assert.equal((migrated.match(/pf2e-creature-forge-host-afflictions/g) ?? []).length, 1);
+});

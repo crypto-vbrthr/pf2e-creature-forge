@@ -75,3 +75,49 @@ test("manual affliction runtime delegates to Affliction Forge for selected targe
     globalThis.game = previousGame;
   }
 });
+
+
+test("external actor-local auras are tagged as Creature Forge-owned and cleaned before refresh", async () => {
+  const instances = [];
+  const removed = [];
+  const runtime = new CreatureSpecialFeatureRuntime({
+    integrations: {
+      auraApi: {
+        definitions: { validate: () => ({ valid: true, errors: [], warnings: [] }) },
+        instances: {
+          list: () => instances,
+          resolve: (_actor, id) => {
+            const instance = instances.find((entry) => entry.id === id);
+            return instance ? { definition: instance.definitionSnapshot } : null;
+          },
+          remove: async (_actor, id) => {
+            removed.push(id);
+            const index = instances.findIndex((entry) => entry.id === id);
+            if (index >= 0) instances.splice(index, 1);
+            return id;
+          },
+          assignDefinition: async (_actor, definition) => {
+            const instance = {
+              id: `instance-${instances.length + removed.length + 1}`,
+              definitionScope: "actor",
+              definitionId: definition.id,
+              definitionSnapshot: structuredClone(definition)
+            };
+            instances.push(instance);
+            return instance;
+          },
+          reconcileActor: async () => ({ ok: true })
+        }
+      }
+    }
+  });
+  const bp = { resources: { auras: [{ id: "external.aura", contentId: "external.aura", definition: { id: "external.aura", name: "External Aura", radius: 20 } }], afflictions: [] } };
+  const source = actor(bp);
+  const first = await runtime.materializeAuras(source, bp);
+  assert.equal(first.assigned.length, 1);
+  assert.equal(instances[0].definitionSnapshot.metadata.creatureForge.originModule, "pf2e-creature-forge");
+  const second = await runtime.materializeAuras(source, bp);
+  assert.equal(removed.length, 1);
+  assert.equal(second.assigned.length, 1);
+  assert.equal(instances.length, 1);
+});

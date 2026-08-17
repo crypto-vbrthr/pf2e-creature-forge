@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.2 - Core Review & Runtime Hardening
+
+- Performed a broader generation/runtime review across boundary levels, all core roles, and all core creature categories; added a permanent boundary review matrix to the automated suite.
+- Hardened `api.createActor()` so optional Effect, Aura/Affliction, and spell runtime failures are isolated after Actor creation. One failed integration no longer prevents the remaining runtime subsystems or caller `postCreate` hooks from running.
+- Added consolidated Creature Forge runtime diagnostics/status, persisted on the generated Actor when possible, plus `{ strictRuntime: true }` for callers that deliberately want runtime-initialization failures to throw.
+- Made spell materialization idempotent: Creature Forge-owned embedded spells are cleaned before refresh while manually added spells are preserved.
+- Isolated missing/failing spell source UUIDs per spell, prevented ghost prepared-slot references, and added diagnostics for source-resolution/materialization/slot-update failures.
+- Added `api.runtime.refreshSpellcasting(actor, blueprint)` as the explicit idempotent spell refresh operation.
+- Fixed cleanup ownership for actor-local Auras originating from external Aura libraries by tagging the local snapshot with Creature Forge provenance.
+- Hardened Affliction reference cleanup so one broken host Item cannot abort cleanup of the remaining references.
+- Reworked generated Affliction host-description blocks with stable sentinel markers and migration cleanup for legacy 0.4.2-0.5.1 nested wrappers; repeated compile/refresh is now structurally idempotent.
+- Expanded Blueprint validation for schema compatibility, level/size identity, duplicate runtime IDs, attack shape/range, resource IDs, spellcasting IDs, and hosted-Affliction carrier references. Missing carriers degrade to a warning because runtime retains the manual fallback.
+- Added a localized partial-runtime warning in the Creature Editor when the Actor is created successfully but an optional integration could not fully initialize.
+- Verified generation across 1,008 additional level/role/category combinations during the review with no invalid Blueprints.
+- Expanded the permanent automated suite to 132 passing tests.
+- Promoted API/module version to 0.5.2; request schema remains v6, Blueprint/content schemas remain v8, and Embedded Creature Editor contract remains v11.
+
 ## 0.5.1 - Required Special Feature Budget Fix
 
 - Fixed explicitly required Auras and Afflictions being silently suppressed when spellcasting or another special feature had already consumed the shared power budget.

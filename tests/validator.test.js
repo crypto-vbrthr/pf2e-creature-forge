@@ -103,3 +103,39 @@ test("legacy options.spellcasting alias still controls spellcasting mode when no
   assert.equal(createGenerationRequest({ options: { spellcasting: "on" } }).spellcasting.mode, "required");
   assert.equal(createGenerationRequest({ spellcasting: { mode: "auto" }, options: { spellcasting: "off" } }).spellcasting.mode, "auto");
 });
+
+
+test("blueprint validation rejects duplicate runtime ids and malformed identity data", () => {
+  const blueprint = createEmptyBlueprint();
+  blueprint.identity.level = 25;
+  blueprint.identity.size = "colossal";
+  blueprint.combat.attacks = [
+    { id: "dup", name: "A", kind: "melee", attack: { rank: "high", value: 10 }, damage: { rank: "moderate", formula: "1d6+2", average: 5.5, type: "slashing" }, traits: [] },
+    { id: "dup", name: "B", kind: "melee", attack: { rank: "moderate", value: 8 }, damage: { rank: "high", formula: "1d8+4", average: 8.5, type: "slashing" }, traits: [] }
+  ];
+  blueprint.combat.spellcasting = [{
+    id: "casting", tradition: "arcane", style: "prepared", dc: 20, attack: 12, highestRank: 2, powerCost: 1,
+    spells: [
+      { id: "spell-x", sourceUuid: "Compendium.test.Item.a", baseRank: 1, rank: 1, cantrip: false },
+      { id: "spell-x", sourceUuid: "Compendium.test.Item.b", baseRank: 1, rank: 1, cantrip: false }
+    ]
+  }];
+  const validation = validateBlueprint(blueprint);
+  assert.equal(validation.valid, false);
+  assert.ok(validation.errors.some((entry) => entry.code === "BLUEPRINT_LEVEL_OUT_OF_RANGE"));
+  assert.ok(validation.errors.some((entry) => entry.code === "INVALID_BLUEPRINT_SIZE"));
+  assert.ok(validation.errors.some((entry) => entry.code === "DUPLICATE_ATTACK_ID"));
+  assert.ok(validation.errors.some((entry) => entry.code === "DUPLICATE_SPELL_ID"));
+});
+
+test("blueprint validation warns when hosted Affliction delivery points to a missing carrier", () => {
+  const blueprint = createEmptyBlueprint();
+  blueprint.resources.afflictions = [{
+    id: "affliction-1",
+    definition: { name: "Test", afflictionType: "poison", stages: [{ number: 1, name: "Stage 1" }] },
+    delivery: { mode: "hosted", hostType: "attack", hostId: "missing-attack", trigger: "on-hit", application: "automatic" }
+  }];
+  const validation = validateBlueprint(blueprint);
+  assert.equal(validation.valid, true);
+  assert.ok(validation.warnings.some((entry) => entry.code === "AFFLICTION_DELIVERY_HOST_MISSING"));
+});

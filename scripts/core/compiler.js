@@ -202,8 +202,25 @@ export function buildAfflictionDescription(resource, { actorUuid = null, runtime
   return `${description ? `<p>${description}</p>` : ""}${delivery}<div class="pf2e-creature-forge-affliction-runtime"><span class="pf2e-creature-forge-affliction-type"><i class="fa-solid fa-biohazard"></i> ${escapeAttribute(type)}</span>${button}</div>`;
 }
 
+const AFFLICTION_HOST_BLOCK_START = "<!-- pf2e-creature-forge:host-afflictions:start -->";
+const AFFLICTION_HOST_BLOCK_END = "<!-- pf2e-creature-forge:host-afflictions:end -->";
+
+function stripAfflictionHostBlock(current = "") {
+  let value = String(current ?? "");
+  const start = value.indexOf(AFFLICTION_HOST_BLOCK_START);
+  const end = value.indexOf(AFFLICTION_HOST_BLOCK_END);
+  if (start >= 0 && end >= start) {
+    value = `${value.slice(0, start)}${value.slice(end + AFFLICTION_HOST_BLOCK_END.length)}`;
+  }
+  // Migration cleanup for 0.4.2-0.5.1 descriptions, which used an unmarked
+  // nested div. The generator currently creates at most one hosted Affliction,
+  // so consume the complete legacy wrapper rather than the first inner row only.
+  value = value.replace(/<div class="pf2e-creature-forge-host-afflictions"[^>]*>[\s\S]*?<\/div>\s*<\/div>/g, "");
+  return value.trim();
+}
+
 export function buildAfflictionHostDescription(current = "", linked = []) {
-  const stripped = String(current ?? "").replace(/<div class="pf2e-creature-forge-host-afflictions"[\s\S]*?<\/div>/g, "").trim();
+  const stripped = stripAfflictionHostBlock(current);
   if (!linked.length) return stripped;
   const title = localizeKey("PF2E_CREATURE_FORGE.Runtime.TransmitsAffliction", "Transmits affliction");
   const rows = linked.map(({ binding, resource }) => {
@@ -213,7 +230,8 @@ export function buildAfflictionHostDescription(current = "", linked = []) {
     const link = binding.templateUuid ? `@UUID[${binding.templateUuid}]{${name}}` : escapeAttribute(name);
     return `<div><i class="fa-solid fa-biohazard"></i> ${link} <span>${escapeAttribute(trigger)} · ${escapeAttribute(application)}</span></div>`;
   }).join("");
-  return `${stripped}${stripped ? "" : ""}<div class="pf2e-creature-forge-host-afflictions"><strong>${title}:</strong>${rows}</div>`;
+  const block = `${AFFLICTION_HOST_BLOCK_START}<div class="pf2e-creature-forge-host-afflictions"><strong>${title}:</strong>${rows}</div>${AFFLICTION_HOST_BLOCK_END}`;
+  return `${stripped}${stripped ? "" : ""}${block}`;
 }
 
 function compileAfflictionItem(resource) {

@@ -1,6 +1,6 @@
-# Public API 0.5.1
+# Public API 0.5.2
 
-> **0.5.1 budget fix:** `required` Auras and Afflictions are allowed to exceed the remaining shared special-feature power budget, matching required spellcasting. Automatic special features remain budget-constrained.
+> **0.5.2 runtime hardening:** Actor creation now isolates optional post-create runtime failures, reports consolidated diagnostics/status, and supports `{ strictRuntime: true }` for callers that deliberately want fail-fast runtime initialization. Spell refresh is idempotent and preserves manually added spells.
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;
@@ -28,6 +28,22 @@ api.validate(blueprint);
 api.compile(blueprint, options);
 await api.createActor(blueprint, options);
 ```
+
+### Actor creation runtime hardening
+
+By default, creation is persistence-first: once the PF2E Actor has been created, optional Creature Forge runtime integrations are initialized independently. A failure in Effect materialization, Aura/Affliction materialization, or spell materialization is recorded instead of aborting the remaining optional runtime steps. The return value keeps the individual subsystem results and adds consolidated diagnostics/status.
+
+```js
+const { actor, runtime } = await api.createActor(blueprint);
+
+runtime.creatureForge.runtimeStatus;
+runtime.creatureForge.diagnostics;
+
+// Optional fail-fast mode for automation/import pipelines:
+await api.createActor(blueprint, { strictRuntime: true });
+```
+
+When possible, the same status is persisted as `flags.pf2e-creature-forge.runtimeStatus` on the Actor. Failure to persist that diagnostic flag is itself reported without deleting the successfully created Actor. Caller-provided `postCreate` hooks retain normal exception semantics.
 
 ### Core statistic request
 
@@ -125,7 +141,7 @@ const blueprint = await api.generateAsync({
 });
 ```
 
-`auto` is deliberately optional: a mundane creature can receive no spellcasting at all. `required` still requires valid spells in the active sources. Automatic tradition and spell selection are constrained by the actually indexed source content and weighted by category, resolved subtypes, role, core/external `spellProfile` content, spell traits, and explicit request themes. Normal spells and cantrips are indexed in 0.5.1; rituals and focus spells are intentionally excluded from this milestone.
+`auto` is deliberately optional: a mundane creature can receive no spellcasting at all. `required` still requires valid spells in the active sources. Automatic tradition and spell selection are constrained by the actually indexed source content and weighted by category, resolved subtypes, role, core/external `spellProfile` content, spell traits, and explicit request themes. Normal spells and cantrips are indexed in 0.5.2; rituals and focus spells are intentionally excluded from this milestone.
 
 Spellcasting uses the same seeded random service and shared power budget as the other special mechanics. `focused`, `standard`, and `broad` control repertoire breadth. Whole spellcasting and individual spell slots can be locked/rerolled with the scopes above.
 
@@ -140,10 +156,13 @@ api.spells.highestRankForLevel(10);
 api.spells.estimatePower(spellcastingEntry);
 
 await api.runtime.materializeSpellcasting(actor, blueprint);
+await api.runtime.refreshSpellcasting(actor, blueprint); // idempotent alias
 await api.runtime.cleanupSpellcasting(actor);
 ```
 
 `api.createActor()` materializes spellcasting by default; pass `{ materializeSpellcasting: false }` to opt out. The compiler creates PF2E NPC `spellcastingEntry` documents, then the runtime clones selected source spells onto the Actor and links them to the generated entry. Prepared casting receives slot references, spontaneous casting receives rank pools, innate ranked spells receive daily uses, and cantrips remain at-will.
+
+`materializeSpellcasting()` / `refreshSpellcasting()` first remove only Creature Forge-owned generated spell Items. Manually added spells remain untouched. Missing or failing source UUIDs are isolated per spell and reported in runtime diagnostics; prepared slots are built only from spell documents that were actually created.
 
 External modules can bias generation without duplicating the spell engine by registering `spellProfile` content:
 

@@ -519,5 +519,6 @@
   "PF2E_CREATURE_FORGE.Spell.Rank": "Grad",
   "PF2E_CREATURE_FORGE.Component.Spells": "Zauber",
   "PF2E_CREATURE_FORGE.Action.RerollSpellcasting": "Zauberwirken neu würfeln",
-  "PF2E_CREATURE_FORGE.Action.RerollSpell": "Zauber neu würfeln"
+  "PF2E_CREATURE_FORGE.Action.RerollSpell": "Zauber neu würfeln",
+  "PF2E_CREATURE_FORGE.Notifications.RuntimePartial": "Die Kreatur wurde erstellt, aber mindestens eine optionale Runtime-Integration konnte nicht vollständig initialisiert werden. Details stehen in Konsole und API-Diagnose."
 }

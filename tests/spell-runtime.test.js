@@ -105,3 +105,62 @@ test("innate spell runtime gives ranked spells daily uses and leaves cantrips at
     globalThis.foundry = previousFoundry;
   }
 });
+
+
+test("spell runtime refresh is idempotent and preserves manually added spells", async () => {
+  const previousFromUuid = globalThis.fromUuid;
+  const previousFoundry = globalThis.foundry;
+  let seq = 0;
+  globalThis.foundry = { utils: { randomID: () => `refresh-${++seq}` } };
+  globalThis.fromUuid = async () => ({ toObject: () => spellSource("Refresh Spell", 2) });
+  const { actor } = makeActor();
+  const manual = { id: "manual-spell", type: "spell", name: "GM Spell", flags: {}, system: { location: { value: null } } };
+  actor.items.push(manual);
+  const blueprint = { combat: { spellcasting: [{ id: "spellcasting-1", style: "prepared", highestRank: 2, spells: [
+    { id: "spell-1", sourceUuid: "Compendium.test.Item.refresh", baseRank: 2, rank: 2, cantrip: false }
+  ] }] } };
+  try {
+    const runtime = new CreatureSpellRuntime();
+    const first = await runtime.materialize(actor, blueprint);
+    assert.equal(first.spells.length, 1);
+    const firstId = first.spells[0].id;
+    const second = await runtime.materialize(actor, blueprint);
+    assert.equal(second.cleanup.removed, 1);
+    assert.equal(second.spells.length, 1);
+    assert.notEqual(second.spells[0].id, firstId);
+    assert.ok(actor.items.some((item) => item.id === "manual-spell"));
+    assert.equal(actor.items.filter((item) => item.type === "spell" && item.flags?.["pf2e-creature-forge"]?.spellcastingId).length, 1);
+  } finally {
+    globalThis.fromUuid = previousFromUuid;
+    globalThis.foundry = previousFoundry;
+  }
+});
+
+test("missing or failing spell sources do not create ghost prepared slots or abort valid spells", async () => {
+  const previousFromUuid = globalThis.fromUuid;
+  const previousFoundry = globalThis.foundry;
+  let seq = 0;
+  globalThis.foundry = { utils: { randomID: () => `partial-${++seq}` } };
+  globalThis.fromUuid = async (uuid) => {
+    if (uuid.endsWith("missing")) return null;
+    if (uuid.endsWith("broken")) throw new Error("pack exploded");
+    return { toObject: () => spellSource("Valid Spell", 2) };
+  };
+  const { actor, entry } = makeActor();
+  const blueprint = { combat: { spellcasting: [{ id: "spellcasting-1", style: "prepared", highestRank: 2, spells: [
+    { id: "valid", sourceUuid: "Compendium.test.Item.valid", baseRank: 2, rank: 2, cantrip: false },
+    { id: "missing", sourceUuid: "Compendium.test.Item.missing", baseRank: 2, rank: 2, cantrip: false },
+    { id: "broken", sourceUuid: "Compendium.test.Item.broken", baseRank: 2, rank: 2, cantrip: false }
+  ] }] } };
+  try {
+    const result = await new CreatureSpellRuntime().materialize(actor, blueprint);
+    assert.equal(result.spells.length, 1);
+    assert.equal(entry.system.slots.slot2.max, 1);
+    assert.equal(entry.system.slots.slot2.prepared.length, 1);
+    assert.ok(result.diagnostics.some((entry) => entry.code === "SPELL_SOURCE_NOT_FOUND"));
+    assert.ok(result.diagnostics.some((entry) => entry.code === "SPELL_SOURCE_RESOLUTION_FAILED"));
+  } finally {
+    globalThis.fromUuid = previousFromUuid;
+    globalThis.foundry = previousFoundry;
+  }
+});

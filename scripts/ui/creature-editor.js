@@ -550,8 +550,15 @@ export class EmbeddedCreatureEditor {
           globalThis.ui?.notifications?.error?.(localize("PF2E_CREATURE_FORGE.Notifications.SourceScanFailed", "One or more creature compendiums could not be scanned."));
         }
       } else if (action === "create-actor" && this.capabilities.actorCreation) {
-        const { actor } = await this.api.createActor(this.session.blueprint, { renderSheet: true });
+        const { actor, runtime } = await this.api.createActor(this.session.blueprint, { renderSheet: true });
         globalThis.ui?.notifications?.info?.(localize("PF2E_CREATURE_FORGE.Notifications.ActorCreated", `Created ${actor?.name ?? "creature"}.`));
+        const runtimeDiagnostics = runtime?.creatureForge?.diagnostics ?? [];
+        if (runtimeDiagnostics.length) {
+          globalThis.ui?.notifications?.warn?.(localize(
+            "PF2E_CREATURE_FORGE.Notifications.RuntimePartial",
+            "The creature was created, but one or more optional runtime integrations could not be initialized. Check the console/API diagnostics."
+          ));
+        }
       }
       return;
     }

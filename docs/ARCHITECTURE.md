@@ -158,7 +158,7 @@ category + resolved subtypes + role
  resources.auras   resources.afflictions
 ```
 
-`required` never bypasses concept/source/budget validity. If no candidate is legal, the Blueprint records a warning and leaves the resource list empty rather than attaching an unrelated Aura or Affliction.
+`required` never bypasses concept/source validity. It may deliberately exceed the remaining shared power budget, with an explicit diagnostic, because an explicit GM requirement takes precedence over the automatic balance heuristic. If no concept/source-compatible candidate exists, the Blueprint records a warning and leaves the resource list empty rather than attaching an unrelated Aura or Affliction.
 
 Generation resolves spellcasting first, then optional Auras/Afflictions, then ordinary abilities. All reserve from the same total special-feature budget. `metadata.specialFeatureBudget` records total, spellcasting, ability, Aura, and Affliction spend so the balance decision remains inspectable.
 
@@ -226,6 +226,14 @@ CreatureBlueprint spellcasting
 ```
 
 The runtime follows the current PF2E NPC document model: prepared spell slots reference embedded spell IDs, innate ranked spells carry per-day uses, and cantrips are left to PF2E's normal auto-heightening behavior. This keeps the generation model stable even if the PF2E document shape changes later; only the compiler/runtime adapter needs to move.
+
+### Post-create runtime hardening
+
+0.5.2 treats Actor persistence and optional Forge runtime initialization as separate failure domains. Once the PF2E Actor exists, Effect, Aura/Affliction, and spell runtime steps are executed independently and contribute to a consolidated Creature Forge runtime status. This avoids the worst partial-failure shape: an Actor already exists in the world but `createActor()` aborts before later integrations can initialize or report what happened. Callers that explicitly require fail-fast behavior can opt into `strictRuntime`.
+
+Spell refresh is ownership-aware and idempotent. It removes only embedded spells flagged as Creature Forge runtime spells, preserves GM/manual additions, resolves each source UUID independently, and constructs prepared slots only from successfully created embedded documents. Actor-local Aura snapshots receive Creature Forge provenance even when their source definition came from an external library, so cleanup does not depend on a Creature Forge-prefixed content ID.
+
+Generated Affliction host-description blocks use explicit start/end sentinels rather than nested-HTML regex assumptions. Legacy unmarked wrappers from 0.4.2-0.5.1 are migrated on the next compile/refresh. Hosted-delivery validation warns if the named carrier has disappeared, allowing the established manual Affliction fallback to remain usable.
 
 ## Skills, Movement & Senses
 

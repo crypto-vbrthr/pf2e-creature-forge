@@ -2,18 +2,28 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.5.1** is a focused **Required Special Feature Budget Fix**. Explicitly required Auras and Afflictions are no longer silently suppressed when spellcasting has already consumed the shared special-feature power budget. Required special features now mirror required spellcasting: the explicit GM request wins, the feature is kept, and the Blueprint records an over-budget warning. Automatic special features remain budget-constrained.
+Version **0.5.2** is a broader **Core Review & Runtime Hardening** release. The review concentrates on failure isolation after Actor creation, repeatable runtime refreshes, stale generated documents, malformed runtime references, and cross-integration cleanup. It deliberately does not add a new creature feature layer.
 
-## What 0.5.1 changes
+## What 0.5.2 changes
 
-- `specialFeatures.auras.mode = "required"` may exceed the remaining shared power budget when a valid matching Aura exists.
-- `specialFeatures.afflictions.mode = "required"` may exceed the remaining shared power budget when a valid matching Affliction exists.
-- Required over-budget content emits `REQUIRED_AURA_OVER_BUDGET` or `REQUIRED_AFFLICTION_OVER_BUDGET` plus the existing shared-budget warning instead of disappearing.
-- `REQUIRED_*_UNAVAILABLE` now means that no concept/source-compatible candidate exists, not merely that the remaining budget is exhausted.
-- Automatic Aura/Affliction selection still respects the remaining budget exactly as before.
-- Added regression coverage for the reported spellcaster case: standard required spellcasting plus required Affliction.
-- Embedded Creature Editor contract remains v11; request schema remains v6; Blueprint/content schemas remain v8; API/module version is 0.5.1.
-- 124 automated tests pass.
+- `api.createActor()` isolates optional Effect, Aura/Affliction, and spell runtime failures after the PF2E Actor exists, records diagnostics, and continues the remaining runtime steps.
+- Generated Actors receive a consolidated Creature Forge runtime status flag when possible; callers can opt into fail-fast behavior with `{ strictRuntime: true }`.
+- Spell materialization is idempotent and preserves manually added spells while replacing only Creature Forge-owned generated spells.
+- Missing or failing spell source UUIDs are isolated per spell and cannot create ghost prepared-slot references.
+- Actor-local Auras from external libraries carry Creature Forge ownership provenance so refresh/cleanup removes the correct generated instance without touching unrelated Auras.
+- Affliction reference cleanup tolerates individual broken host Items, and generated host-description blocks are now marker-based and idempotent with migration cleanup for legacy wrappers.
+- Blueprint validation now rejects malformed/duplicate runtime identities earlier and warns when a hosted Affliction references a carrier that is no longer present.
+- The Creature Editor warns when Actor creation succeeds but an optional runtime integration only partially initialized.
+- Review coverage now includes a permanent boundary matrix over all core roles/categories at levels -1, 10, and 24; an additional one-off 1,008-combination audit also completed without invalid Blueprints.
+- Embedded Creature Editor contract remains v11; request schema remains v6; Blueprint/content schemas remain v8; API/module version is 0.5.2.
+- 132 automated tests pass.
+
+## What 0.5.1 changed
+
+- Explicitly required Auras and Afflictions may exceed an exhausted shared special-feature budget, matching required spellcasting semantics.
+- Required over-budget content emits an explicit diagnostic instead of disappearing.
+- Automatic Aura/Affliction selection remains budget-constrained.
+- `REQUIRED_*_UNAVAILABLE` means no concept/source-compatible candidate exists, rather than merely too little remaining budget.
 
 ## What 0.5.0 provided
 
@@ -308,6 +318,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.5.1 owns the core numeric statistics, category/subtype defensive affinities, source-filtered discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, optional Aura/Affliction selection and verified delivery, plus thematic PF2E spellcasting generation and materialization. Automatic combat-workflow trigger execution, focus-spell generation, advanced hand-curated spell packages, and loot generation remain later milestones.
+0.5.2 owns the core numeric statistics, category/subtype defensive affinities, source-filtered discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, optional Aura/Affliction selection and verified delivery, plus thematic PF2E spellcasting generation and materialization. Automatic combat-workflow trigger execution, focus-spell generation, advanced hand-curated spell packages, and loot generation remain later milestones.
 
 See `docs/ROADMAP.md`.

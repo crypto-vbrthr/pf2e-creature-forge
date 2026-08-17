@@ -1,4 +1,4 @@
-import { MOVEMENT_TYPES, RANKS, SENSE_TYPES, SIZES, SKILL_SLUGS } from "../constants.js";
+import { BLUEPRINT_SCHEMA_VERSION, MOVEMENT_TYPES, RANKS, SENSE_TYPES, SIZES, SKILL_SLUGS } from "../constants.js";
 import { ROLE_IDS } from "./role-presets.js";
 
 const ABILITIES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
@@ -180,6 +180,19 @@ export function validateGenerationRequest(request, { registry } = {}) {
 
 export function validateBlueprint(blueprint) {
   const issues = [];
+  const schemaVersion = Number(blueprint?.schemaVersion);
+  if (!Number.isInteger(schemaVersion) || schemaVersion < 1) {
+    issues.push(issue("error", "INVALID_BLUEPRINT_SCHEMA_VERSION", "schemaVersion", "CreatureBlueprint requires a positive schema version."));
+  } else if (schemaVersion > BLUEPRINT_SCHEMA_VERSION) {
+    issues.push(issue("error", "BLUEPRINT_SCHEMA_TOO_NEW", "schemaVersion", `CreatureBlueprint schema ${schemaVersion} is newer than supported schema ${BLUEPRINT_SCHEMA_VERSION}.`));
+  }
+  const blueprintLevel = Number(blueprint?.identity?.level);
+  if (!Number.isInteger(blueprintLevel) || blueprintLevel < -1 || blueprintLevel > 24) {
+    issues.push(issue("error", "BLUEPRINT_LEVEL_OUT_OF_RANGE", "identity.level", "CreatureBlueprint level must be an integer from -1 to 24."));
+  }
+  if (!SIZES.includes(blueprint?.identity?.size)) {
+    issues.push(issue("error", "INVALID_BLUEPRINT_SIZE", "identity.size", `CreatureBlueprint has unsupported size '${blueprint?.identity?.size}'.`));
+  }
   const saves = Object.values(blueprint?.statistics?.saves ?? {});
   const extremeSaves = saves.filter((entry) => entry?.rank === "extreme").length;
   if (extremeSaves > 1) {
@@ -231,22 +244,40 @@ export function validateBlueprint(blueprint) {
     }
   }
 
+  const spellcastingIds = new Set();
   for (const [entryIndex, entry] of (blueprint?.combat?.spellcasting ?? []).entries()) {
     const path = `combat.spellcasting.${entryIndex}`;
+    const entryId = String(entry?.id ?? "").trim();
+    if (!entryId) issues.push(issue("error", "SPELLCASTING_ID_REQUIRED", `${path}.id`, "Spellcasting entries require a stable id."));
+    else if (spellcastingIds.has(entryId)) issues.push(issue("error", "DUPLICATE_SPELLCASTING_ID", `${path}.id`, `Spellcasting id '${entryId}' is duplicated.`));
+    else spellcastingIds.add(entryId);
     if (!["arcane", "divine", "occult", "primal"].includes(entry?.tradition)) issues.push(issue("error", "INVALID_BLUEPRINT_SPELL_TRADITION", `${path}.tradition`, "Spellcasting entry has an invalid tradition."));
     if (!["innate", "prepared", "spontaneous"].includes(entry?.style)) issues.push(issue("error", "INVALID_BLUEPRINT_SPELL_STYLE", `${path}.style`, "Spellcasting entry has an invalid style."));
     if (!Number.isFinite(Number(entry?.dc)) || !Number.isFinite(Number(entry?.attack))) issues.push(issue("error", "INVALID_BLUEPRINT_SPELL_DC", path, "Spellcasting entry requires numeric spell DC and spell attack modifier."));
     if (!Number.isInteger(Number(entry?.highestRank)) || Number(entry.highestRank) < 1 || Number(entry.highestRank) > 10) issues.push(issue("error", "INVALID_BLUEPRINT_HIGHEST_SPELL_RANK", `${path}.highestRank`, "Highest spell rank must be from 1 to 10."));
+    const spellIds = new Set();
     for (const [spellIndex, spell] of (entry?.spells ?? []).entries()) {
-      if (!String(spell?.sourceUuid ?? "").trim()) issues.push(issue("error", "SPELL_SOURCE_UUID_REQUIRED", `${path}.spells.${spellIndex}.sourceUuid`, "Generated spells require a source UUID."));
+      const spellPath = `${path}.spells.${spellIndex}`;
+      const spellId = String(spell?.id ?? "").trim();
+      if (!spellId) issues.push(issue("error", "SPELL_ID_REQUIRED", `${spellPath}.id`, "Generated spells require a stable id."));
+      else if (spellIds.has(spellId)) issues.push(issue("error", "DUPLICATE_SPELL_ID", `${spellPath}.id`, `Spell id '${spellId}' is duplicated within the spellcasting entry.`));
+      else spellIds.add(spellId);
+      if (!String(spell?.sourceUuid ?? "").trim()) issues.push(issue("error", "SPELL_SOURCE_UUID_REQUIRED", `${spellPath}.sourceUuid`, "Generated spells require a source UUID."));
       if (!spell?.cantrip && (!Number.isInteger(Number(spell?.rank)) || Number(spell.rank) < Number(spell?.baseRank ?? 1) || Number(spell.rank) > Number(entry.highestRank))) issues.push(issue("error", "INVALID_GENERATED_SPELL_RANK", `${path}.spells.${spellIndex}.rank`, "Generated spell rank must be between the spell's base rank and the entry's highest rank."));
     }
   }
 
   const attacks = blueprint?.combat?.attacks ?? [];
+  const attackIds = new Set();
   for (let index = 0; index < attacks.length; index += 1) {
     const attack = attacks[index];
     const path = `combat.attacks.${index}`;
+    const attackId = String(attack?.id ?? "").trim();
+    if (!attackId) issues.push(issue("error", "ATTACK_ID_REQUIRED", `${path}.id`, "Generated attacks require a stable id."));
+    else if (attackIds.has(attackId)) issues.push(issue("error", "DUPLICATE_ATTACK_ID", `${path}.id`, `Attack id '${attackId}' is duplicated.`));
+    else attackIds.add(attackId);
+    if (!["melee", "ranged"].includes(attack?.kind)) issues.push(issue("error", "INVALID_BLUEPRINT_ATTACK_KIND", `${path}.kind`, "Generated attacks must be melee or ranged."));
+    if (attack?.kind === "ranged" && (!Number.isFinite(Number(attack?.range)) || Number(attack.range) <= 0)) issues.push(issue("error", "INVALID_BLUEPRINT_ATTACK_RANGE", `${path}.range`, "Ranged attacks require a positive range."));
     if (!RANKS.ATTACK.includes(attack?.attack?.rank) || !Number.isFinite(Number(attack?.attack?.value))) {
       issues.push(issue("error", "INVALID_ATTACK", path, `Attack '${attack?.name ?? index + 1}' has an invalid attack rank or bonus.`));
     }
@@ -288,8 +319,12 @@ export function validateBlueprint(blueprint) {
       }
     }
   }
+  const effectResourceIds = new Set();
   for (let index = 0; index < (blueprint?.resources?.effects ?? []).length; index += 1) {
     const resource = blueprint.resources.effects[index];
+    const resourceId = String(resource?.id ?? "").trim();
+    if (resourceId && effectResourceIds.has(resourceId)) issues.push(issue("error", "DUPLICATE_EFFECT_RESOURCE_ID", `resources.effects.${index}.id`, `Effect resource id '${resourceId}' is duplicated.`));
+    if (resourceId) effectResourceIds.add(resourceId);
     const definition = resource?.definition;
     if (!String(resource?.id ?? "").trim()) issues.push(issue("error", "EFFECT_RESOURCE_ID_REQUIRED", `resources.effects.${index}`, "Effect resources require an id."));
     if (!definition || typeof definition !== "object" || !String(definition?.name ?? "").trim() || !Array.isArray(definition?.components) || !definition.components.length) {
@@ -297,16 +332,24 @@ export function validateBlueprint(blueprint) {
     }
   }
 
+  const auraResourceIds = new Set();
   for (let index = 0; index < (blueprint?.resources?.auras ?? []).length; index += 1) {
     const resource = blueprint.resources.auras[index];
+    const resourceId = String(resource?.id ?? "").trim();
+    if (resourceId && auraResourceIds.has(resourceId)) issues.push(issue("error", "DUPLICATE_AURA_RESOURCE_ID", `resources.auras.${index}.id`, `Aura resource id '${resourceId}' is duplicated.`));
+    if (resourceId) auraResourceIds.add(resourceId);
     const definition = resource?.definition;
     if (!String(resource?.id ?? "").trim()) issues.push(issue("error", "AURA_RESOURCE_ID_REQUIRED", `resources.auras.${index}`, "Aura resources require an id."));
     if (!definition || typeof definition !== "object" || !String(definition?.name ?? "").trim() || !Number.isFinite(Number(definition?.radius)) || Number(definition.radius) <= 0) {
       issues.push(issue("error", "INVALID_AURA_RESOURCE", `resources.auras.${index}`, "Aura resources require an Aura Forge-compatible definition with a name and positive radius."));
     }
   }
+  const afflictionResourceIds = new Set();
   for (let index = 0; index < (blueprint?.resources?.afflictions ?? []).length; index += 1) {
     const resource = blueprint.resources.afflictions[index];
+    const resourceId = String(resource?.id ?? "").trim();
+    if (resourceId && afflictionResourceIds.has(resourceId)) issues.push(issue("error", "DUPLICATE_AFFLICTION_RESOURCE_ID", `resources.afflictions.${index}.id`, `Affliction resource id '${resourceId}' is duplicated.`));
+    if (resourceId) afflictionResourceIds.add(resourceId);
     const definition = resource?.definition;
     if (!String(resource?.id ?? "").trim()) issues.push(issue("error", "AFFLICTION_RESOURCE_ID_REQUIRED", `resources.afflictions.${index}`, "Affliction resources require an id."));
     if (!definition || typeof definition !== "object" || !String(definition?.name ?? "").trim() || !Array.isArray(definition?.stages) || !definition.stages.length) {
@@ -316,6 +359,11 @@ export function validateBlueprint(blueprint) {
     if (delivery && !["hosted", "manual"].includes(delivery.mode)) issues.push(issue("error", "INVALID_AFFLICTION_DELIVERY", `resources.afflictions.${index}.delivery`, "Affliction delivery mode must be hosted or manual."));
     if (delivery?.mode === "hosted" && (!String(delivery.hostId ?? "").trim() || !["attack", "ability"].includes(delivery.hostType))) {
       issues.push(issue("error", "INVALID_AFFLICTION_DELIVERY_HOST", `resources.afflictions.${index}.delivery`, "Hosted Affliction delivery requires a valid attack or ability host."));
+    } else if (delivery?.mode === "hosted") {
+      const hostExists = delivery.hostType === "attack"
+        ? (blueprint?.combat?.attacks ?? []).some((entry) => entry?.id === delivery.hostId)
+        : (blueprint?.abilities ?? []).some((entry) => entry?.id === delivery.hostId);
+      if (!hostExists) issues.push(issue("warning", "AFFLICTION_DELIVERY_HOST_MISSING", `resources.afflictions.${index}.delivery`, `Hosted Affliction delivery points to missing ${delivery.hostType} '${delivery.hostId}'. Runtime will fall back to manual application.`));
     }
   }
   if ((blueprint?.resources?.auras ?? []).length > 1) issues.push(issue("warning", "MULTIPLE_GENERATED_AURAS", "resources.auras", "The 0.4.x generator normally creates at most one aura."));

@@ -25,6 +25,26 @@ import { CreatureSpellRuntime } from "../runtime/spell-runtime.js";
 
 let apiInstance = null;
 
+function serializeRuntimeError(error) {
+  return {
+    name: error?.name ?? "Error",
+    message: error?.message ?? String(error),
+    stack: error?.stack ?? null
+  };
+}
+
+async function runRuntimeStep(name, enabled, task, diagnostics) {
+  if (!enabled) return null;
+  try {
+    return await task();
+  } catch (error) {
+    const serialized = serializeRuntimeError(error);
+    diagnostics.push({ level: "error", code: `RUNTIME_${name.toUpperCase()}_FAILED`, subsystem: name, ...serialized });
+    console.error(`${MODULE_ID} | ${name} runtime initialization failed.`, error);
+    return null;
+  }
+}
+
 export function initializePublicApi({ openCreatureForge } = {}) {
   const registry = new ContentRegistry();
   registerCoreContent(registry);
@@ -71,13 +91,53 @@ export function initializePublicApi({ openCreatureForge } = {}) {
     createActor: (blueprint, options = {}) => createActorFromBlueprint(blueprint, {
       ...options,
       postCreate: async (actor, sourceBlueprint, compiled) => {
-        const effectResult = options.materializeEffects === false ? null : await runtime.initializeActor(actor, sourceBlueprint);
-        const specialResult = options.materializeSpecialFeatures === false ? null : await specialRuntime.initializeActor(actor, sourceBlueprint);
-        const spellResult = options.materializeSpellcasting === false ? null : await spellRuntime.materialize(actor, sourceBlueprint);
+        const diagnostics = [];
+        const effectResult = await runRuntimeStep(
+          "effects",
+          options.materializeEffects !== false,
+          () => runtime.initializeActor(actor, sourceBlueprint),
+          diagnostics
+        );
+        const specialResult = await runRuntimeStep(
+          "specialFeatures",
+          options.materializeSpecialFeatures !== false,
+          () => specialRuntime.initializeActor(actor, sourceBlueprint),
+          diagnostics
+        );
+        const spellResult = await runRuntimeStep(
+          "spellcasting",
+          options.materializeSpellcasting !== false,
+          () => spellRuntime.materialize(actor, sourceBlueprint),
+          diagnostics
+        );
+        const runtimeStatus = {
+          schemaVersion: 1,
+          effects: options.materializeEffects === false ? "skipped" : effectResult ? "ready" : "failed",
+          specialFeatures: options.materializeSpecialFeatures === false ? "skipped" : specialResult ? "ready" : "failed",
+          spellcasting: options.materializeSpellcasting === false ? "skipped" : spellResult ? "ready" : "failed",
+          diagnostics
+        };
+        if (typeof actor?.update === "function") {
+          try {
+            await actor.update({ [`flags.${MODULE_ID}.runtimeStatus`]: runtimeStatus }, { render: false });
+          } catch (error) {
+            const serialized = serializeRuntimeError(error);
+            diagnostics.push({ level: "warning", code: "RUNTIME_STATUS_PERSIST_FAILED", subsystem: "runtimeStatus", ...serialized });
+            console.warn(`${MODULE_ID} | Could not persist consolidated runtime status.`, error);
+          }
+        }
+        if (options.strictRuntime === true && diagnostics.length) {
+          const error = new Error(`Creature Forge runtime initialization failed in ${[...new Set(diagnostics.map((entry) => entry.subsystem))].join(", ")}.`);
+          error.diagnostics = diagnostics;
+          throw error;
+        }
+        // External host callbacks still keep normal exception semantics. Internal
+        // optional integrations are isolated above so one Forge cannot prevent the
+        // remaining materializers from finishing or hide an already-created Actor.
         const external = typeof options.postCreate === "function"
           ? await options.postCreate(actor, sourceBlueprint, compiled)
           : null;
-        return { creatureForge: { effects: effectResult, specialFeatures: specialResult, spellcasting: spellResult }, external };
+        return { creatureForge: { effects: effectResult, specialFeatures: specialResult, spellcasting: spellResult, diagnostics, runtimeStatus }, external };
       }
     }),
 
@@ -227,6 +287,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       cleanupActorSpecialFeatures: async (actor) => ({ auras: await specialRuntime.cleanupAuras(actor), afflictions: await specialRuntime.cleanupAfflictions(actor) }),
       refreshSpecialFeatures: (actor, blueprint = null) => specialRuntime.initializeActor(actor, blueprint ?? undefined),
       materializeSpellcasting: (actor, blueprint = null) => spellRuntime.materialize(actor, blueprint ?? undefined),
+      refreshSpellcasting: (actor, blueprint = null) => spellRuntime.materialize(actor, blueprint ?? undefined),
       cleanupSpellcasting: (actor) => spellRuntime.cleanup(actor)
     },
 
