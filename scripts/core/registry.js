@@ -12,10 +12,19 @@ function assertType(type) {
   return type;
 }
 
+function normalizedLibraryContent(library = {}) {
+  const content = library.content ?? {};
+  return {
+    abilities: [...(content.abilities ?? library.abilities ?? [])],
+    effects: [...(content.effects ?? library.effects ?? [])]
+  };
+}
+
 export class ContentRegistry {
   constructor() {
     this.maps = new Map(CONTENT_TYPES.map((type) => [type, new Map()]));
     this.bundleIndex = new Map();
+    this.abilityLibraries = new Map();
     this.diagnostics = [];
   }
 
@@ -31,6 +40,7 @@ export class ContentRegistry {
       ...deepClone(definition.source ?? {}),
       moduleId: String(options.moduleId ?? definition.source?.moduleId ?? MODULE_ID),
       bundleId: options.bundleId ? String(options.bundleId) : (definition.source?.bundleId ?? null),
+      libraryId: options.libraryId ? String(options.libraryId) : (definition.source?.libraryId ?? null),
       version: String(options.version ?? definition.source?.version ?? "0.0.0")
     };
     const normalized = {
@@ -56,18 +66,19 @@ export class ContentRegistry {
     const moduleId = String(bundle.moduleId ?? options.moduleId ?? id.split(".")[0]);
     const version = String(bundle.version ?? "0.0.0");
     const content = bundle.content ?? {};
+    // Dependencies are intentionally registered before the abilities that can reference them.
     const mapping = {
       categories: "category",
       subtypes: "subtype",
       nameTemplates: "nameTemplate",
-      abilities: "ability",
+      effects: "effect",
       auras: "aura",
       afflictions: "affliction",
-      effects: "effect",
       poisons: "poison",
       spellProfiles: "spellProfile",
       spellPackages: "spellPackage",
-      lootProfiles: "lootProfile"
+      lootProfiles: "lootProfile",
+      abilities: "ability"
     };
     const registered = [];
     try {
@@ -76,6 +87,7 @@ export class ContentRegistry {
           registered.push(this.register(type, definition, {
             moduleId,
             bundleId: id,
+            libraryId: options.libraryId ?? bundle.libraryId ?? null,
             version,
             replace: Boolean(options.replace)
           }));
@@ -89,6 +101,112 @@ export class ContentRegistry {
     }
   }
 
+  registerAbilityLibrary(library, options = {}) {
+    if (!library || typeof library !== "object") throw new TypeError("Ability library must be an object.");
+    const id = normalizeId(library.id);
+    if (this.abilityLibraries.has(id) && !options.replace) throw new Error(`Creature Forge ability library '${id}' is already registered.`);
+    if (this.abilityLibraries.has(id) && options.replace) this.unregisterAbilityLibrary(id);
+
+    const moduleId = String(library.moduleId ?? options.moduleId ?? id.split(".")[0]);
+    const version = String(library.version ?? "0.0.0");
+    const content = normalizedLibraryContent(library);
+    const bundle = this.registerBundle({
+      id,
+      moduleId,
+      version,
+      content
+    }, { libraryId: id, replace: Boolean(options.replace) });
+
+    const normalized = {
+      id,
+      moduleId,
+      version,
+      label: library.label ?? id,
+      labelKey: library.labelKey ?? null,
+      description: library.description ?? "",
+      descriptionKey: library.descriptionKey ?? null,
+      defaultEnabled: library.defaultEnabled !== false,
+      tags: [...new Set(library.tags ?? [])],
+      abilityCount: bundle.registered.filter((entry) => entry.type === "ability").length,
+      effectCount: bundle.registered.filter((entry) => entry.type === "effect").length,
+      source: deepClone(library.source ?? {})
+    };
+    this.abilityLibraries.set(id, normalized);
+    return deepClone(normalized);
+  }
+
+  unregisterAbilityLibrary(libraryId) {
+    const id = String(libraryId ?? "");
+    const existed = this.abilityLibraries.delete(id);
+    const removed = this.unregisterBundle(id);
+    return existed || removed > 0;
+  }
+
+  getAbilityLibrary(libraryId) {
+    const value = this.abilityLibraries.get(String(libraryId ?? ""));
+    return value ? deepClone(value) : null;
+  }
+
+  listAbilityLibraries(filters = {}) {
+    return [...this.abilityLibraries.values()].filter((entry) => {
+      if (filters.moduleId && entry.moduleId !== filters.moduleId) return false;
+      if (filters.defaultEnabled != null && entry.defaultEnabled !== Boolean(filters.defaultEnabled)) return false;
+      if (filters.tags?.length && !filters.tags.every((tag) => entry.tags.includes(tag))) return false;
+      return true;
+    }).map(deepClone).sort((a, b) => String(a.labelKey ?? a.label).localeCompare(String(b.labelKey ?? b.label)));
+  }
+
+  getDefaultAbilityLibraryIds() {
+    return this.listAbilityLibraries({ defaultEnabled: true }).map((entry) => entry.id);
+  }
+
+  resolveAbilityLibrarySelection(selected = []) {
+    const requested = [...new Set((selected ?? []).map(String).filter(Boolean))];
+    return requested.length ? requested : this.getDefaultAbilityLibraryIds();
+  }
+
+  validateAbilityDependencies(definitionOrId) {
+    const ability = typeof definitionOrId === "string" ? this.get("ability", definitionOrId) : deepClone(definitionOrId);
+    if (!ability) return { valid: false, errors: [{ code: "ABILITY_NOT_FOUND", ref: String(definitionOrId ?? "") }], missing: [] };
+    const errors = [];
+    const missing = [];
+    const required = [];
+
+    for (const application of ability.applications ?? []) {
+      if (!application?.ref) continue;
+      const type = application.type;
+      if (["effect", "aura", "affliction"].includes(type)) required.push({ type, ref: String(application.ref), source: "application" });
+    }
+    for (const value of ability.requirements?.requiredContent ?? []) {
+      if (typeof value === "string") {
+        const [type, ...rest] = value.split(":");
+        if (rest.length) required.push({ type, ref: rest.join(":"), source: "requirement" });
+      } else if (value?.type && value?.ref) required.push({ type: String(value.type), ref: String(value.ref), source: "requirement" });
+    }
+
+    for (const dep of required) {
+      if (!CONTENT_TYPES.includes(dep.type)) {
+        errors.push({ code: "ABILITY_DEPENDENCY_TYPE_UNKNOWN", type: dep.type, ref: dep.ref });
+        continue;
+      }
+      if (!this.get(dep.type, dep.ref)) missing.push(dep);
+    }
+    if (missing.length) errors.push({ code: "ABILITY_DEPENDENCY_MISSING", missing: deepClone(missing) });
+    return { valid: errors.length === 0, errors, missing, required };
+  }
+
+  validateAbilityLibrary(libraryId) {
+    const library = this.getAbilityLibrary(libraryId);
+    if (!library) return { valid: false, errors: [{ code: "ABILITY_LIBRARY_NOT_FOUND", libraryId }], abilities: [] };
+    const abilities = this.list("ability", { libraryId: library.id });
+    const results = abilities.map((ability) => ({ id: ability.id, ...this.validateAbilityDependencies(ability) }));
+    return {
+      valid: results.every((entry) => entry.valid),
+      errors: results.flatMap((entry) => entry.errors.map((error) => ({ abilityId: entry.id, ...error }))),
+      abilities: results
+    };
+  }
+
   get(type, id) {
     const value = this.maps.get(assertType(type))?.get(String(id));
     return value ? deepClone(value) : null;
@@ -99,6 +217,8 @@ export class ContentRegistry {
     return values.filter((entry) => {
       if (filters.moduleId && entry.source?.moduleId !== filters.moduleId) return false;
       if (filters.bundleId && entry.source?.bundleId !== filters.bundleId) return false;
+      if (filters.libraryId && entry.source?.libraryId !== filters.libraryId) return false;
+      if (filters.libraryIds?.length && entry.source?.libraryId && !filters.libraryIds.includes(entry.source.libraryId)) return false;
       if (filters.compendiumIds?.length && entry.source?.sourceKind === "compendium" && !filters.compendiumIds.includes(entry.source?.compendiumId)) return false;
       if (filters.tags?.length) {
         const tags = new Set(entry.tags ?? []);
@@ -108,20 +228,13 @@ export class ContentRegistry {
     }).map(deepClone);
   }
 
-  /**
-   * Resolve a content entry by namespaced id or semantic slug while respecting
-   * host/request-local compendium source selections. Non-compendium content
-   * (core and registered extension modules) always remains available.
-   */
   resolve(type, value, { compendiumIds = [] } = {}) {
     const contentType = assertType(type);
     const target = String(value ?? "");
     const all = [...(this.maps.get(contentType)?.values() ?? [])];
     const exact = all.find((entry) => entry.id === target);
     if (exact) {
-      if (exact.source?.sourceKind !== "compendium" || !compendiumIds.length || compendiumIds.includes(exact.source?.compendiumId)) {
-        return deepClone(exact);
-      }
+      if (exact.source?.sourceKind !== "compendium" || !compendiumIds.length || compendiumIds.includes(exact.source?.compendiumId)) return deepClone(exact);
       return null;
     }
 
@@ -136,11 +249,6 @@ export class ContentRegistry {
     return null;
   }
 
-  /**
-   * List content visible for a specific source selection and collapse duplicate
-   * semantic slugs. When multiple selected compendiums expose the same subtype,
-   * their observed category associations are merged for editor guidance.
-   */
   listResolved(type, { compendiumIds = [] } = {}) {
     const contentType = assertType(type);
     const entries = this.list(contentType).filter((entry) => {
@@ -155,16 +263,11 @@ export class ContentRegistry {
         byKey.set(key, { ...entry, discoveredSources: entry.source?.sourceKind === "compendium" ? [entry.source.compendiumId] : [] });
         continue;
       }
-      if (entry.source?.sourceKind === "compendium") {
-        existing.discoveredSources = [...new Set([...(existing.discoveredSources ?? []), entry.source.compendiumId])];
-      }
+      if (entry.source?.sourceKind === "compendium") existing.discoveredSources = [...new Set([...(existing.discoveredSources ?? []), entry.source.compendiumId])];
       const currentCategories = existing.supports?.categories ?? existing.selection?.categories ?? [];
       const incomingCategories = entry.supports?.categories ?? entry.selection?.categories ?? [];
       if (currentCategories.length || incomingCategories.length) {
-        existing.supports = {
-          ...(existing.supports ?? existing.selection ?? {}),
-          categories: [...new Set([...currentCategories, ...incomingCategories])]
-        };
+        existing.supports = { ...(existing.supports ?? existing.selection ?? {}), categories: [...new Set([...currentCategories, ...incomingCategories])] };
       }
     }
     return [...byKey.values()].map(deepClone);
@@ -207,12 +310,14 @@ export class ContentRegistry {
       if (this.maps.get(type)?.delete(contentId)) count += 1;
     }
     this.bundleIndex.delete(id);
+    this.abilityLibraries.delete(id);
     return count;
   }
 
   clear() {
     for (const map of this.maps.values()) map.clear();
     this.bundleIndex.clear();
+    this.abilityLibraries.clear();
     this.diagnostics = [];
   }
 
@@ -221,6 +326,9 @@ export class ContentRegistry {
   }
 
   snapshot() {
-    return Object.fromEntries(CONTENT_TYPES.map((type) => [type, this.list(type)]));
+    return {
+      ...Object.fromEntries(CONTENT_TYPES.map((type) => [type, this.list(type)])),
+      abilityLibraries: this.listAbilityLibraries()
+    };
   }
 }

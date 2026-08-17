@@ -100,6 +100,17 @@ export function validateGenerationRequest(request, { registry } = {}) {
   if (!["simple", "standard", "complex"].includes(request?.abilities?.complexity)) {
     issues.push(issue("error", "INVALID_ABILITY_COMPLEXITY", "abilities.complexity", "Ability complexity must be simple, standard, or complex."));
   }
+  const powerBudget = request?.abilities?.powerBudget;
+  if (powerBudget !== "auto" && (!Number.isInteger(Number(powerBudget)) || Number(powerBudget) < 0 || Number(powerBudget) > 30)) {
+    issues.push(issue("error", "INVALID_ABILITY_POWER_BUDGET", "abilities.powerBudget", "Ability power budget must be 'auto' or an integer from 0 to 30."));
+  }
+  if (registry) {
+    for (const libraryId of request?.sources?.abilities ?? []) {
+      if (!registry.getAbilityLibrary?.(libraryId)) {
+        issues.push(issue("warning", "UNKNOWN_ABILITY_LIBRARY", "sources.abilities", `Ability library '${libraryId}' is not registered.`));
+      }
+    }
+  }
 
   const skillCount = request?.skills?.count;
   if (skillCount !== "role" && (!Number.isInteger(Number(skillCount)) || Number(skillCount) < 0 || Number(skillCount) > 8)) {
@@ -247,6 +258,25 @@ export function validateBlueprint(blueprint) {
     if (!definition || typeof definition !== "object" || !String(definition?.name ?? "").trim() || !Array.isArray(definition?.components) || !definition.components.length) {
       issues.push(issue("error", "INVALID_EFFECT_RESOURCE", `resources.effects.${index}`, "Effect resources require an Effect Forge-compatible definition with a name and components."));
     }
+  }
+  const abilityBudget = blueprint?.metadata?.abilityBudget ?? null;
+  if (abilityBudget) {
+    const spent = generatedAbilities.reduce((sum, ability) => sum + Number(ability?.powerCost ?? 0), 0);
+    const limit = Number(abilityBudget.limit ?? 0);
+    if (Number.isFinite(limit) && spent > limit) {
+      issues.push(issue("warning", "ABILITY_POWER_BUDGET_EXCEEDED", "metadata.abilityBudget", `Generated abilities spend ${spent} power against a budget of ${limit}.`));
+    }
+    if (Number(abilityBudget.spent ?? spent) !== spent) {
+      issues.push(issue("warning", "ABILITY_POWER_BUDGET_STALE", "metadata.abilityBudget.spent", "Stored ability power usage does not match the generated abilities."));
+    }
+  }
+  const uniqueFamilies = new Set();
+  for (const ability of generatedAbilities) {
+    if (ability?.uniquePerCreature === false) continue;
+    const family = ability?.family;
+    if (!family) continue;
+    if (uniqueFamilies.has(family)) issues.push(issue("warning", "DUPLICATE_ABILITY_FAMILY", "abilities", `Ability family '${family}' appears more than once.`));
+    uniqueFamilies.add(family);
   }
   if (generatedAbilities.length > 4) issues.push(issue("warning", "MANY_ABILITIES", "abilities", "More than four generated abilities can make a creature stat block difficult to run."));
 

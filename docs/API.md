@@ -1,4 +1,4 @@
-# Public API 0.3.7
+# Public API 0.3.8
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;
@@ -79,7 +79,7 @@ api.generate({
 
 Valid attack/damage ranks are `extreme`, `high`, `moderate`, and `low`. Valid ability ranks also include `terrible`. Each setting accepts `role` to use the selected role road map.
 
-### Reroll scopes in 0.3.0
+### Reroll scopes
 
 - `all`
 - `defenses`
@@ -93,6 +93,38 @@ Valid attack/damage ranks are `extreme`, `high`, `moderate`, and `low`. Valid ab
 - `abilities`
 - `ability:<ability-id>`
 
+
+
+## Ability libraries and power budget
+
+```js
+api.content.registerAbilityLibrary({
+  id: "my-module.library",
+  moduleId: "my-module",
+  version: "1.0.0",
+  label: "My Ability Library",
+  defaultEnabled: false,
+  content: {
+    effects: [/* effect resources */],
+    abilities: [/* ability definitions */]
+  }
+});
+
+api.content.listAbilityLibraries();
+api.content.getDefaultAbilityLibraryIds();
+api.content.validateAbilityLibrary("my-module.library");
+api.content.validateAbilityDependencies("my-module.ability.some-power");
+
+api.abilities.estimatePower(definition);
+api.abilities.resolvePowerBudget(request);
+api.abilities.listLibraries();
+```
+
+A generation request selects libraries through `sources.abilities`. An empty array means the registered `defaultEnabled` libraries. Abilities registered loosely through `registerAbility()` or ordinary bundles without a library remain visible for backward compatibility.
+
+`abilities.powerBudget` accepts `"auto"` or an integer from 0 to 30. Each generated ability carries `powerCost`, and the Blueprint records the result in `metadata.abilityBudget`.
+
+Ability applications referencing missing `effect`, `aura`, or `affliction` content are excluded from candidate selection and surfaced as diagnostics.
 
 ## Effect resources and manual runtime
 

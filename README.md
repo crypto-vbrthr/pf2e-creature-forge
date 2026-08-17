@@ -2,10 +2,17 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.3.7** hardens **Localization & Ability Presentation**. Creature Forge now keeps its own DE/EN package strings available as a robust fallback when Foundry does not resolve the module dictionary, while external/system localization continues through Foundry i18n. Ability cards, Effect timing metadata, compiled actions, and applied Effect explanations remain localized consistently.
+Version **0.3.8** adds **Ability Sources, Power Budget & Dependency Hardening**. Ability content can now be supplied as selectable external libraries, generation respects a configurable ability power budget, and broken cross-content references are diagnosed and excluded before selection.
 
-## What 0.3.7 provides
+## What 0.3.8 provides
 
+- Public `registerAbilityLibrary()` API for external modules to provide complete selectable ability libraries, including linked Effect Forge resources.
+- Dedicated **Ability libraries** selector in the Sources tab with standalone world-default persistence and embedded host-local selection.
+- Backward-compatible loose `registerAbility()` / bundle content remains available even when libraries are filtered.
+- Ability power costs and an automatic/configurable generation budget prevent too many high-impact abilities from being stacked on one creature.
+- Generated Blueprints record `metadata.abilityBudget` with limit, spent, remaining, requested count, and generated count.
+- Dependency validation excludes abilities whose referenced Effect/Aura/Affliction content is missing and exposes diagnostics through the public API.
+- Locked abilities now participate in reroll budgeting instead of being overlaid after generation, avoiding duplicate families and hidden budget inflation.
 - Robust embedded DE/EN fallback localization for Creature Forge-owned UI/content keys, including generated abilities, runtime timing labels, traits, and applied Effect explanations.
 - Built-in linked effects include concise localized descriptions, and manually applied effects append the localized originating ability as a source note.
 
@@ -43,7 +50,7 @@ Version **0.3.7** hardens **Localization & Ability Presentation**. Creature Forg
 - Source-aware content resolution: core and external registered content stay available, while compendium-discovered content is visible only when its source is selected.
 - Standalone source selections persist as world defaults; embedded hosts can keep selections local.
 - Compendium pickers live in a dedicated **Sources** tab instead of occupying the primary creature-generation form.
-- Embedded Creature Editor contract v7 plus standalone Creature Forge ApplicationV2 host.
+- Embedded Creature Editor contract v8 plus standalone Creature Forge ApplicationV2 host.
 - The editor owns its internal scrolling and persistent footer, so Generate, Reroll, and optional Create Actor actions remain visible at the bottom.
 - Multiple hosts can mount the same editor implementation; the standalone window contains no second editor implementation.
 - Standalone default size increased to 1280×860, with migration from the old default-sized saved window state.
@@ -195,6 +202,29 @@ const { actor } = await api.createActor(blueprint, { renderSheet: true });
 
 0.3.0 additionally compiles generated abilities as action items. Referenced Effect Forge definitions remain neutral resources in the Blueprint so they can be edited, validated, compiled, or applied by the Effect Engine without being incorrectly attached to the creature as self-effects.
 
+## External ability libraries
+
+```js
+api.content.registerAbilityLibrary({
+  id: "my-module.undead-abilities",
+  moduleId: "my-module",
+  version: "1.0.0",
+  label: "Undead Abilities",
+  defaultEnabled: false,
+  content: {
+    effects: [/* EffectDefinitions/resources */],
+    abilities: [/* AbilityDefinitions */]
+  }
+});
+
+const request = api.createRequest({
+  sources: { abilities: ["my-module.undead-abilities"] },
+  abilities: { mode: "auto", count: 3, powerBudget: "auto" }
+});
+```
+
+Libraries are filtered independently from category/subtype compendiums. Loose API-registered abilities without a `libraryId` remain available for backward compatibility.
+
 ## Compendium category/subtype discovery
 
 NPC compendiums can be selected independently as category and subtype sources. Core/registered extension content is always available; discovered compendium content is request-scoped.
@@ -305,6 +335,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.3.7 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing, persistent effect resource materialization, and visually distinct manual effect application controls. Automatic combat-workflow trigger execution, Aura generation, afflictions, spell packages, and loot generation remain later milestones.
+0.3.8 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill/movement/sense generation, localized strikes, selectable ability libraries, budgeted weighted ability selection, dependency validation, Effect Forge composition/editing, persistent effect resource materialization, and visually distinct manual effect application controls. Automatic combat-workflow trigger execution, Aura generation, afflictions, spell packages, and loot generation remain later milestones.
 
 See `docs/ROADMAP.md`.

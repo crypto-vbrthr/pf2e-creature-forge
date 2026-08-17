@@ -148,7 +148,7 @@ function triStateOptions(current) {
 }
 
 export class EmbeddedCreatureEditor {
-  static CONTRACT_VERSION = 7;
+  static CONTRACT_VERSION = 8;
 
   constructor({ api, session = null, request = {}, blueprint = null, mode = "create", layout = "full", activeTab = "creature", capabilities = {}, onChange = null, onGenerate = null } = {}) {
     if (!api) throw new Error("EmbeddedCreatureEditor requires the Creature Forge API.");
@@ -281,6 +281,7 @@ export class EmbeddedCreatureEditor {
     request.identity.subtypes = [...(get("subtypes")?.selectedOptions ?? [])].map((entry) => entry.value).filter(Boolean);
     if (get("categorySources")) request.sources.categories = [...get("categorySources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     if (get("subtypeSources")) request.sources.subtypes = [...get("subtypeSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
+    if (get("abilitySources")) request.sources.abilities = [...get("abilitySources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     request.identity.size = get("size")?.value ?? "med";
     for (const ability of ABILITIES) request.attributes[ability] = get(ability)?.value ?? "role";
     request.defenses.ac = get("ac")?.value ?? "role";
@@ -314,6 +315,8 @@ export class EmbeddedCreatureEditor {
     const abilityCount = get("abilityCount")?.value ?? "role";
     request.abilities.count = abilityCount === "role" ? "role" : number(abilityCount);
     request.abilities.complexity = get("abilityComplexity")?.value ?? "standard";
+    const abilityPowerBudget = get("abilityPowerBudget")?.value ?? "auto";
+    request.abilities.powerBudget = abilityPowerBudget === "auto" ? "auto" : number(abilityPowerBudget);
     request.abilities.focus = String(get("abilityFocus")?.value ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
     request.generation.seed = get("seed")?.value ?? "";
     request.generation.variation = get("variation")?.value ?? "balanced";
@@ -435,7 +438,7 @@ export class EmbeddedCreatureEditor {
 
     if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="preferredSkills"], input[name="abilityFocus"]'))) {
       this.#syncRequestFromForm();
-      if (event.type === "change" && target.matches?.('select[name="categorySources"], select[name="subtypeSources"]')) {
+      if (event.type === "change" && target.matches?.('select[name="categorySources"], select[name="subtypeSources"], select[name="abilitySources"]')) {
         try {
           await this.api.sources.ensure(this.session.request.sources);
           this.#reconcileContentSelection();
@@ -515,6 +518,16 @@ export class EmbeddedCreatureEditor {
       const suffix = entry.packageName ? ` · ${entry.packageName}` : "";
       return option(entry.id, escapeHtml(`${entry.label}${suffix}`), selected.includes(entry.id));
     }).join("");
+    const abilityLibraries = this.api.content.listAbilityLibraries();
+    const selectedAbilityLibraries = request.sources.abilities?.length
+      ? request.sources.abilities
+      : this.api.content.getDefaultAbilityLibraryIds();
+    const abilityLibraryOptions = abilityLibraries.map((library) => {
+      const moduleTitle = globalThis.game?.modules?.get?.(library.moduleId)?.title ?? library.moduleId;
+      const label = localize(library.labelKey, library.label ?? library.id);
+      const suffix = library.moduleId && library.moduleId !== "pf2e-creature-forge" ? ` · ${moduleTitle}` : "";
+      return option(library.id, escapeHtml(`${label}${suffix} · ${library.abilityCount} ${localize("PF2E_CREATURE_FORGE.Component.Abilities", "abilities")}`), selectedAbilityLibraries.includes(library.id));
+    }).join("");
     const categories = this.api.sources.listContent("category", { selectedSources: request.sources.categories }).map((entry) => ({
       value: entry.slug ?? entry.id,
       label: `${localize(entry.label, entry.slug ?? entry.id)}${entry.discoveredSources?.length ? ` · ${entry.discoveredSources.map((id) => compendiumLabels.get(id) ?? id).join(", ")}` : ""}`,
@@ -582,8 +595,9 @@ export class EmbeddedCreatureEditor {
       }).join("");
       const sourceLabel = contentSourceLabel(ability.source);
       const source = sourceLabel ? `<small class="cf-ability-source">${escapeHtml(sourceLabel)}</small>` : "";
+      const power = Number(ability.powerCost ?? 0) > 0 ? `<small class="cf-ability-power">${escapeHtml(localize("PF2E_CREATURE_FORGE.Ability.Power", "Power"))} ${Number(ability.powerCost)}</small>` : "";
       return `<article class="cf-ability-card${ability.locked ? " locked" : ""}" data-ability-id="${escapeHtml(ability.id)}">
-        <header><div><strong>${escapeHtml(abilityNameLabel(ability))}</strong><small>${escapeHtml(abilityTypeLabel(ability))} · ${escapeHtml(localize(`PF2E_CREATURE_FORGE.AbilityCategory.${ability.category}`, ability.category ?? ""))}</small>${source}</div>
+        <header><div><strong>${escapeHtml(abilityNameLabel(ability))}</strong><small>${escapeHtml(abilityTypeLabel(ability))} · ${escapeHtml(localize(`PF2E_CREATURE_FORGE.AbilityCategory.${ability.category}`, ability.category ?? ""))}</small>${source}${power}</div>
         <div class="cf-ability-controls">
           ${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-ability-lock" title="${escapeHtml(localize(ability.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", ability.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${ability.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}
           ${this.capabilities.generation && this.mode !== "view" && !ability.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-ability" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbility", "Reroll ability"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
@@ -692,7 +706,8 @@ export class EmbeddedCreatureEditor {
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityMode", "Ability generation"))}</span><select name="abilityMode" ${disabled}>${["auto","off"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.AbilityMode.${value}`, value), request.abilities.mode)).join("")}</select></label>
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityCount", "Ability count"))}</span><select name="abilityCount" ${disabled}>${["role",0,1,2,3,4,5].map((value) => option(String(value), value === "role" ? localize("PF2E_CREATURE_FORGE.Editor.RoleDefault", "Role default") : String(value), String(request.abilities.count))).join("")}</select></label>
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityComplexity", "Complexity"))}</span><select name="abilityComplexity" ${disabled}>${["simple","standard","complex"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.AbilityComplexity.${value}`, value), request.abilities.complexity)).join("")}</select></label>
-              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityFocus", "Focus tags"))}</span><input name="abilityFocus" type="text" value="${escapeHtml((request.abilities.focus ?? []).join(", "))}" placeholder="control, movement" ${disabled}></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityPowerBudget", "Power budget"))}</span><select name="abilityPowerBudget" ${disabled}>${["auto",1,2,3,4,5,6,7,8,9,10,12,15,20].map((value) => option(String(value), value === "auto" ? localize("PF2E_CREATURE_FORGE.Field.Auto", "Automatic") : String(value), String(request.abilities.powerBudget ?? "auto"))).join("")}</select></label>
+              <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityFocus", "Focus tags"))}</span><input name="abilityFocus" type="text" value="${escapeHtml((request.abilities.focus ?? []).join(", "))}" placeholder="control, movement" ${disabled}></label>
             </div>
 
             <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Generation", "Generation"))}</h3>
@@ -738,7 +753,7 @@ export class EmbeddedCreatureEditor {
             <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Attacks", "Attacks"))}</h4>${this.capabilities.generation && this.mode !== "view" && (blueprint?.combat?.attacks?.length ?? 0) ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAttacks", "Reroll attacks"))}" data-cf-action="reroll-attacks"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
             ${(blueprint?.combat?.attacks?.length ?? 0) ? `<ul class="cf-attacks">${attackRows}</ul>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAttacks", "No strikes generated."))}</p>`}
 
-            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Abilities", "Abilities"))}</h4>${canGenerate && (blueprint?.abilities?.length ?? 0) ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbilities", "Reroll abilities"))}" data-cf-action="reroll-abilities"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Abilities", "Abilities"))}</h4><div class="cf-heading-tools">${blueprint?.metadata?.abilityBudget ? `<span class="cf-budget-badge" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilityBudgetHint", "Power spent / budget"))}">${Number(blueprint.metadata.abilityBudget.spent ?? 0)}/${Number(blueprint.metadata.abilityBudget.limit ?? 0)}</span>` : ""}${canGenerate && (blueprint?.abilities?.length ?? 0) ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbilities", "Reroll abilities"))}" data-cf-action="reroll-abilities"><i class="fa-solid fa-dice"></i></button>` : ""}</div></div>
             ${(blueprint?.abilities?.length ?? 0) ? `<div class="cf-abilities">${abilityRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAbilities", "No abilities generated."))}</p>`}
 
             <div class="cf-seed"><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Seed", "Seed"))}:</strong> <code>${escapeHtml(blueprint?.metadata?.seed ?? "—")}</code></div>
@@ -763,18 +778,19 @@ export class EmbeddedCreatureEditor {
               <section class="cf-panel cf-sources-panel">
                 <div class="cf-tab-heading">
                   <div>
-                    <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Sources", "Compendium sources"))}</h3>
-                    <p>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SourcesHint", "Choose which NPC compendiums may contribute discovered categories and subtypes. Creature Forge Core and registered extension content remain available."))}</p>
+                    <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Sources", "Content sources"))}</h3>
+                    <p>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SourcesHint", "Choose compendiums for category/subtype discovery and the ability libraries available to generation."))}</p>
                   </div>
                   <span class="cf-source-scope">${escapeHtml(localize(this.capabilities.persistSourceSelection ? "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.World" : "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.Host", this.capabilities.persistSourceSelection ? "Saved as world defaults." : "Used only by this editor/request."))}</span>
                 </div>
                 <div class="cf-form-grid cf-source-grid">
                   <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.CategorySources", "Category compendiums"))}</span><select name="categorySources" multiple size="9" ${disabled}>${sourceOptions(request.sources.categories)}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.CategorySourceHint", "Selected NPC compendiums can contribute additional creature categories."))}</small></label>
                   <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SubtypeSources", "Subtype compendiums"))}</span><select name="subtypeSources" multiple size="9" ${disabled}>${sourceOptions(request.sources.subtypes)}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SubtypeSourceHint", "Traits observed on NPCs in the selected compendiums become additional subtype candidates."))}</small></label>
+                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilitySources", "Ability libraries"))}</span><select name="abilitySources" multiple size="9" ${disabled}>${abilityLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilitySourceHint", "Selected registered libraries contribute abilities and their linked effects. Loose API-registered abilities remain available."))}</small></label>
                 </div>
                 <div class="cf-source-actions">
                   <button type="button" data-cf-action="refresh-sources" ${disabled}><i class="fa-solid fa-arrows-rotate"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RefreshSources", "Rescan sources"))}</button>
-                  <span class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint", "Core categories/subtypes and API-registered extension content are always available in addition to these compendium sources."))}</span>
+                  <span class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint", "Core categories/subtypes and loose API-registered extension content remain available; ability libraries can be enabled or disabled independently."))}</span>
                 </div>
               </section>
             </div>` : ""}

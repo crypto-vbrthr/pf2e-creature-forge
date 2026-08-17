@@ -64,6 +64,7 @@ export const DEFAULT_REQUEST = Object.freeze({
     mode: "auto",
     count: "role",
     complexity: "standard",
+    powerBudget: "auto",
     focus: []
   },
   generation: {
@@ -101,6 +102,7 @@ export function createGenerationRequest(input = {}) {
   request.abilities.mode = request.abilities?.mode === "off" ? "off" : "auto";
   if (request.abilities.count !== "role") request.abilities.count = Math.max(0, Math.min(5, Number(request.abilities.count ?? 2)));
   request.abilities.complexity = ["simple", "standard", "complex"].includes(request.abilities?.complexity) ? request.abilities.complexity : "standard";
+  if (request.abilities.powerBudget !== "auto") request.abilities.powerBudget = Math.max(0, Math.min(30, Number(request.abilities.powerBudget ?? 0)));
   request.abilities.focus = [...new Set((request.abilities?.focus ?? []).map((value) => String(value).trim().toLowerCase()).filter(Boolean))];
   if (request.skills.count !== "role") request.skills.count = Math.max(0, Math.min(8, Number(request.skills.count ?? 3)));
   for (const type of ["land", "climb", "swim", "fly", "burrow"]) {
@@ -130,7 +132,8 @@ export function createEmptyBlueprint() {
       seed: "",
       variation: "balanced",
       requestSnapshot: null,
-      rerollHistory: []
+      rerollHistory: [],
+      abilityBudget: { limit: 0, spent: 0, remaining: 0, requestedCount: 0, generatedCount: 0 }
     },
     identity: {
       name: "Creature",

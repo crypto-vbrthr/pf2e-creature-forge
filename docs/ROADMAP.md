@@ -116,6 +116,16 @@
 - Broader curated ability library and dependency diagnostics.
 - Automatic runtime execution of ability application triggers (manual runtime available since 0.3.3).
 
+
+## 0.3.8 - Ability Sources, Power Budget & Dependency Hardening ✅
+
+- Selectable external ability libraries through the public Content API.
+- Ability-library selection in the Sources tab with world/host-local persistence semantics.
+- Per-ability power costs and automatic/manual power budgets.
+- Dependency validation for referenced effects, auras, and afflictions.
+- Dependency-invalid abilities excluded before weighted selection.
+- Lock-aware budgeted rerolls and duplicate-family hardening.
+
 ## 0.4.x - Auras and afflictions
 
 - Aura recipe selection and Embedded Aura Editor.

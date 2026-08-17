@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.8 - Ability Sources, Power Budget & Dependency Hardening
+
+- Added first-class ability libraries via `api.content.registerAbilityLibrary()`, including library metadata, provenance, default-enabled policy, listing, validation, and unregister support.
+- Moved core abilities/effects into the built-in selectable Creature Forge Core Ability Library.
+- Added an **Ability libraries** multi-select to the Sources tab; standalone selections persist as world defaults while embedded editors keep host-local source policy.
+- Kept loose API/bundle abilities without a library available for backward compatibility.
+- Added `powerCost` to materialized abilities plus deterministic estimation for definitions that omit an explicit cost.
+- Added automatic/manual ability power budgets and Blueprint `metadata.abilityBudget` accounting.
+- Prevented the weighted selector from choosing abilities that would exceed the remaining power budget.
+- Added dependency validation for referenced effects, auras, afflictions, and explicit `requiredContent`; invalid abilities are excluded before generation and reported in diagnostics.
+- Hardened ability rerolls so locked abilities are preserved inside the budgeted selection pass rather than overlaid afterward.
+- Added duplicate-family and stale/exceeded power-budget Blueprint diagnostics.
+- Expanded the public API with ability library, dependency, and power-budget helpers.
+- Promoted request/blueprint/content schemas to v4, Embedded Creature Editor contract to v8, and API/module version to 0.3.8.
+- Expanded automated coverage to 84 tests.
+
 ## 0.3.7 - Localization & Ability Presentation Regression Fix
 
 - Hardened Creature Forge localization with an embedded DE/EN fallback catalog for package-owned keys, while continuing to use Foundry i18n for external/system content.

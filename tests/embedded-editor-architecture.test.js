@@ -6,9 +6,9 @@ const editorUrl = new URL("../scripts/ui/creature-editor.js", import.meta.url);
 const appUrl = new URL("../scripts/ui/creature-forge-app.js", import.meta.url);
 const cssUrl = new URL("../styles/creature-forge.css", import.meta.url);
 
-test("embedded editor v7 keeps source controls separate and presents the public Effect Editor as a dedicated workspace", async () => {
+test("embedded editor v8 keeps source controls separate and presents the public Effect Editor as a dedicated workspace", async () => {
   const source = await readFile(editorUrl, "utf8");
-  assert.match(source, /static CONTRACT_VERSION = 7/);
+  assert.match(source, /static CONTRACT_VERSION = 8/);
   assert.match(source, /this\.root = this\.container\.querySelector\("\[data-cf-editor\]"\)/);
   assert.match(source, /data-cf-editor-scroll/);
   assert.match(source, /data-cf-editor-footer/);

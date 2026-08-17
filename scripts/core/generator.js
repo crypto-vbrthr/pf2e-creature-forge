@@ -273,7 +273,8 @@ export class CreatureGenerator {
       generatorVersion: MODULE_VERSION,
       seed,
       variation: request.generation.variation,
-      requestSnapshot: deepClone({ ...request, generation: { ...request.generation, seed } })
+      requestSnapshot: deepClone({ ...request, generation: { ...request.generation, seed } }),
+      abilityBudget: deepClone(generatedAbilities.budget)
     };
     blueprint.identity = {
       name: request.identity.name || "Creature",
@@ -354,6 +355,12 @@ export class CreatureGenerator {
         section: "Compendium Category/Subtype Discovery",
         note: "Selected creature compendium contributes discoverable categories and/or subtypes for this generation request."
       })),
+      ...this.registry.resolveAbilityLibrarySelection(request.sources?.abilities ?? []).map((source) => ({
+        kind: "content-source",
+        source,
+        section: "Ability Library",
+        note: "Selected ability library contributes eligible abilities and their dependencies for this generation request."
+      })),
       ...affinities.hpAdjustment.reasons.map((reason) => ({
         kind: "balance",
         source: "PF2E Creature Forge",
@@ -363,6 +370,7 @@ export class CreatureGenerator {
     ];
     blueprint.diagnostics = [
       ...requestValidation.warnings,
+      ...(generatedAbilities.diagnostics ?? []),
       ...validateBlueprint(blueprint).warnings
     ];
     return blueprint;
@@ -445,14 +453,26 @@ export class CreatureGenerator {
 
     if (scope === "abilities") {
       if (next.locks?.abilities) return next;
-      const generated = regenerated();
-      const lockedById = new Map((next.abilities ?? []).filter((ability) => ability.locked).map((ability) => [ability.id, ability]));
-      next.abilities = generated.abilities.map((ability) => lockedById.get(ability.id) ?? ability);
+      const preserved = (next.abilities ?? [])
+        .map((ability, index) => ability?.locked ? { index, ability } : null)
+        .filter(Boolean);
+      const result = generateAbilities({
+        request: next.metadata.requestSnapshot,
+        registry: this.registry,
+        level: next.identity.level,
+        roleId: next.identity.role,
+        category: next.identity.category,
+        subtypes: next.identity.resolvedSubtypes ?? next.identity.subtypes ?? [],
+        random: random.fork("abilities"),
+        preserve: preserved
+      });
+      next.abilities = result.abilities;
       next.resources.effects = collectAbilityEffectResources(next.abilities, this.registry, [
         ...(next.resources?.effects ?? []),
-        ...(generated.resources?.effects ?? [])
+        ...(result.effects ?? [])
       ]);
-      next.diagnostics = validateBlueprint(next).warnings;
+      next.metadata.abilityBudget = deepClone(result.budget);
+      next.diagnostics = [...(result.diagnostics ?? []), ...validateBlueprint(next).warnings];
       return next;
     }
 
@@ -467,7 +487,8 @@ export class CreatureGenerator {
       });
       next.abilities = result.abilities;
       next.resources.effects = result.effects;
-      next.diagnostics = validateBlueprint(next).warnings;
+      next.metadata.abilityBudget = deepClone(result.budget);
+      next.diagnostics = [...(result.diagnostics ?? []), ...validateBlueprint(next).warnings];
       return next;
     }
 

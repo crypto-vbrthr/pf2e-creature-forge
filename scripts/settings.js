@@ -14,7 +14,8 @@ export function registerSettings() {
     type: Object,
     default: {
       categories: [],
-      subtypes: []
+      subtypes: [],
+      abilities: []
     }
   });
 }

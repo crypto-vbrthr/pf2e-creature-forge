@@ -1,4 +1,4 @@
-import { MODULE_ID, MODULE_VERSION } from "../constants.js";
+import { CORE_ABILITY_LIBRARY_ID, MODULE_ID, MODULE_VERSION } from "../constants.js";
 import { CORE_ABILITIES, CORE_EFFECTS } from "./core-abilities.js";
 
 const category = (slug, label, extra = {}) => ({
@@ -207,10 +207,10 @@ export const CORE_CONTENT_BUNDLE = Object.freeze({
     categories,
     subtypes,
     nameTemplates: [],
-    abilities: CORE_ABILITIES,
+    abilities: [],
     auras: [],
     afflictions: [],
-    effects: CORE_EFFECTS,
+    effects: [],
     poisons: [],
     spellProfiles: [],
     spellPackages: [],
@@ -218,6 +218,22 @@ export const CORE_CONTENT_BUNDLE = Object.freeze({
   }
 });
 
+export const CORE_ABILITY_LIBRARY = Object.freeze({
+  id: CORE_ABILITY_LIBRARY_ID,
+  moduleId: MODULE_ID,
+  version: MODULE_VERSION,
+  labelKey: "PF2E_CREATURE_FORGE.AbilityLibrary.Core.Name",
+  descriptionKey: "PF2E_CREATURE_FORGE.AbilityLibrary.Core.Description",
+  defaultEnabled: true,
+  tags: ["core", "ability-library"],
+  content: {
+    abilities: CORE_ABILITIES,
+    effects: CORE_EFFECTS
+  }
+});
+
 export function registerCoreContent(registry) {
-  return registry.registerBundle(CORE_CONTENT_BUNDLE);
+  const bundle = registry.registerBundle(CORE_CONTENT_BUNDLE);
+  const library = registry.registerAbilityLibrary(CORE_ABILITY_LIBRARY);
+  return { bundle, library };
 }

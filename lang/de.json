@@ -258,7 +258,7 @@
   "PF2E_CREATURE_FORGE.AffinityType.grabbed": "Gepackt",
   "PF2E_CREATURE_FORGE.AffinityType.prone": "Liegend",
   "PF2E_CREATURE_FORGE.AffinityType.restrained": "Festgesetzt",
-  "PF2E_CREATURE_FORGE.Editor.Sources": "Kompendiumquellen",
+  "PF2E_CREATURE_FORGE.Editor.Sources": "Inhaltsquellen",
   "PF2E_CREATURE_FORGE.Field.CategorySources": "Kompendien für Kategorien",
   "PF2E_CREATURE_FORGE.Field.SubtypeSources": "Kompendien für Subtypen",
   "PF2E_CREATURE_FORGE.Editor.CategorySourceHint": "Ausgewählte NSC-Kompendien können zusätzliche Kreaturenkategorien bereitstellen.",
@@ -272,8 +272,8 @@
   "PF2E_CREATURE_FORGE.Editor.Tabs": "Bereiche der Creature Forge",
   "PF2E_CREATURE_FORGE.Editor.Tab.Creature": "Kreatur",
   "PF2E_CREATURE_FORGE.Editor.Tab.Sources": "Quellen",
-  "PF2E_CREATURE_FORGE.Editor.SourcesHint": "Wähle aus, welche NSC-Kompendien zusätzliche Kategorien und Subtypen beisteuern dürfen. Creature Forge Core und registrierte Erweiterungsinhalte bleiben unabhängig davon verfügbar.",
-  "PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint": "Core-Kategorien/-Subtypen und per API registrierte Erweiterungsinhalte bleiben zusätzlich zu diesen Kompendiumquellen immer verfügbar.",
+  "PF2E_CREATURE_FORGE.Editor.SourcesHint": "Wähle Kompendien für die Erkennung von Kategorien und Subtypen sowie die Fähigkeitsbibliotheken, die der Generierung zur Verfügung stehen.",
+  "PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint": "Kernkategorien/-subtypen und lose per API registrierte Erweiterungsinhalte bleiben verfügbar; Fähigkeitsbibliotheken können unabhängig aktiviert oder deaktiviert werden.",
   "PF2E_CREATURE_FORGE.Editor.Abilities": "Fähigkeiten",
   "PF2E_CREATURE_FORGE.Field.AbilityMode": "Fähigkeitengenerierung",
   "PF2E_CREATURE_FORGE.Field.AbilityCount": "Anzahl Fähigkeiten",
@@ -389,5 +389,12 @@
   "PF2E_CREATURE_FORGE.Trait.fear": "Furcht",
   "PF2E_CREATURE_FORGE.Trait.illusion": "Illusion",
   "PF2E_CREATURE_FORGE.Trait.mental": "Mental",
-  "PF2E_CREATURE_FORGE.Source.Core": "Creature Forge Kern"
+  "PF2E_CREATURE_FORGE.Source.Core": "Creature Forge Kern",
+  "PF2E_CREATURE_FORGE.AbilityLibrary.Core.Name": "Creature Forge Kernfähigkeiten",
+  "PF2E_CREATURE_FORGE.AbilityLibrary.Core.Description": "Grundlegende, lokalisierte Fähigkeiten und Effect-Forge-Effekte der Creature Forge.",
+  "PF2E_CREATURE_FORGE.Field.AbilityPowerBudget": "Leistungsbudget",
+  "PF2E_CREATURE_FORGE.Field.AbilitySources": "Fähigkeitsbibliotheken",
+  "PF2E_CREATURE_FORGE.Editor.AbilitySourceHint": "Ausgewählte registrierte Bibliotheken liefern Fähigkeiten und ihre verknüpften Effekte. Lose per API registrierte Fähigkeiten bleiben zusätzlich verfügbar.",
+  "PF2E_CREATURE_FORGE.Editor.AbilityBudgetHint": "Verbrauchte Leistung / verfügbares Leistungsbudget",
+  "PF2E_CREATURE_FORGE.Ability.Power": "Leistung"
 }

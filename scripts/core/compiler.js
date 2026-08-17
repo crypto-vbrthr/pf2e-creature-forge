@@ -140,6 +140,8 @@ function compileAbilityItem(ability, effectResources = new Map()) {
         abilityId: ability?.id,
         contentId: ability?.contentId,
         family: ability?.family ?? null,
+        powerCost: Number(ability?.powerCost ?? 0),
+        source: deepClone(ability?.source ?? {}),
         applications: deepClone(ability?.applications ?? [])
       }
     }

@@ -13,7 +13,7 @@ import { listCompendiumSources } from "../core/sources.js";
 import { validateBlueprint, validateGenerationRequest } from "../core/validator.js";
 import { ForgeIntegrationHub } from "../integration/adapters.js";
 import { createCreatureEditorUiApi } from "../ui/creature-editor.js";
-import { listAbilityCandidates } from "../core/ability-engine.js";
+import { estimateAbilityPower, listAbilityCandidates, resolveAbilityPowerBudget } from "../core/ability-engine.js";
 import { CreatureEffectRuntime } from "../runtime/effect-runtime.js";
 
 let apiInstance = null;
@@ -75,7 +75,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
     },
 
     abilities: {
-      listCandidates: (request = {}) => {
+      listCandidates: (request = {}, options = {}) => {
         const normalized = createGenerationRequest(request);
         return listAbilityCandidates({
           request: normalized,
@@ -83,9 +83,17 @@ export function initializePublicApi({ openCreatureForge } = {}) {
           level: normalized.identity.level,
           roleId: normalized.identity.role,
           category: normalized.identity.category,
-          subtypes: normalized.identity.subtypes
+          subtypes: normalized.identity.subtypes,
+          includeInvalid: Boolean(options.includeInvalid)
         });
-      }
+      },
+      estimatePower: (definition) => estimateAbilityPower(definition),
+      resolvePowerBudget: (request = {}) => {
+        const normalized = createGenerationRequest(request);
+        return resolveAbilityPowerBudget(normalized, normalized.identity.role);
+      },
+      listLibraries: (filters = {}) => registry.listAbilityLibraries(filters),
+      validateDependencies: (definitionOrId) => registry.validateAbilityDependencies(definitionOrId)
     },
 
     effects: {
@@ -152,6 +160,13 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       registerSubtype: registerByType("subtype"),
       registerNameTemplate: registerByType("nameTemplate"),
       registerAbility: registerByType("ability"),
+      registerAbilityLibrary: (library, options = {}) => registry.registerAbilityLibrary(library, options),
+      unregisterAbilityLibrary: (libraryId) => registry.unregisterAbilityLibrary(libraryId),
+      getAbilityLibrary: (libraryId) => registry.getAbilityLibrary(libraryId),
+      listAbilityLibraries: (filters = {}) => registry.listAbilityLibraries(filters),
+      getDefaultAbilityLibraryIds: () => registry.getDefaultAbilityLibraryIds(),
+      validateAbilityDependencies: (definitionOrId) => registry.validateAbilityDependencies(definitionOrId),
+      validateAbilityLibrary: (libraryId) => registry.validateAbilityLibrary(libraryId),
       registerAura: registerByType("aura"),
       registerAffliction: registerByType("affliction"),
       registerEffect: registerByType("effect"),
@@ -179,18 +194,21 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       getDefaults: () => {
         try {
           const stored = globalThis.game?.settings?.get?.(MODULE_ID, SETTINGS.SOURCE_DEFAULTS) ?? {};
+          const abilities = [...new Set((stored.abilities ?? []).map(String).filter(Boolean))];
           return {
             categories: [...new Set((stored.categories ?? []).map(String).filter(Boolean))],
-            subtypes: [...new Set((stored.subtypes ?? []).map(String).filter(Boolean))]
+            subtypes: [...new Set((stored.subtypes ?? []).map(String).filter(Boolean))],
+            abilities: abilities.length ? abilities : registry.getDefaultAbilityLibraryIds()
           };
         } catch {
-          return { categories: [], subtypes: [] };
+          return { categories: [], subtypes: [], abilities: registry.getDefaultAbilityLibraryIds() };
         }
       },
       setDefaults: async (sources = {}) => {
         const value = {
           categories: [...new Set((sources.categories ?? []).map(String).filter(Boolean))],
-          subtypes: [...new Set((sources.subtypes ?? []).map(String).filter(Boolean))]
+          subtypes: [...new Set((sources.subtypes ?? []).map(String).filter(Boolean))],
+          abilities: [...new Set((sources.abilities ?? registry.getDefaultAbilityLibraryIds()).map(String).filter(Boolean))]
         };
         await globalThis.game?.settings?.set?.(MODULE_ID, SETTINGS.SOURCE_DEFAULTS, value);
         return value;

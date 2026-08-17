@@ -458,3 +458,32 @@
   font-size: .86em;
   opacity: .82;
 }
+
+/* 0.3.8 ability library / power budget presentation */
+.cf-heading-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cf-budget-badge,
+.cf-ability-power {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid rgba(157, 117, 47, 0.7);
+  border-radius: 999px;
+  background: rgba(92, 48, 15, 0.12);
+  padding: 0.12rem 0.45rem;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--cf-accent, #6f321b);
+}
+
+.cf-ability-power {
+  margin-top: 0.15rem;
+}
+
+.cf-source-grid select[name="abilitySources"] {
+  min-height: 10rem;
+}

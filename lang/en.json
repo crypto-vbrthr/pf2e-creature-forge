@@ -258,7 +258,7 @@
   "PF2E_CREATURE_FORGE.AffinityType.grabbed": "Grabbed",
   "PF2E_CREATURE_FORGE.AffinityType.prone": "Prone",
   "PF2E_CREATURE_FORGE.AffinityType.restrained": "Restrained",
-  "PF2E_CREATURE_FORGE.Editor.Sources": "Compendium sources",
+  "PF2E_CREATURE_FORGE.Editor.Sources": "Content sources",
   "PF2E_CREATURE_FORGE.Field.CategorySources": "Category compendiums",
   "PF2E_CREATURE_FORGE.Field.SubtypeSources": "Subtype compendiums",
   "PF2E_CREATURE_FORGE.Editor.CategorySourceHint": "Selected NPC compendiums can contribute additional creature categories.",
@@ -272,8 +272,8 @@
   "PF2E_CREATURE_FORGE.Editor.Tabs": "Creature Forge sections",
   "PF2E_CREATURE_FORGE.Editor.Tab.Creature": "Creature",
   "PF2E_CREATURE_FORGE.Editor.Tab.Sources": "Sources",
-  "PF2E_CREATURE_FORGE.Editor.SourcesHint": "Choose which NPC compendiums may contribute additional categories and subtypes. Creature Forge Core and registered extension content remain available regardless.",
-  "PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint": "Core categories/subtypes and API-registered extension content always remain available in addition to these compendium sources.",
+  "PF2E_CREATURE_FORGE.Editor.SourcesHint": "Choose compendiums for category and subtype discovery and the ability libraries available to generation.",
+  "PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint": "Core categories/subtypes and loose API-registered extension content remain available; ability libraries can be enabled or disabled independently.",
   "PF2E_CREATURE_FORGE.Editor.Abilities": "Abilities",
   "PF2E_CREATURE_FORGE.Field.AbilityMode": "Ability generation",
   "PF2E_CREATURE_FORGE.Field.AbilityCount": "Ability count",
@@ -389,5 +389,12 @@
   "PF2E_CREATURE_FORGE.Trait.fear": "Fear",
   "PF2E_CREATURE_FORGE.Trait.illusion": "Illusion",
   "PF2E_CREATURE_FORGE.Trait.mental": "Mental",
-  "PF2E_CREATURE_FORGE.Source.Core": "Creature Forge Core"
+  "PF2E_CREATURE_FORGE.Source.Core": "Creature Forge Core",
+  "PF2E_CREATURE_FORGE.AbilityLibrary.Core.Name": "Creature Forge Core Abilities",
+  "PF2E_CREATURE_FORGE.AbilityLibrary.Core.Description": "Core localized abilities and Effect Forge resources shipped with Creature Forge.",
+  "PF2E_CREATURE_FORGE.Field.AbilityPowerBudget": "Power budget",
+  "PF2E_CREATURE_FORGE.Field.AbilitySources": "Ability libraries",
+  "PF2E_CREATURE_FORGE.Editor.AbilitySourceHint": "Selected registered libraries contribute abilities and their linked effects. Loose API-registered abilities remain available as well.",
+  "PF2E_CREATURE_FORGE.Editor.AbilityBudgetHint": "Power spent / available power budget",
+  "PF2E_CREATURE_FORGE.Ability.Power": "Power"
 }
