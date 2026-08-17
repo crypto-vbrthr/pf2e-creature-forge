@@ -4,7 +4,7 @@ import { createLootPlan, lootChannelChance } from "../scripts/core/loot.js";
 import { createGenerationRequest, createEmptyBlueprint } from "../scripts/core/schemas.js";
 import { createRandom } from "../scripts/core/rng.js";
 import { CreatureLootIntegration } from "../scripts/integration/loot-integration.js";
-import { CreatureLootRuntime } from "../scripts/runtime/loot-runtime.js";
+import { CreatureLootRuntime, summarizeDeferredLoot } from "../scripts/runtime/loot-runtime.js";
 import { MODULE_ID } from "../scripts/constants.js";
 
 function blueprint(category = "humanoid", role = "soldier", level = 8) {
@@ -115,6 +115,7 @@ test("runtime materializes only carried equipment/signature and persists salvage
   const createdSources = [];
   const updates = [];
   const actor = {
+    flags: { [MODULE_ID]: { loot: { materialized: { hoard: { actorId: "existing-loot", channels: ["hoard"] } } } } },
     items: [{ id: "old", flags: { [MODULE_ID]: { loot: { managed: true, channel: "equipment" } } } }],
     async deleteEmbeddedDocuments(_type, ids) { assert.deepEqual(ids, ["old"]); this.items = []; return ids; },
     async createEmbeddedDocuments(_type, sources) { createdSources.push(...structuredClone(sources)); return sources.map((source, i) => ({ ...source, id: `new-${i}` })); },
@@ -127,6 +128,7 @@ test("runtime materializes only carried equipment/signature and persists salvage
   assert.ok(!createdSources.some((item) => item.name === "Hoard Gem"));
   assert.ok(updates[0][`flags.${MODULE_ID}.loot`].salvage);
   assert.ok(updates[0][`flags.${MODULE_ID}.loot`].hoard);
+  assert.equal(updates[0][`flags.${MODULE_ID}.loot`].materialized.hoard.actorId, "existing-loot");
 });
 
 test("deferred loot actor combines hoard items and generated salvage through Loot Forge", async () => {
@@ -176,10 +178,59 @@ test("scoped loot reroll preserves every other channel and locked channels keep 
   assert.equal(enriched.loot.channels.equipment.result.items[0].name, "Locked Sword");
 });
 
+
+test("deferred loot summary separates salvage and hoard counts/value for NPC-sheet UX", () => {
+  const bp = blueprint("dragon", "brute", 12);
+  bp.loot = {
+    channels: {
+      salvage: { result: { entries: [
+        { id: "scale", quantity: 2, valueGp: 7.5 },
+        { id: "tooth", quantity: 1, valueGp: 5 }
+      ] } },
+      hoard: { result: { loot: { coins: { gp: 20 }, totalValueGp: 48, pf2eItems: [{ name: "Ruby" }], generatedItems: [{ name: "Scroll" }] } } }
+    }
+  };
+  const summary = summarizeDeferredLoot(bp);
+  assert.equal(summary.salvage.available, true);
+  assert.equal(summary.salvage.itemCount, 3);
+  assert.equal(summary.salvage.valueGp, 20);
+  assert.equal(summary.hoard.available, true);
+  assert.equal(summary.hoard.itemCount, 2);
+  assert.equal(summary.hoard.valueGp, 48);
+  assert.deepEqual(summary.combined, { itemCount: 5, valueGp: 68 });
+});
+
+test("creating deferred loot from an NPC records the created Loot Actor per materialized channel", async () => {
+  const bp = blueprint("dragon", "brute", 12);
+  bp.loot = {
+    channels: {
+      salvage: { result: { entries: [{ id: "scale", fallbackName: "Dragon scales", quantity: 1, valueGp: 10 }] } },
+      hoard: { result: { loot: { coins: { gp: 50 }, totalValueGp: 50, pf2eItems: [{ name: "Ruby", type: "treasure", system: {} }], generatedItems: [] } } }
+    }
+  };
+  let receivedName = null;
+  const runtime = new CreatureLootRuntime({ integrations: { lootApi: {
+    createLootActorWithLoot: async (name) => { receivedName = name; return { id: "loot-hoard", uuid: "Actor.loot-hoard", name }; }
+  } } });
+  const updates = [];
+  const sourceActor = {
+    id: "source",
+    flags: { [MODULE_ID]: { blueprint: bp, loot: { summary: bp.loot.summary ?? {}, materialized: {} } } },
+    async update(update) { updates.push(structuredClone(update)); return this; }
+  };
+  await runtime.createDeferredLootActor(sourceActor, { includeSalvage: false, includeHoard: true });
+  assert.equal(receivedName, "Loot Test · Hoard");
+  const lootFlag = updates[0][`flags.${MODULE_ID}.loot`];
+  assert.equal(lootFlag.materialized.hoard.actorId, "loot-hoard");
+  assert.equal(lootFlag.materialized.hoard.actorUuid, "Actor.loot-hoard");
+  assert.deepEqual(lootFlag.materialized.hoard.channels, ["hoard"]);
+  assert.equal(lootFlag.materialized.salvage, undefined);
+});
+
 test("public createActor enriches an unresolved loot plan before runtime materialization", async () => {
   const previousGame = globalThis.game;
   const previousActor = globalThis.Actor;
-  const creatureModule = { id: MODULE_ID, active: true, version: "0.6.0", api: null };
+  const creatureModule = { id: MODULE_ID, active: true, version: "0.6.1", api: null };
   let lootCalls = 0;
   const lootModule = {
     id: "pf2e-loot-forge", active: true, version: "test",

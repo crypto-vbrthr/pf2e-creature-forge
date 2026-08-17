@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.1 - Deferred Loot UX
+
+- Added a GM-only deferred-loot panel to generated PF2E NPC sheets when body salvage and/or hoard/environment loot exists.
+- Added per-channel summaries with item counts and estimated GP value so deferred treasure is visible without materializing it immediately.
+- Added one-click creation of body-salvage Loot Actors, hoard Loot Actors, or a combined Loot Actor when both channels are still untouched.
+- Persisted materialization provenance on the source NPC so already-created deferred loot can be reopened instead of duplicated accidentally.
+- Added missing-actor recovery: if a previously materialized Loot Actor was deleted, the NPC panel reports it and offers recreation.
+- Preserved deferred-loot materialization records across carried-loot refreshes.
+- Kept automatic Actor creation disabled for deferred loot; the GM still decides when salvage/hoard becomes a world Actor.
+- Added ApplicationV2 runtime-sheet integration plus a legacy ApplicationV1 fallback without coupling to PF2E sheet DOM internals.
+- Promoted API/module version to 0.6.1; request schema remains v7, Blueprint/content schemas remain v9, and Embedded Creature Editor contract remains v12.
+- Expanded automated coverage to 142 passing tests.
+
 ## 0.6.0 - Loot, Equipment & Signature Items Integration
 
 - Added first-class loot planning with independent carried-equipment, signature-item, body-salvage, and hoard/environment channels.

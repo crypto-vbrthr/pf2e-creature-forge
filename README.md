@@ -2,7 +2,20 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.6.0** adds **Loot, Equipment & Signature Items Integration**. Loot is concept-sensitive and split into carried equipment, signature items, body salvage, and hoard/environment treasure instead of treating every creature as a walking treasure chest. Loot Forge and Item Forge remain the canonical generators when available.
+Version **0.6.1** adds **Deferred Loot UX** on top of the 0.6.0 loot model. Generated NPC sheets now expose prepared body salvage and hoard/environment treasure to the GM without automatically creating extra Actors. Loot Forge and Item Forge remain the canonical generators when available.
+
+
+## What 0.6.1 adds
+
+- A GM-only **Creature Forge: Loot** panel on generated PF2E NPC sheets whenever deferred salvage or hoard loot exists.
+- Visible per-channel item counts and GP-value summaries.
+- Buttons to create **salvage only**, **hoard only**, or **combined loot** when appropriate.
+- Materialization provenance on the source NPC, allowing the existing Loot Actor to be reopened and avoiding accidental duplicate creation.
+- Recovery controls if the previously created Loot Actor was deleted.
+- Deferred materialization remains explicit: Creature Forge never creates the extra Loot Actor just because the NPC itself was created.
+- Runtime sheet injection uses Foundry's generic ApplicationV2 render hook with a V1 compatibility fallback rather than patching PF2E sheet classes.
+- Request schema v7, Blueprint/content schemas v9, Embedded Creature Editor contract v12; API/module version 0.6.1.
+- 142 automated tests pass.
 
 ## What 0.6.0 adds
 
@@ -332,6 +345,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.6.0 owns the core numeric statistics, category/subtype defensive affinities, source-filtered discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, optional Aura/Affliction selection and verified delivery, thematic PF2E spellcasting, plus concept-sensitive loot orchestration across Loot Forge and Item Forge. Automatic combat-workflow trigger execution, focus-spell generation, advanced hand-curated spell packages, embedded Loot Forge hand-editing, and strong weapon-to-strike binding remain later milestones.
+0.6.1 owns the core numeric statistics, category/subtype defensive affinities, source-filtered discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, optional Aura/Affliction selection and verified delivery, thematic PF2E spellcasting, plus concept-sensitive loot orchestration across Loot Forge and Item Forge. Automatic combat-workflow trigger execution, focus-spell generation, advanced hand-curated spell packages, embedded Loot Forge hand-editing, and strong weapon-to-strike binding remain later milestones.
 
 See `docs/ROADMAP.md`.

@@ -4,6 +4,7 @@ import { registerSettings } from "./settings.js";
 import { initializeCreatureForgeUi, openCreatureForge } from "./ui/creature-forge.js";
 import { initializeEffectRuntimeUi } from "./runtime/effect-runtime.js";
 import { initializeSpecialFeatureRuntimeUi } from "./runtime/special-feature-runtime.js";
+import { initializeLootRuntimeUi } from "./runtime/loot-runtime-ui.js";
 
 Hooks.once("init", () => {
   registerSettings();
@@ -41,6 +42,9 @@ Hooks.once("ready", () => {
   });
   initializeSpecialFeatureRuntimeUi({
     applyAffliction: (options) => api.runtime.applyAffliction(options)
+  });
+  initializeLootRuntimeUi({
+    createDeferredLootActor: (actorOrBlueprint, options) => api.runtime.createDeferredLootActor(actorOrBlueprint, options)
   });
   Hooks.callAll("pf2eCreatureForgeReady", api);
   Hooks.callAll("pf2eCreatureForgeContentReady", api.content.getRegistrySnapshot());

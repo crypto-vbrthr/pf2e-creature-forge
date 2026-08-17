@@ -198,6 +198,13 @@
 - Broader semantic spell tagging and source diagnostics.
 - Additional PF2E runtime edge-case coverage for spontaneous/prepared entries.
 
+## 0.6.1 - Deferred Loot UX ✅
+
+- GM-only NPC-sheet summary for deferred salvage and hoard/environment treasure.
+- Explicit per-channel or combined Loot Actor creation.
+- Persisted source-NPC materialization references with reopen/recreate handling.
+- No automatic extra Actor creation.
+
 ## 0.6.0 - Loot, Equipment & Signature Items Integration ✅
 
 - Concept-sensitive `auto | none | required` loot policy.
