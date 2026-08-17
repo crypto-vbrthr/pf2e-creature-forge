@@ -487,3 +487,133 @@
 .cf-source-grid select[name="abilitySources"] {
   min-height: 10rem;
 }
+
+/* 0.4.0 optional Aura/Affliction generation and embedded editors */
+.cf-editor .cf-section-hint {
+  margin: -.35rem 0 .65rem;
+  font-size: .82em;
+  line-height: 1.35;
+  opacity: .7;
+}
+.cf-editor .cf-special-settings {
+  padding: .6rem;
+  border: 1px dashed color-mix(in srgb, var(--color-border-light-primary, #777) 72%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-bg-option, #181818) 88%, transparent);
+}
+.cf-editor .cf-special-budget-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+  margin: 1.1rem 0 .1rem;
+  padding: .45rem .55rem;
+  border: 1px solid color-mix(in srgb, #9d752f 45%, var(--color-border-light-tertiary, #555));
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(157,117,47,.09), transparent 60%);
+}
+.cf-editor .cf-special-list {
+  display: grid;
+  gap: .5rem;
+  margin: .45rem 0 1rem;
+}
+.cf-editor .cf-special-card {
+  --cf-special-accent: #75622d;
+  position: relative;
+  overflow: hidden;
+  padding: .62rem .7rem;
+  border: 1px solid color-mix(in srgb, var(--cf-special-accent) 62%, var(--color-border-light-tertiary, #555));
+  border-left: 4px solid var(--cf-special-accent);
+  border-radius: 7px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cf-special-accent) 10%, transparent), rgba(0,0,0,.055) 45%, transparent);
+}
+.cf-editor .cf-special-card.aura { --cf-special-accent: #7651a8; }
+.cf-editor .cf-special-card.affliction { --cf-special-accent: #6c7d2b; }
+.cf-editor .cf-special-card.locked { border-style: double; }
+.cf-editor .cf-special-card > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .7rem;
+}
+.cf-editor .cf-special-card > header > div:first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+}
+.cf-editor .cf-special-card > header small { opacity: .7; }
+.cf-editor .cf-special-card > p { margin: .45rem 0 .55rem; line-height: 1.35; }
+.cf-editor .cf-special-card > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding-top: .45rem;
+  border-top: 1px solid color-mix(in srgb, var(--cf-special-accent) 28%, transparent);
+}
+.cf-editor .cf-special-card > footer button {
+  width: auto;
+  min-width: 8rem;
+}
+.cf-editor .cf-aura-editor-host,
+.cf-editor .cf-affliction-editor-host {
+  width: min(100%, 1240px);
+  min-height: 0;
+  margin: 0 auto;
+}
+.cf-editor.cf-subeditor-mode .cf-editor-scroll { display: none; }
+.cf-editor .cf-special-workspace .cf-effect-workspace-header {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--cf-special-workspace-accent, #7651a8) 18%, transparent), transparent 48%),
+    color-mix(in srgb, var(--color-bg-option, #202020) 96%, transparent);
+}
+.cf-editor .cf-special-workspace.aura { --cf-special-workspace-accent: #7651a8; }
+.cf-editor .cf-special-workspace.affliction { --cf-special-workspace-accent: #6c7d2b; }
+.cf-source-grid select[name="auraSources"],
+.cf-source-grid select[name="afflictionSources"] { min-height: 9rem; }
+
+/* Actor-sheet manual affliction runtime control. */
+.pf2e-creature-forge-affliction-runtime {
+  --cf-affliction-accent: #667a24;
+  --cf-affliction-strong: #4f6516;
+  --cf-affliction-gold: #d3a45d;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  margin-top: .55rem;
+  padding: .38rem .45rem .38rem .55rem;
+  border: 1px solid color-mix(in srgb, var(--cf-affliction-accent) 58%, currentColor 15%);
+  border-left: 4px solid var(--cf-affliction-strong);
+  border-radius: 6px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cf-affliction-accent) 12%, transparent), transparent 70%);
+}
+.pf2e-creature-forge-affliction-runtime > i { color: #a9bc4d; }
+.pf2e-creature-forge-affliction-runtime button.pf2e-creature-forge-apply-affliction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  width: auto;
+  min-width: 9rem;
+  margin-left: auto;
+  padding: .3rem .65rem;
+  border: 1px solid var(--cf-affliction-gold);
+  border-radius: 5px;
+  background: linear-gradient(180deg, #71872c, var(--cf-affliction-strong));
+  color: #fbf4df;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pf2e-creature-forge-affliction-runtime button.pf2e-creature-forge-apply-affliction:hover,
+.pf2e-creature-forge-affliction-runtime button.pf2e-creature-forge-apply-affliction:focus-visible {
+  background: linear-gradient(180deg, #839b35, #5b711d);
+  border-color: #efd080;
+  box-shadow: 0 0 7px rgba(102,122,36,.4);
+}
+@media (max-width: 620px) {
+  .cf-editor .cf-special-card > footer { align-items: stretch; flex-direction: column; }
+  .cf-editor .cf-special-card > footer button { width: 100%; }
+  .pf2e-creature-forge-affliction-runtime { flex-wrap: wrap; }
+  .pf2e-creature-forge-affliction-runtime button.pf2e-creature-forge-apply-affliction { flex: 1 0 100%; width: 100%; margin-left: 0; }
+}

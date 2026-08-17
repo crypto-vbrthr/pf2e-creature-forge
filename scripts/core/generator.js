@@ -12,7 +12,8 @@ import { resolveAttackNameKey } from "./attack-localization.js";
 import { generateSkills } from "./skills.js";
 import { generateMovement, generateSenses } from "./mobility.js";
 import { calculateAffinityHpAdjustment, generateDefensiveAffinities } from "./defensive-affinities.js";
-import { collectAbilityEffectResources, generateAbilities, rerollAbilitySlot } from "./ability-engine.js";
+import { collectAbilityEffectResources, generateAbilities, rerollAbilitySlot, resolveAbilityPowerBudget } from "./ability-engine.js";
+import { generateSpecialFeatures, rerollSpecialFeature } from "./special-features.js";
 
 const SAVE_NAMES = Object.freeze(["fortitude", "reflex", "will"]);
 const ABILITY_NAMES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
@@ -257,6 +258,17 @@ export class CreatureGenerator {
     const movement = generateMovement(effectiveRequest, role, level, random.fork("statistics.movement"));
     const senses = generateSenses(effectiveRequest, level, random.fork("statistics.senses"));
     const attacks = generateAttacks(effectiveRequest, role, level, random.fork("combat.attacks"));
+    const totalSpecialBudget = resolveAbilityPowerBudget(effectiveRequest, request.identity.role);
+    const generatedSpecialFeatures = generateSpecialFeatures({
+      request: effectiveRequest,
+      registry: this.registry,
+      level,
+      roleId: request.identity.role,
+      category: request.identity.category,
+      subtypes: affinities.resolvedSubtypes,
+      random: random.fork("special-features"),
+      budgetLimit: totalSpecialBudget
+    });
     const generatedAbilities = generateAbilities({
       request: effectiveRequest,
       registry: this.registry,
@@ -264,7 +276,8 @@ export class CreatureGenerator {
       roleId: request.identity.role,
       category: request.identity.category,
       subtypes: affinities.resolvedSubtypes,
-      random: random.fork("abilities")
+      random: random.fork("abilities"),
+      budgetLimitOverride: generatedSpecialFeatures.budget.remaining
     });
 
     const blueprint = createEmptyBlueprint();
@@ -274,7 +287,15 @@ export class CreatureGenerator {
       seed,
       variation: request.generation.variation,
       requestSnapshot: deepClone({ ...request, generation: { ...request.generation, seed } }),
-      abilityBudget: deepClone(generatedAbilities.budget)
+      abilityBudget: deepClone(generatedAbilities.budget),
+      specialFeatureBudget: {
+        limit: totalSpecialBudget,
+        spent: generatedAbilities.budget.spent + generatedSpecialFeatures.budget.spent,
+        remaining: Math.max(0, totalSpecialBudget - generatedAbilities.budget.spent - generatedSpecialFeatures.budget.spent),
+        abilitySpent: generatedAbilities.budget.spent,
+        auraSpent: generatedSpecialFeatures.budget.auraSpent,
+        afflictionSpent: generatedSpecialFeatures.budget.afflictionSpent
+      }
     };
     blueprint.identity = {
       name: request.identity.name || "Creature",
@@ -317,6 +338,8 @@ export class CreatureGenerator {
     };
     blueprint.abilities = deepClone(generatedAbilities.abilities);
     blueprint.resources.effects = deepClone(generatedAbilities.effects);
+    blueprint.resources.auras = deepClone(generatedSpecialFeatures.auras);
+    blueprint.resources.afflictions = deepClone(generatedSpecialFeatures.afflictions);
     blueprint.loot.policy = request.options.loot ?? "auto";
     blueprint.provenance = [
       {
@@ -361,6 +384,18 @@ export class CreatureGenerator {
         section: "Ability Library",
         note: "Selected ability library contributes eligible abilities and their dependencies for this generation request."
       })),
+      ...this.registry.resolveAuraLibrarySelection(request.sources?.auras ?? []).map((source) => ({
+        kind: "content-source",
+        source,
+        section: "Aura Library",
+        note: "Selected aura library contributes eligible optional auras for this generation request."
+      })),
+      ...this.registry.resolveAfflictionLibrarySelection(request.sources?.afflictions ?? []).map((source) => ({
+        kind: "content-source",
+        source,
+        section: "Affliction Library",
+        note: "Selected affliction library contributes eligible optional afflictions for this generation request."
+      })),
       ...affinities.hpAdjustment.reasons.map((reason) => ({
         kind: "balance",
         source: "PF2E Creature Forge",
@@ -371,6 +406,7 @@ export class CreatureGenerator {
     blueprint.diagnostics = [
       ...requestValidation.warnings,
       ...(generatedAbilities.diagnostics ?? []),
+      ...(generatedSpecialFeatures.diagnostics ?? []),
       ...validateBlueprint(blueprint).warnings
     ];
     return blueprint;
@@ -456,6 +492,8 @@ export class CreatureGenerator {
       const preserved = (next.abilities ?? [])
         .map((ability, index) => ability?.locked ? { index, ability } : null)
         .filter(Boolean);
+      const totalBudget = Number(next.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(next.metadata.requestSnapshot, next.identity.role));
+      const featureSpent = Number(next.resources?.auras?.[0]?.powerCost ?? 0) + Number(next.resources?.afflictions?.[0]?.powerCost ?? 0);
       const result = generateAbilities({
         request: next.metadata.requestSnapshot,
         registry: this.registry,
@@ -464,7 +502,8 @@ export class CreatureGenerator {
         category: next.identity.category,
         subtypes: next.identity.resolvedSubtypes ?? next.identity.subtypes ?? [],
         random: random.fork("abilities"),
-        preserve: preserved
+        preserve: preserved,
+        budgetLimitOverride: Math.max(0, totalBudget - featureSpent)
       });
       next.abilities = result.abilities;
       next.resources.effects = collectAbilityEffectResources(next.abilities, this.registry, [
@@ -472,6 +511,71 @@ export class CreatureGenerator {
         ...(result.effects ?? [])
       ]);
       next.metadata.abilityBudget = deepClone(result.budget);
+      next.metadata.specialFeatureBudget = {
+        ...(next.metadata.specialFeatureBudget ?? {}),
+        spent: featureSpent + result.budget.spent,
+        remaining: Math.max(0, totalBudget - featureSpent - result.budget.spent),
+        abilitySpent: result.budget.spent,
+        auraSpent: Number(next.resources?.auras?.[0]?.powerCost ?? 0),
+        afflictionSpent: Number(next.resources?.afflictions?.[0]?.powerCost ?? 0)
+      };
+      next.diagnostics = [...(result.diagnostics ?? []), ...validateBlueprint(next).warnings];
+      return next;
+    }
+
+    if (scope === "auras" || scope === "afflictions") {
+      const kind = scope === "auras" ? "aura" : "affliction";
+      if (next.locks?.[scope]) return next;
+      const result = rerollSpecialFeature({
+        request: next.metadata.requestSnapshot,
+        registry: this.registry,
+        blueprint: next,
+        kind,
+        random: random.fork(scope)
+      });
+      next.resources[scope] = result.feature ? [result.feature] : [];
+      const totalBudget = Number(next.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(next.metadata.requestSnapshot, next.identity.role));
+      const auraSpent = Number(next.resources?.auras?.[0]?.powerCost ?? 0);
+      const afflictionSpent = Number(next.resources?.afflictions?.[0]?.powerCost ?? 0);
+      const abilitySpent = Number(next.metadata?.abilityBudget?.spent ?? 0);
+      next.metadata.specialFeatureBudget = {
+        limit: totalBudget,
+        spent: auraSpent + afflictionSpent + abilitySpent,
+        remaining: Math.max(0, totalBudget - auraSpent - afflictionSpent - abilitySpent),
+        abilitySpent, auraSpent, afflictionSpent
+      };
+      next.diagnostics = [...(result.diagnostics ?? []), ...validateBlueprint(next).warnings];
+      return next;
+    }
+
+    if (scope === "special-features") {
+      if (next.locks?.["special-features"]) return next;
+      const totalBudget = Number(next.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(next.metadata.requestSnapshot, next.identity.role));
+      const abilitySpent = Number(next.metadata?.abilityBudget?.spent ?? 0);
+      const result = generateSpecialFeatures({
+        request: next.metadata.requestSnapshot,
+        registry: this.registry,
+        level: next.identity.level,
+        roleId: next.identity.role,
+        category: next.identity.category,
+        subtypes: next.identity.resolvedSubtypes ?? next.identity.subtypes ?? [],
+        random: random.fork("special-features"),
+        budgetLimit: Math.max(0, totalBudget - abilitySpent),
+        preserve: {
+          aura: next.resources?.auras?.[0]?.locked ? next.resources.auras[0] : null,
+          affliction: next.resources?.afflictions?.[0]?.locked ? next.resources.afflictions[0] : null
+        }
+      });
+      next.resources.auras = result.auras;
+      next.resources.afflictions = result.afflictions;
+      next.metadata.specialFeatureBudget = {
+        limit: totalBudget,
+        spent: abilitySpent + result.budget.spent,
+        remaining: Math.max(0, totalBudget - abilitySpent - result.budget.spent),
+        abilitySpent,
+        auraSpent: result.budget.auraSpent,
+        afflictionSpent: result.budget.afflictionSpent
+      };
       next.diagnostics = [...(result.diagnostics ?? []), ...validateBlueprint(next).warnings];
       return next;
     }
@@ -488,6 +592,15 @@ export class CreatureGenerator {
       next.abilities = result.abilities;
       next.resources.effects = result.effects;
       next.metadata.abilityBudget = deepClone(result.budget);
+      const totalBudget = Number(next.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(next.metadata.requestSnapshot, next.identity.role));
+      const auraSpent = Number(next.resources?.auras?.[0]?.powerCost ?? 0);
+      const afflictionSpent = Number(next.resources?.afflictions?.[0]?.powerCost ?? 0);
+      next.metadata.specialFeatureBudget = {
+        limit: totalBudget,
+        spent: result.budget.spent + auraSpent + afflictionSpent,
+        remaining: Math.max(0, totalBudget - result.budget.spent - auraSpent - afflictionSpent),
+        abilitySpent: result.budget.spent, auraSpent, afflictionSpent
+      };
       next.diagnostics = [...(result.diagnostics ?? []), ...validateBlueprint(next).warnings];
       return next;
     }

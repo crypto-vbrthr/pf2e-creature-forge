@@ -31,10 +31,15 @@ export class ForgeIntegrationHub {
         editor: (api) => typeof api.ui?.effectEditor?.create === "function"
       }),
       aura: integrationStatus(IDS.aura, {
+        createDefinition: (api) => typeof api.definitions?.create === "function",
+        validateDefinition: (api) => typeof api.definitions?.validate === "function",
         assignDefinition: (api) => typeof api.instances?.assignDefinition === "function",
         editor: (api) => typeof api.ui?.auraEditor?.create === "function"
       }),
       affliction: integrationStatus(IDS.affliction, {
+        createDefinition: (api) => typeof api.definitions?.create === "function",
+        validateDefinition: (api) => typeof api.definitions?.validate === "function",
+        applyDefinition: (api) => typeof api.engine?.applyDefinition === "function",
         editor: (api) => typeof api.ui?.afflictionEditor?.create === "function"
       }),
       item: integrationStatus(IDS.item, {

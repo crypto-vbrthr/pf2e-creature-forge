@@ -4,6 +4,7 @@ import { deepClone } from "../core/clone.js";
 import { CreatureEditorSession } from "./editor-session.js";
 import { resolveAttackNameKey } from "../core/attack-localization.js";
 import { localize } from "../i18n.js";
+import { localizeAuraResourceDefinition, localizeAfflictionResourceDefinition } from "../special-feature-localization.js";
 
 const ABILITIES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
 
@@ -148,7 +149,7 @@ function triStateOptions(current) {
 }
 
 export class EmbeddedCreatureEditor {
-  static CONTRACT_VERSION = 8;
+  static CONTRACT_VERSION = 9;
 
   constructor({ api, session = null, request = {}, blueprint = null, mode = "create", layout = "full", activeTab = "creature", capabilities = {}, onChange = null, onGenerate = null } = {}) {
     if (!api) throw new Error("EmbeddedCreatureEditor requires the Creature Forge API.");
@@ -165,6 +166,8 @@ export class EmbeddedCreatureEditor {
       persistSourceSelection: false,
       advancedEditing: true,
       effectEditing: true,
+      auraEditing: true,
+      afflictionEditing: true,
       ...capabilities
     };
     this.onChange = onChange;
@@ -174,7 +177,11 @@ export class EmbeddedCreatureEditor {
     this.scrollElement = null;
     this.boundHandler = null;
     this.effectEditor = null;
+    this.auraEditor = null;
+    this.afflictionEditor = null;
     this.activeEffectId = null;
+    this.activeAuraId = null;
+    this.activeAfflictionId = null;
   }
 
   get value() { return deepClone(this.session.blueprint); }
@@ -188,6 +195,8 @@ export class EmbeddedCreatureEditor {
     if (next === this.activeTab) return this;
     if (this.scrollElement) this.tabScrollPositions[this.activeTab] = this.scrollElement.scrollTop;
     this.activeEffectId = null;
+    this.activeAuraId = null;
+    this.activeAfflictionId = null;
     this.activeTab = next;
     this.#render({ captureScroll: false });
     return this;
@@ -218,7 +227,11 @@ export class EmbeddedCreatureEditor {
 
   unmount({ clearContainer = true } = {}) {
     this.effectEditor?.unmount?.();
+    this.auraEditor?.unmount?.();
+    this.afflictionEditor?.unmount?.();
     this.effectEditor = null;
+    this.auraEditor = null;
+    this.afflictionEditor = null;
     if (this.root && this.boundHandler) {
       this.root.removeEventListener("change", this.boundHandler);
       this.root.removeEventListener("input", this.boundHandler);
@@ -282,6 +295,8 @@ export class EmbeddedCreatureEditor {
     if (get("categorySources")) request.sources.categories = [...get("categorySources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     if (get("subtypeSources")) request.sources.subtypes = [...get("subtypeSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     if (get("abilitySources")) request.sources.abilities = [...get("abilitySources").selectedOptions].map((entry) => entry.value).filter(Boolean);
+    if (get("auraSources")) request.sources.auras = [...get("auraSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
+    if (get("afflictionSources")) request.sources.afflictions = [...get("afflictionSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     request.identity.size = get("size")?.value ?? "med";
     for (const ability of ABILITIES) request.attributes[ability] = get(ability)?.value ?? "role";
     request.defenses.ac = get("ac")?.value ?? "role";
@@ -318,6 +333,9 @@ export class EmbeddedCreatureEditor {
     const abilityPowerBudget = get("abilityPowerBudget")?.value ?? "auto";
     request.abilities.powerBudget = abilityPowerBudget === "auto" ? "auto" : number(abilityPowerBudget);
     request.abilities.focus = String(get("abilityFocus")?.value ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+    request.specialFeatures.frequency = get("specialFrequency")?.value ?? "normal";
+    request.specialFeatures.auras.mode = get("auraMode")?.value ?? "auto";
+    request.specialFeatures.afflictions.mode = get("afflictionMode")?.value ?? "auto";
     request.generation.seed = get("seed")?.value ?? "";
     request.generation.variation = get("variation")?.value ?? "balanced";
     this.session.setRequest(request);
@@ -391,6 +409,54 @@ export class EmbeddedCreatureEditor {
         this.activeEffectId = null;
         this.#render();
         await this.#emitChange("reroll-abilities");
+      } else if (action === "reroll-auras") {
+        this.session.reroll({ scope: "auras" });
+        this.activeAuraId = null;
+        this.#render();
+        await this.#emitChange("reroll-auras");
+      } else if (action === "reroll-afflictions") {
+        this.session.reroll({ scope: "afflictions" });
+        this.activeAfflictionId = null;
+        this.#render();
+        await this.#emitChange("reroll-afflictions");
+      } else if (action === "toggle-aura-lock") {
+        const aura = this.session.blueprint?.resources?.auras?.[0];
+        if (aura) {
+          aura.locked = !aura.locked;
+          this.session.dirty = true;
+          this.#render();
+          await this.#emitChange("aura-lock");
+        }
+      } else if (action === "toggle-affliction-lock") {
+        const affliction = this.session.blueprint?.resources?.afflictions?.[0];
+        if (affliction) {
+          affliction.locked = !affliction.locked;
+          this.session.dirty = true;
+          this.#render();
+          await this.#emitChange("affliction-lock");
+        }
+      } else if (action === "edit-aura" && this.capabilities.auraEditing) {
+        const auraId = target.closest?.("[data-aura-id]")?.dataset?.auraId;
+        if (auraId) {
+          this.activeAuraId = auraId;
+          this.activeAfflictionId = null;
+          this.activeEffectId = null;
+          this.#render();
+        }
+      } else if (action === "edit-affliction" && this.capabilities.afflictionEditing) {
+        const afflictionId = target.closest?.("[data-affliction-id]")?.dataset?.afflictionId;
+        if (afflictionId) {
+          this.activeAfflictionId = afflictionId;
+          this.activeAuraId = null;
+          this.activeEffectId = null;
+          this.#render();
+        }
+      } else if (action === "close-aura-editor") {
+        this.activeAuraId = null;
+        this.#render();
+      } else if (action === "close-affliction-editor") {
+        this.activeAfflictionId = null;
+        this.#render();
       } else if (action === "reroll-ability") {
         const abilityId = target.closest?.("[data-ability-id]")?.dataset?.abilityId;
         if (abilityId) {
@@ -438,7 +504,7 @@ export class EmbeddedCreatureEditor {
 
     if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="preferredSkills"], input[name="abilityFocus"]'))) {
       this.#syncRequestFromForm();
-      if (event.type === "change" && target.matches?.('select[name="categorySources"], select[name="subtypeSources"], select[name="abilitySources"]')) {
+      if (event.type === "change" && target.matches?.('select[name="categorySources"], select[name="subtypeSources"], select[name="abilitySources"], select[name="auraSources"], select[name="afflictionSources"]')) {
         try {
           await this.api.sources.ensure(this.session.request.sources);
           this.#reconcileContentSelection();
@@ -489,6 +555,63 @@ export class EmbeddedCreatureEditor {
     }
   }
 
+  async #mountActiveAuraEditor() {
+    this.auraEditor?.unmount?.();
+    this.auraEditor = null;
+    if (!this.activeAuraId || !this.root || !this.capabilities.auraEditing) return;
+    const resource = this.session.blueprint?.resources?.auras?.find((entry) => entry.id === this.activeAuraId);
+    const escaped = globalThis.CSS?.escape ? globalThis.CSS.escape(this.activeAuraId) : this.activeAuraId.replaceAll('"', '\"');
+    const host = this.root.querySelector(`[data-cf-aura-editor-host="${escaped}"]`);
+    const auraApi = this.api.integrations.getAuraApi?.();
+    if (!resource || !(host instanceof HTMLElement) || !auraApi?.ui?.auraEditor?.create) return;
+    const definition = localizeAuraResourceDefinition(resource);
+    this.auraEditor = auraApi.ui.auraEditor.create({
+      definition,
+      layout: "full",
+      context: { usage: "creature-forge", creatureLevel: this.session.blueprint?.identity?.level ?? 0 },
+      onChange: () => {
+        resource.definition = deepClone(this.auraEditor.value);
+        resource.name = resource.definition?.name ?? resource.name;
+        this.session.dirty = true;
+        this.#emitChange("aura-change");
+      }
+    });
+    try {
+      await this.auraEditor.mount(host, { layout: "full" });
+    } catch (error) {
+      console.error("pf2e-creature-forge | Could not mount embedded Aura Editor.", error);
+      host.innerHTML = `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AuraEditorUnavailable", "Aura Editor could not be opened."))}</p>`;
+    }
+  }
+
+  async #mountActiveAfflictionEditor() {
+    this.afflictionEditor?.unmount?.();
+    this.afflictionEditor = null;
+    if (!this.activeAfflictionId || !this.root || !this.capabilities.afflictionEditing) return;
+    const resource = this.session.blueprint?.resources?.afflictions?.find((entry) => entry.id === this.activeAfflictionId);
+    const escaped = globalThis.CSS?.escape ? globalThis.CSS.escape(this.activeAfflictionId) : this.activeAfflictionId.replaceAll('"', '\"');
+    const host = this.root.querySelector(`[data-cf-affliction-editor-host="${escaped}"]`);
+    const afflictionApi = this.api.integrations.getAfflictionApi?.();
+    if (!resource || !(host instanceof HTMLElement) || !afflictionApi?.ui?.afflictionEditor?.create) return;
+    const definition = localizeAfflictionResourceDefinition(resource);
+    this.afflictionEditor = afflictionApi.ui.afflictionEditor.create({
+      definition,
+      mode: this.mode === "view" ? "view" : "edit",
+      onChange: () => {
+        resource.definition = deepClone(this.afflictionEditor.value);
+        resource.name = resource.definition?.name ?? resource.name;
+        this.session.dirty = true;
+        this.#emitChange("affliction-change");
+      }
+    });
+    try {
+      await this.afflictionEditor.mount(host);
+    } catch (error) {
+      console.error("pf2e-creature-forge | Could not mount embedded Affliction Editor.", error);
+      host.innerHTML = `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AfflictionEditorUnavailable", "Affliction Editor could not be opened."))}</p>`;
+    }
+  }
+
   #render({ captureScroll = true } = {}) {
     if (!this.container) return;
     if (!this.capabilities.sourceSelection) this.activeTab = "creature";
@@ -496,8 +619,8 @@ export class EmbeddedCreatureEditor {
     // hidden. Browsers report that hidden element at scrollTop 0 in some layouts.
     // Never let that synthetic zero overwrite the position captured when effect
     // editing was opened, otherwise closing the Effect Editor jumps to the top.
-    const previousRenderWasEffectMode = Boolean(this.root?.classList?.contains("cf-effect-mode"));
-    if (captureScroll && this.scrollElement && !previousRenderWasEffectMode) {
+    const previousRenderWasSubeditorMode = Boolean(this.root?.classList?.contains("cf-subeditor-mode"));
+    if (captureScroll && this.scrollElement && !previousRenderWasSubeditorMode) {
       this.tabScrollPositions[this.activeTab] = this.scrollElement.scrollTop;
     }
     const previousScrollTop = this.tabScrollPositions[this.activeTab] ?? 0;
@@ -512,6 +635,8 @@ export class EmbeddedCreatureEditor {
     const blueprint = this.session.blueprint;
     const validation = this.validate();
     const disabled = this.mode === "view" ? "disabled" : "";
+    const canGenerate = this.capabilities.generation && this.mode !== "view";
+    const canCreateActor = this.capabilities.actorCreation && this.mode !== "view";
     const compendiumSources = this.api.sources.listCompendiums({ documentName: "Actor" });
     const compendiumLabels = new Map(compendiumSources.map((entry) => [entry.id, entry.label]));
     const sourceOptions = (selected = []) => compendiumSources.map((entry) => {
@@ -527,6 +652,22 @@ export class EmbeddedCreatureEditor {
       const label = localize(library.labelKey, library.label ?? library.id);
       const suffix = library.moduleId && library.moduleId !== "pf2e-creature-forge" ? ` · ${moduleTitle}` : "";
       return option(library.id, escapeHtml(`${label}${suffix} · ${library.abilityCount} ${localize("PF2E_CREATURE_FORGE.Component.Abilities", "abilities")}`), selectedAbilityLibraries.includes(library.id));
+    }).join("");
+    const auraLibraries = this.api.content.listAuraLibraries?.() ?? [];
+    const selectedAuraLibraries = request.sources.auras?.length ? request.sources.auras : (this.api.content.getDefaultAuraLibraryIds?.() ?? []);
+    const auraLibraryOptions = auraLibraries.map((library) => {
+      const moduleTitle = globalThis.game?.modules?.get?.(library.moduleId)?.title ?? library.moduleId;
+      const label = localize(library.labelKey, library.label ?? library.id);
+      const suffix = library.moduleId && library.moduleId !== "pf2e-creature-forge" ? ` · ${moduleTitle}` : "";
+      return option(library.id, escapeHtml(`${label}${suffix} · ${library.auraCount} ${localize("PF2E_CREATURE_FORGE.Component.Auras", "auras")}`), selectedAuraLibraries.includes(library.id));
+    }).join("");
+    const afflictionLibraries = this.api.content.listAfflictionLibraries?.() ?? [];
+    const selectedAfflictionLibraries = request.sources.afflictions?.length ? request.sources.afflictions : (this.api.content.getDefaultAfflictionLibraryIds?.() ?? []);
+    const afflictionLibraryOptions = afflictionLibraries.map((library) => {
+      const moduleTitle = globalThis.game?.modules?.get?.(library.moduleId)?.title ?? library.moduleId;
+      const label = localize(library.labelKey, library.label ?? library.id);
+      const suffix = library.moduleId && library.moduleId !== "pf2e-creature-forge" ? ` · ${moduleTitle}` : "";
+      return option(library.id, escapeHtml(`${label}${suffix} · ${library.afflictionCount} ${localize("PF2E_CREATURE_FORGE.Component.Afflictions", "afflictions")}`), selectedAfflictionLibraries.includes(library.id));
     }).join("");
     const categories = this.api.sources.listContent("category", { selectedSources: request.sources.categories }).map((entry) => ({
       value: entry.slug ?? entry.id,
@@ -607,7 +748,41 @@ export class EmbeddedCreatureEditor {
         ${effectButtons ? `<div class="cf-ability-effects">${effectButtons}</div>` : ""}
       </article>`;
     }).join("");
+    const auraIntegrationReady = Boolean(integrationStatus?.aura?.ready && this.api.integrations.getAuraApi?.()?.ui?.auraEditor?.create);
+    const afflictionIntegrationReady = Boolean(integrationStatus?.affliction?.ready && this.api.integrations.getAfflictionApi?.()?.ui?.afflictionEditor?.create);
+    const auraRows = (blueprint?.resources?.auras ?? []).map((resource) => {
+      const name = localize(resource.nameKey, resource.definition?.name ?? resource.name ?? resource.id);
+      const description = localize(resource.descriptionKey, resource.description ?? resource.definition?.description ?? "");
+      const sourceLabel = contentSourceLabel(resource.source);
+      return `<article class="cf-special-card aura${resource.locked ? " locked" : ""}" data-aura-id="${escapeHtml(resource.id)}">
+        <header><div><strong>${escapeHtml(name)}</strong><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.SpecialFeature.Aura", "Aura"))} · ${Number(resource.definition?.radius ?? 0)} ft.${sourceLabel ? ` · ${escapeHtml(sourceLabel)}` : ""}</small></div>
+        <div class="cf-ability-controls">
+          ${canGenerate ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-aura-lock" title="${escapeHtml(localize(resource.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", resource.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${resource.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}
+          ${canGenerate && !resource.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-auras" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAura", "Reroll aura"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
+        </div></header>
+        ${description ? `<p>${escapeHtml(description)}</p>` : ""}
+        <footer><span class="cf-ability-power">${escapeHtml(localize("PF2E_CREATURE_FORGE.Ability.Power", "Power"))} ${Number(resource.powerCost ?? 0)}</span><button type="button" data-cf-action="edit-aura" ${!auraIntegrationReady || !this.capabilities.auraEditing ? "disabled" : ""}><i class="fa-solid fa-circle-radiation"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.EditAura", "Edit aura"))}</button></footer>
+      </article>`;
+    }).join("");
+    const afflictionRows = (blueprint?.resources?.afflictions ?? []).map((resource) => {
+      const name = localize(resource.nameKey, resource.definition?.name ?? resource.name ?? resource.id);
+      const description = localize(resource.descriptionKey, resource.description ?? resource.definition?.description ?? "");
+      const type = localize(`PF2E_CREATURE_FORGE.AfflictionType.${resource.definition?.afflictionType ?? "disease"}`, resource.definition?.afflictionType ?? "disease");
+      const sourceLabel = contentSourceLabel(resource.source);
+      return `<article class="cf-special-card affliction${resource.locked ? " locked" : ""}" data-affliction-id="${escapeHtml(resource.id)}">
+        <header><div><strong>${escapeHtml(name)}</strong><small>${escapeHtml(type)}${sourceLabel ? ` · ${escapeHtml(sourceLabel)}` : ""}</small></div>
+        <div class="cf-ability-controls">
+          ${canGenerate ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-affliction-lock" title="${escapeHtml(localize(resource.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", resource.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${resource.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}
+          ${canGenerate && !resource.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-afflictions" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAffliction", "Reroll affliction"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
+        </div></header>
+        ${description ? `<p>${escapeHtml(description)}</p>` : ""}
+        <footer><span class="cf-ability-power">${escapeHtml(localize("PF2E_CREATURE_FORGE.Ability.Power", "Power"))} ${Number(resource.powerCost ?? 0)}</span><button type="button" data-cf-action="edit-affliction" ${!afflictionIntegrationReady || !this.capabilities.afflictionEditing ? "disabled" : ""}><i class="fa-solid fa-biohazard"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.EditAffliction", "Edit affliction"))}</button></footer>
+      </article>`;
+    }).join("");
+
     const activeEffectResource = this.activeEffectId ? effectResources.get(this.activeEffectId) : null;
+    const activeAuraResource = this.activeAuraId ? (blueprint?.resources?.auras ?? []).find((entry) => entry.id === this.activeAuraId) : null;
+    const activeAfflictionResource = this.activeAfflictionId ? (blueprint?.resources?.afflictions ?? []).find((entry) => entry.id === this.activeAfflictionId) : null;
     const effectWorkspace = activeEffectResource ? `<section class="cf-effect-workspace" role="dialog" aria-modal="true" aria-label="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.EffectEditor", "Effect Editor"))}">
       <header class="cf-effect-workspace-header">
         <div class="cf-effect-workspace-title">
@@ -622,20 +797,30 @@ export class EmbeddedCreatureEditor {
       </div>
     </section>` : "";
 
+    const auraWorkspace = activeAuraResource ? `<section class="cf-effect-workspace cf-special-workspace aura cf-aura-workspace" role="dialog" aria-modal="true">
+      <header class="cf-effect-workspace-header"><div class="cf-effect-workspace-title"><span class="cf-effect-workspace-kicker"><i class="fa-solid fa-circle-radiation"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AuraEditor", "Aura Editor"))}</span><h3>${escapeHtml(localize(activeAuraResource.nameKey, activeAuraResource.definition?.name ?? activeAuraResource.name ?? activeAuraResource.id))}</h3><p>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AuraEditorLiveHint", "Changes are applied directly to the creature blueprint."))}</p></div><button type="button" class="cf-effect-close" data-cf-action="close-aura-editor"><i class="fa-solid fa-xmark"></i><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.BackToCreature", "Back to creature"))}</span></button></header>
+      <div class="cf-effect-workspace-body"><div class="cf-aura-editor-host" data-cf-aura-editor-host="${escapeHtml(activeAuraResource.id)}"></div></div></section>` : "";
+    const afflictionWorkspace = activeAfflictionResource ? `<section class="cf-effect-workspace cf-special-workspace affliction cf-affliction-workspace" role="dialog" aria-modal="true">
+      <header class="cf-effect-workspace-header"><div class="cf-effect-workspace-title"><span class="cf-effect-workspace-kicker"><i class="fa-solid fa-biohazard"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AfflictionEditor", "Affliction Editor"))}</span><h3>${escapeHtml(localize(activeAfflictionResource.nameKey, activeAfflictionResource.definition?.name ?? activeAfflictionResource.name ?? activeAfflictionResource.id))}</h3><p>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AfflictionEditorLiveHint", "Changes are applied directly to the creature blueprint."))}</p></div><button type="button" class="cf-effect-close" data-cf-action="close-affliction-editor"><i class="fa-solid fa-xmark"></i><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.BackToCreature", "Back to creature"))}</span></button></header>
+      <div class="cf-effect-workspace-body"><div class="cf-affliction-editor-host" data-cf-affliction-editor-host="${escapeHtml(activeAfflictionResource.id)}"></div></div></section>` : "";
+    const subeditorWorkspace = effectWorkspace || auraWorkspace || afflictionWorkspace;
+
     const immunityRows = affinityRows(blueprint?.defenses?.immunities ?? []);
     const resistanceRows = affinityRows(blueprint?.defenses?.resistances ?? [], { valued: true });
     const weaknessRows = affinityRows(blueprint?.defenses?.weaknesses ?? [], { valued: true });
     const hpAdjustment = Number(blueprint?.defenses?.hpAdjustment?.value ?? 0);
 
     this.effectEditor?.unmount?.();
+    this.auraEditor?.unmount?.();
+    this.afflictionEditor?.unmount?.();
     this.effectEditor = null;
+    this.auraEditor = null;
+    this.afflictionEditor = null;
 
-    const canGenerate = this.capabilities.generation && this.mode !== "view";
-    const canCreateActor = this.capabilities.actorCreation && this.mode !== "view";
     const validationState = validation.request.valid && validation.blueprint.valid ? "valid" : "invalid";
 
     this.container.innerHTML = `
-      <section class="cf-editor cf-layout-${escapeHtml(this.layout)}${activeEffectResource ? " cf-effect-mode" : ""}" data-cf-editor data-cf-editor-contract="${EmbeddedCreatureEditor.CONTRACT_VERSION}">
+      <section class="cf-editor cf-layout-${escapeHtml(this.layout)}${subeditorWorkspace ? " cf-subeditor-mode cf-effect-mode" : ""}" data-cf-editor data-cf-editor-contract="${EmbeddedCreatureEditor.CONTRACT_VERSION}">
         ${this.capabilities.sourceSelection ? `
           <nav class="cf-editor-tabs" role="tablist" aria-label="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Tabs", "Creature Forge sections"))}">
             <button type="button" role="tab" data-cf-tab="creature" aria-selected="${this.activeTab === "creature"}" class="${this.activeTab === "creature" ? "active" : ""}"><i class="fa-solid fa-dragon"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Tab.Creature", "Creature"))}</button>
@@ -710,6 +895,14 @@ export class EmbeddedCreatureEditor {
               <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityFocus", "Focus tags"))}</span><input name="abilityFocus" type="text" value="${escapeHtml((request.abilities.focus ?? []).join(", "))}" placeholder="control, movement" ${disabled}></label>
             </div>
 
+            <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpecialFeatures", "Special features"))}</h3>
+            <p class="cf-section-hint">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpecialFeaturesHint", "Auras and afflictions are optional concept-driven features. Automatic generation can also choose none."))}</p>
+            <div class="cf-form-grid cf-special-settings">
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SpecialFrequency", "Automatic frequency"))}</span><select name="specialFrequency" ${disabled}>${["rare","normal","high"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.SpecialFrequency.${value}`, value), request.specialFeatures.frequency)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AuraMode", "Auras"))}</span><select name="auraMode" ${disabled}>${["auto","none","required"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.SpecialFeatureMode.${value}`, value), request.specialFeatures.auras.mode)).join("")}</select></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AfflictionMode", "Afflictions"))}</span><select name="afflictionMode" ${disabled}>${["auto","none","required"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.SpecialFeatureMode.${value}`, value), request.specialFeatures.afflictions.mode)).join("")}</select></label>
+            </div>
+
             <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Generation", "Generation"))}</h3>
             <div class="cf-form-grid">
               <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Seed", "Seed"))}</span><input name="seed" type="text" value="${escapeHtml(request.generation.seed)}" placeholder="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AutoSeed", "automatic"))}" ${disabled}></label>
@@ -756,6 +949,16 @@ export class EmbeddedCreatureEditor {
             <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Abilities", "Abilities"))}</h4><div class="cf-heading-tools">${blueprint?.metadata?.abilityBudget ? `<span class="cf-budget-badge" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilityBudgetHint", "Power spent / budget"))}">${Number(blueprint.metadata.abilityBudget.spent ?? 0)}/${Number(blueprint.metadata.abilityBudget.limit ?? 0)}</span>` : ""}${canGenerate && (blueprint?.abilities?.length ?? 0) ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbilities", "Reroll abilities"))}" data-cf-action="reroll-abilities"><i class="fa-solid fa-dice"></i></button>` : ""}</div></div>
             ${(blueprint?.abilities?.length ?? 0) ? `<div class="cf-abilities">${abilityRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAbilities", "No abilities generated."))}</p>`}
 
+            <div class="cf-special-budget-row">
+              <strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpecialFeatures", "Special features"))}</strong>
+              ${blueprint?.metadata?.specialFeatureBudget ? `<span class="cf-budget-badge" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpecialBudgetHint", "Total special-feature power spent / shared budget"))}">${Number(blueprint.metadata.specialFeatureBudget.spent ?? 0)}/${Number(blueprint.metadata.specialFeatureBudget.limit ?? blueprint?.metadata?.abilityBudget?.limit ?? 0)}</span>` : ""}
+            </div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Auras", "Auras"))}</h4>${canGenerate ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAura", "Reroll aura"))}" data-cf-action="reroll-auras"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            ${auraRows ? `<div class="cf-special-list">${auraRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAura", "No aura generated."))}</p>`}
+
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Afflictions", "Afflictions"))}</h4>${canGenerate ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAffliction", "Reroll affliction"))}" data-cf-action="reroll-afflictions"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            ${afflictionRows ? `<div class="cf-special-list">${afflictionRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAffliction", "No affliction generated."))}</p>`}
+
             <div class="cf-seed"><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Seed", "Seed"))}:</strong> <code>${escapeHtml(blueprint?.metadata?.seed ?? "—")}</code></div>
 
             <h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.PlannedComponents", "Planned components"))}</h4>
@@ -779,7 +982,7 @@ export class EmbeddedCreatureEditor {
                 <div class="cf-tab-heading">
                   <div>
                     <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Sources", "Content sources"))}</h3>
-                    <p>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SourcesHint", "Choose compendiums for category/subtype discovery and the ability libraries available to generation."))}</p>
+                    <p>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SourcesHint", "Choose compendiums for category/subtype discovery and the ability, aura, and affliction libraries available to generation."))}</p>
                   </div>
                   <span class="cf-source-scope">${escapeHtml(localize(this.capabilities.persistSourceSelection ? "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.World" : "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.Host", this.capabilities.persistSourceSelection ? "Saved as world defaults." : "Used only by this editor/request."))}</span>
                 </div>
@@ -787,15 +990,17 @@ export class EmbeddedCreatureEditor {
                   <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.CategorySources", "Category compendiums"))}</span><select name="categorySources" multiple size="9" ${disabled}>${sourceOptions(request.sources.categories)}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.CategorySourceHint", "Selected NPC compendiums can contribute additional creature categories."))}</small></label>
                   <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SubtypeSources", "Subtype compendiums"))}</span><select name="subtypeSources" multiple size="9" ${disabled}>${sourceOptions(request.sources.subtypes)}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SubtypeSourceHint", "Traits observed on NPCs in the selected compendiums become additional subtype candidates."))}</small></label>
                   <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilitySources", "Ability libraries"))}</span><select name="abilitySources" multiple size="9" ${disabled}>${abilityLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilitySourceHint", "Selected registered libraries contribute abilities and their linked effects. Loose API-registered abilities remain available."))}</small></label>
+                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AuraSources", "Aura libraries"))}</span><select name="auraSources" multiple size="7" ${disabled}>${auraLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AuraSourceHint", "Selected registered libraries contribute aura definitions. Automatic generation may still choose no aura."))}</small></label>
+                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AfflictionSources", "Affliction libraries"))}</span><select name="afflictionSources" multiple size="7" ${disabled}>${afflictionLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AfflictionSourceHint", "Selected registered libraries contribute poisons, diseases, curses, and other afflictions."))}</small></label>
                 </div>
                 <div class="cf-source-actions">
                   <button type="button" data-cf-action="refresh-sources" ${disabled}><i class="fa-solid fa-arrows-rotate"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RefreshSources", "Rescan sources"))}</button>
-                  <span class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint", "Core categories/subtypes and loose API-registered extension content remain available; ability libraries can be enabled or disabled independently."))}</span>
+                  <span class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.CoreAndExtensionsHint", "Core categories/subtypes and loose API-registered extension content remain available; ability, aura, and affliction libraries can be enabled independently."))}</span>
                 </div>
               </section>
             </div>` : ""}
         </div>
-        ${effectWorkspace}
+        ${subeditorWorkspace}
         ${(canGenerate || canCreateActor) ? `
           <footer class="cf-editor-footer" data-cf-editor-footer>
             <div class="cf-footer-state ${validationState}">
@@ -820,6 +1025,8 @@ export class EmbeddedCreatureEditor {
     this.root?.addEventListener("input", this.boundHandler);
     this.root?.addEventListener("click", this.boundHandler);
     if (this.activeEffectId) queueMicrotask(() => this.#mountActiveEffectEditor());
+    if (this.activeAuraId) queueMicrotask(() => this.#mountActiveAuraEditor());
+    if (this.activeAfflictionId) queueMicrotask(() => this.#mountActiveAfflictionEditor());
   }
 }
 

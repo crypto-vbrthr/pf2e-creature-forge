@@ -24,13 +24,13 @@ External Modules / Encounter Forge / Standalone UI
 
 ## Contracts
 
-### CreatureGenerationRequest v3
+### CreatureGenerationRequest v5
 
-The request captures user intent. Schema v3 adds `abilities.mode/count/complexity/focus` to the existing statistics, affinity, mobility, and source controls.
+The request captures user intent. Schema v5 includes statistics, affinities, movement/senses, ability generation, independent source selections, and optional special-feature controls for Aura/Affliction frequency and `auto | none | required` modes.
 
-### CreatureBlueprint v3
+### CreatureBlueprint v5
 
-The blueprint is a neutral generated result rather than a Foundry Actor document. Schema v3 additionally stores selected ability instances plus de-duplicated referenced Effect Forge definitions in `resources.effects`.
+The blueprint is a neutral generated result rather than a Foundry Actor document. Schema v5 stores generated ability instances, de-duplicated Effect Forge resources, optional Aura/Affliction resources, library provenance, locks, diagnostics, and shared special-feature power-budget accounting.
 
 Major sections:
 
@@ -136,6 +136,38 @@ The Effect Forge adapter delegates validation, analysis, compilation, item-sourc
 
 External content uses the same registry contract as core content, so third-party bundles can contribute abilities and their effect definitions without engine branches.
 
+## Aura & Affliction special-feature layer
+
+0.4.0 extends the same content-first architecture to Auras and Afflictions. They are deliberately optional. The request can disable, automatically consider, or require each kind independently. Automatic selection uses seeded concept-sensitive probability, so identical creature parameters can produce different valid special-feature combinations when the seed changes.
+
+```text
+category + resolved subtypes + role
+                 |
+        concept probability
+     (rare / normal / high)
+                 |
+      active Aura/Affliction
+             libraries
+                 |
+       validity + power cost
+                 |
+        seeded weighted pick
+                 |
+        +--------+--------+
+        |                 |
+ resources.auras   resources.afflictions
+```
+
+`required` never bypasses concept/source/budget validity. If no candidate is legal, the Blueprint records a warning and leaves the resource list empty rather than attaching an unrelated Aura or Affliction.
+
+Auras and Afflictions reserve from the same total special-feature budget before ordinary abilities are selected. `metadata.specialFeatureBudget` records total, ability, Aura, and Affliction spend so the balance decision remains inspectable.
+
+The canonical editor delegates editing to the public Embedded Aura Forge and Affliction Forge editors. Creature Forge owns selection, provenance, rerolls, locking, and Blueprint storage, not their internal schemas or runtime engines. Core definitions are emitted against Aura Forge schema v1 and Affliction Forge schema v2. Affliction stage Effects use unlimited duration because Affliction Forge owns stage lifecycle.
+
+At Actor creation time, actor-local Aura definitions are assigned through Aura Forge `instances.assignDefinition()`, keeping generated Auras out of the global Aura Library. Afflictions compile to PF2E Action items and manual runtime controls; application delegates to Affliction Forge `engine.applyDefinition()`, which owns controller state and progression.
+
+External modules can register Aura/Affliction libraries with stable provenance. Source selection is request-local for embedded hosts and world-default-capable for the standalone Creature Forge, matching the existing ability-library model.
+
 ## Skills, Movement & Senses
 
 0.1.4 adds a separate exploration-stat layer. `skills.js` selects appropriate skills using role/category/subtype/ability affinities and resolves their modifiers from the level/rank skill table. `mobility.js` derives land and alternate movement plus low-light vision, darkvision, and scent from the creature concept, while explicit request values always override automatic suggestions.
@@ -174,7 +206,7 @@ Scoped rerolls create a new seed, regenerate the relevant subsystem, and preserv
 
 Creature Forge does not reimplement the other Forge engines. It discovers their public APIs through thin adapters.
 
-Future composition:
+Current composition:
 
 ```text
 Creature ability
@@ -186,4 +218,4 @@ Creature ability
 
 ## Embedded editor
 
-`api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v4), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, persistent bottom action footer, and its own Creature/Sources sub-tabs. The host owns the surrounding window, higher-level navigation, persistence policy, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.
+`api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v9), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, persistent bottom action footer, and its own Creature/Sources sub-tabs. The host owns the surrounding window, higher-level navigation, persistence policy, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.

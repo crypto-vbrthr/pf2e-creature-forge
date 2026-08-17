@@ -67,6 +67,11 @@ export const DEFAULT_REQUEST = Object.freeze({
     powerBudget: "auto",
     focus: []
   },
+  specialFeatures: {
+    frequency: "normal",
+    auras: { mode: "auto" },
+    afflictions: { mode: "auto" }
+  },
   generation: {
     seed: "",
     variation: "balanced"
@@ -104,6 +109,17 @@ export function createGenerationRequest(input = {}) {
   request.abilities.complexity = ["simple", "standard", "complex"].includes(request.abilities?.complexity) ? request.abilities.complexity : "standard";
   if (request.abilities.powerBudget !== "auto") request.abilities.powerBudget = Math.max(0, Math.min(30, Number(request.abilities.powerBudget ?? 0)));
   request.abilities.focus = [...new Set((request.abilities?.focus ?? []).map((value) => String(value).trim().toLowerCase()).filter(Boolean))];
+  request.specialFeatures.frequency = ["rare", "normal", "high"].includes(request.specialFeatures?.frequency) ? request.specialFeatures.frequency : "normal";
+  const normalizeSpecialMode = (value) => ["auto", "none", "required"].includes(value) ? value : "auto";
+  request.specialFeatures.auras.mode = normalizeSpecialMode(request.specialFeatures?.auras?.mode);
+  request.specialFeatures.afflictions.mode = normalizeSpecialMode(request.specialFeatures?.afflictions?.mode);
+  // Backward-compatible 0.3.x option aliases.
+  if (input?.specialFeatures?.auras?.mode == null && input?.options?.auras) {
+    request.specialFeatures.auras.mode = input.options.auras === "off" || input.options.auras === "none" ? "none" : input.options.auras === "required" || input.options.auras === "on" ? "required" : "auto";
+  }
+  if (input?.specialFeatures?.afflictions?.mode == null && input?.options?.afflictions) {
+    request.specialFeatures.afflictions.mode = input.options.afflictions === "off" || input.options.afflictions === "none" ? "none" : input.options.afflictions === "required" || input.options.afflictions === "on" ? "required" : "auto";
+  }
   if (request.skills.count !== "role") request.skills.count = Math.max(0, Math.min(8, Number(request.skills.count ?? 3)));
   for (const type of ["land", "climb", "swim", "fly", "burrow"]) {
     const value = request.movement?.[type];
@@ -133,7 +149,8 @@ export function createEmptyBlueprint() {
       variation: "balanced",
       requestSnapshot: null,
       rerollHistory: [],
-      abilityBudget: { limit: 0, spent: 0, remaining: 0, requestedCount: 0, generatedCount: 0 }
+      abilityBudget: { limit: 0, spent: 0, remaining: 0, requestedCount: 0, generatedCount: 0 },
+      specialFeatureBudget: { limit: 0, spent: 0, remaining: 0, abilitySpent: 0, auraSpent: 0, afflictionSpent: 0 }
     },
     identity: {
       name: "Creature",

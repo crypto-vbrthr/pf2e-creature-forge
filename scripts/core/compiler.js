@@ -148,6 +148,51 @@ function compileAbilityItem(ability, effectResources = new Map()) {
   };
 }
 
+
+function afflictionTypeLabel(type) {
+  const key = `PF2E_CREATURE_FORGE.AfflictionType.${String(type ?? "disease")}`;
+  return localizeKey(key, String(type ?? "disease"));
+}
+
+export function buildAfflictionDescription(resource, { actorUuid = null, runtimeAvailable = false } = {}) {
+  const definition = resource?.definition ?? {};
+  const description = localizeKey(resource?.descriptionKey, resource?.description ?? definition?.description ?? "");
+  const applyLabel = localizeKey("PF2E_CREATURE_FORGE.Action.ApplyAffliction", "Apply affliction");
+  const type = afflictionTypeLabel(definition?.afflictionType);
+  const button = runtimeAvailable && actorUuid
+    ? `<button type="button" class="pf2e-creature-forge-apply-affliction" data-cf-actor-uuid="${escapeAttribute(actorUuid)}" data-cf-affliction-ref="${escapeAttribute(resource?.id)}" title="${escapeAttribute(applyLabel)}"><i class="fa-solid fa-biohazard"></i><span>${applyLabel}</span></button>`
+    : "";
+  return `${description ? `<p>${description}</p>` : ""}<div class="pf2e-creature-forge-affliction-runtime"><span class="pf2e-creature-forge-affliction-type"><i class="fa-solid fa-biohazard"></i> ${escapeAttribute(type)}</span>${button}</div>`;
+}
+
+function compileAfflictionItem(resource) {
+  const definition = resource?.definition ?? {};
+  const name = localizeKey(resource?.nameKey, definition?.name ?? resource?.name ?? resource?.id ?? "Affliction");
+  return {
+    name,
+    type: "action",
+    img: definition?.img ?? "icons/svg/biohazard.svg",
+    system: {
+      actionType: { value: "passive" },
+      actions: { value: null },
+      category: "offensive",
+      description: { value: buildAfflictionDescription(resource) },
+      publication: { title: "PF2E Creature Forge", authors: "", license: "ORC", remaster: true },
+      rules: [],
+      slug: null,
+      traits: { value: [...new Set(definition?.traits ?? [])], rarity: definition?.rarity ?? "common" }
+    },
+    flags: {
+      "pf2e-creature-forge": {
+        afflictionRef: resource?.id,
+        contentId: resource?.contentId ?? resource?.id,
+        powerCost: Number(resource?.powerCost ?? 0),
+        source: deepClone(resource?.source ?? {})
+      }
+    }
+  };
+}
+
 function compileSkills(skills = {}) {
   return Object.fromEntries(Object.entries(skills).map(([slug, skill]) => [slug, {
     base: Number(skill?.value ?? 0),
@@ -212,6 +257,7 @@ export function compileActorSource(blueprint, options = {}) {
   const attackItems = (blueprint.combat?.attacks ?? []).map(compileMeleeItem);
   const effectResources = new Map((blueprint.resources?.effects ?? []).map((resource) => [resource.id, resource]));
   const abilityItems = (blueprint.abilities ?? []).map((ability) => compileAbilityItem(ability, effectResources));
+  const afflictionItems = (blueprint.resources?.afflictions ?? []).map(compileAfflictionItem);
   const skills = compileSkills(blueprint.statistics?.skills ?? {});
   const senses = compileSenses(blueprint.statistics?.senses ?? []);
   const otherSpeeds = compileOtherSpeeds(blueprint.statistics?.speed ?? {});
@@ -261,7 +307,7 @@ export function compileActorSource(blueprint, options = {}) {
       },
       resources: { focus: { value: 0, max: 0 } }
     },
-    items: [...attackItems, ...abilityItems],
+    items: [...attackItems, ...abilityItems, ...afflictionItems],
     flags: {
       "pf2e-creature-forge": {
         blueprintSchemaVersion: blueprint.schemaVersion,

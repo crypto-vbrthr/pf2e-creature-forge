@@ -155,10 +155,10 @@ function dependencyDiagnostics({ request, registry, level, roleId, category, sub
   });
 }
 
-export function generateAbilities({ request, registry, level, roleId, category, subtypes, random, preserve = [], excludeContentIds = [] }) {
+export function generateAbilities({ request, registry, level, roleId, category, subtypes, random, preserve = [], excludeContentIds = [], budgetLimitOverride = null }) {
   if (request.abilities?.mode === "off") return { abilities: [], effects: [], diagnostics: [], budget: { limit: 0, spent: 0, remaining: 0, requestedCount: 0, generatedCount: 0 } };
   const count = normalizeCount(request, roleId);
-  const budgetLimit = resolveAbilityPowerBudget(request, roleId);
+  const budgetLimit = budgetLimitOverride == null ? resolveAbilityPowerBudget(request, roleId) : Math.max(0, Number(budgetLimitOverride) || 0);
   if (count === 0) return { abilities: [], effects: [], diagnostics: [], budget: { limit: budgetLimit, spent: 0, remaining: budgetLimit, requestedCount: 0, generatedCount: 0 } };
   const focus = request.abilities?.focus ?? [];
   const context = { level, role: roleId, category, subtypes };
@@ -245,6 +245,8 @@ export function rerollAbilitySlot({ request, registry, blueprint, targetId, rand
 
   const previous = abilities[index];
   const preserved = abilities.map((ability, slot) => slot === index ? null : { index: slot, ability }).filter(Boolean);
+  const specialSpent = Number(blueprint.metadata?.specialFeatureBudget?.auraSpent ?? 0) + Number(blueprint.metadata?.specialFeatureBudget?.afflictionSpent ?? 0);
+  const totalBudget = Number(blueprint.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(request, blueprint.identity.role));
   const result = generateAbilities({
     request,
     registry,
@@ -254,7 +256,8 @@ export function rerollAbilitySlot({ request, registry, blueprint, targetId, rand
     subtypes: blueprint.identity.resolvedSubtypes ?? blueprint.identity.subtypes ?? [],
     random,
     preserve: preserved,
-    excludeContentIds: [previous.contentId]
+    excludeContentIds: [previous.contentId],
+    budgetLimitOverride: Math.max(0, totalBudget - specialSpent)
   });
   return {
     abilities: result.abilities,

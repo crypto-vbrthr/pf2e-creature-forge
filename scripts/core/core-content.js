@@ -1,5 +1,6 @@
-import { CORE_ABILITY_LIBRARY_ID, MODULE_ID, MODULE_VERSION } from "../constants.js";
+import { CORE_ABILITY_LIBRARY_ID, CORE_AURA_LIBRARY_ID, CORE_AFFLICTION_LIBRARY_ID, MODULE_ID, MODULE_VERSION } from "../constants.js";
 import { CORE_ABILITIES, CORE_EFFECTS } from "./core-abilities.js";
+import { CORE_AURAS, CORE_AFFLICTIONS } from "./core-special-features.js";
 
 const category = (slug, label, extra = {}) => ({
   id: `${MODULE_ID}.category.${slug}`,
@@ -153,6 +154,8 @@ const subtypes = [
     ]
   }),
   subtype("acid"),
+  subtype("poison"),
+  subtype("disease"),
   subtype("cold", {
     defensiveAffinities: [
       { id: "cold-elemental-immunity", kind: "immunity", type: "cold", when: { categories: ["elemental"] }, priority: 60 },
@@ -232,8 +235,33 @@ export const CORE_ABILITY_LIBRARY = Object.freeze({
   }
 });
 
+
+export const CORE_AURA_LIBRARY = Object.freeze({
+  id: CORE_AURA_LIBRARY_ID,
+  moduleId: MODULE_ID,
+  version: MODULE_VERSION,
+  labelKey: "PF2E_CREATURE_FORGE.AuraLibrary.Core.Name",
+  descriptionKey: "PF2E_CREATURE_FORGE.AuraLibrary.Core.Description",
+  defaultEnabled: true,
+  tags: ["core", "aura-library"],
+  content: { auras: CORE_AURAS, effects: [] }
+});
+
+export const CORE_AFFLICTION_LIBRARY = Object.freeze({
+  id: CORE_AFFLICTION_LIBRARY_ID,
+  moduleId: MODULE_ID,
+  version: MODULE_VERSION,
+  labelKey: "PF2E_CREATURE_FORGE.AfflictionLibrary.Core.Name",
+  descriptionKey: "PF2E_CREATURE_FORGE.AfflictionLibrary.Core.Description",
+  defaultEnabled: true,
+  tags: ["core", "affliction-library"],
+  content: { afflictions: CORE_AFFLICTIONS, effects: [] }
+});
+
 export function registerCoreContent(registry) {
   const bundle = registry.registerBundle(CORE_CONTENT_BUNDLE);
   const library = registry.registerAbilityLibrary(CORE_ABILITY_LIBRARY);
-  return { bundle, library };
+  const auraLibrary = registry.registerAuraLibrary(CORE_AURA_LIBRARY);
+  const afflictionLibrary = registry.registerAfflictionLibrary(CORE_AFFLICTION_LIBRARY);
+  return { bundle, library, auraLibrary, afflictionLibrary };
 }

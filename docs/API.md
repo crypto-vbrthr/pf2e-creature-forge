@@ -1,4 +1,4 @@
-# Public API 0.3.8
+# Public API 0.4.0
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;
@@ -92,6 +92,9 @@ Valid attack/damage ranks are `extreme`, `high`, `moderate`, and `low`. Valid ab
 - `defenses.affinities` (alias: `affinities`)
 - `abilities`
 - `ability:<ability-id>`
+- `auras`
+- `afflictions`
+- `special-features`
 
 
 
@@ -126,6 +129,78 @@ A generation request selects libraries through `sources.abilities`. An empty arr
 
 Ability applications referencing missing `effect`, `aura`, or `affliction` content are excluded from candidate selection and surfaced as diagnostics.
 
+## Auras, Afflictions, and shared special-feature budget
+
+```js
+const blueprint = api.generate({
+  identity: { level: 8, role: "spellcaster", category: "undead", subtypes: ["ghost"] },
+  abilities: { mode: "auto", count: 2, complexity: "standard", powerBudget: 8 },
+  specialFeatures: {
+    frequency: "normal",              // rare | normal | high
+    auras: { mode: "auto" },         // auto | none | required
+    afflictions: { mode: "auto" }    // auto | none | required
+  },
+  sources: {
+    auras: [],                         // empty => default-enabled Aura libraries
+    afflictions: []                    // empty => default-enabled Affliction libraries
+  }
+});
+```
+
+`auto` can deliberately produce no Aura or Affliction. The chance is seeded and concept-sensitive. `required` forces only a matching candidate; if none fits the creature, active libraries, dependencies, and remaining power budget, no unrelated content is inserted and a diagnostic is recorded.
+
+Auras and Afflictions are selected before ordinary abilities and reserve from the same total power budget. The final shared accounting is stored in `blueprint.metadata.specialFeatureBudget`.
+
+```js
+api.reroll(blueprint, { scope: "auras" });
+api.reroll(blueprint, { scope: "afflictions" });
+api.reroll(blueprint, { scope: "special-features" });
+
+api.specialFeatures.chance("aura", request);
+api.specialFeatures.estimatePower(definition, "affliction");
+api.specialFeatures.listAuraLibraries();
+api.specialFeatures.listAfflictionLibraries();
+```
+
+### External Aura/Affliction libraries
+
+```js
+api.content.registerAuraLibrary({
+  id: "my-module.aura-library",
+  moduleId: "my-module",
+  version: "1.0.0",
+  label: "My Auras",
+  defaultEnabled: false,
+  content: { auras: [/* Aura resources */], effects: [/* optional dependencies */] }
+});
+
+api.content.registerAfflictionLibrary({
+  id: "my-module.affliction-library",
+  moduleId: "my-module",
+  version: "1.0.0",
+  label: "My Afflictions",
+  defaultEnabled: false,
+  content: { afflictions: [/* Affliction resources */], effects: [/* optional dependencies */] }
+});
+```
+
+The current supplied integrations use Aura Forge schema v1 and Affliction Forge schema v2. External libraries should provide definitions accepted by the corresponding Forge API.
+
+### Runtime integration
+
+Actor creation materializes generated Auras as actor-local Aura Forge instances. Generated Afflictions become PF2E Action items with a manual application control that delegates controller creation and progression to Affliction Forge.
+
+```js
+await api.runtime.materializeAuras(actor);
+await api.runtime.applyAffliction({ actor, afflictionRef: "my-module.affliction.example" });
+await api.runtime.refreshSpecialFeatures(actor);
+
+api.auras.validate(auraDefinition);
+await api.auras.assignDefinition(actor, auraDefinition);
+api.afflictions.validate(afflictionDefinition);
+await api.afflictions.applyDefinition(afflictionDefinition, targets);
+```
+
 ## Effect resources and manual runtime
 
 The Effect Forge bridge exposes both compilation and persistent resource creation:
@@ -158,7 +233,7 @@ Target modes currently handled by the manual runtime include `self`, singular ta
 
 ## Categories, subtypes, and defensive affinities
 
-`CreatureGenerationRequest` schema v3 supports automatic/manual defensive affinities and ability-generation controls. Core and external category/subtype definitions may expose:
+`CreatureGenerationRequest` schema v5 supports automatic/manual defensive affinities, ability generation, and optional Aura/Affliction special-feature controls. Core and external category/subtype definitions may expose:
 
 ```js
 {
@@ -324,7 +399,13 @@ api.content.registerSubtype(definition);
 api.content.registerNameTemplate(definition);
 api.content.registerAbility(definition);
 api.content.registerAura(definition);
+api.content.registerAuraLibrary(library);
+api.content.unregisterAuraLibrary(libraryId);
+api.content.listAuraLibraries();
 api.content.registerAffliction(definition);
+api.content.registerAfflictionLibrary(library);
+api.content.unregisterAfflictionLibrary(libraryId);
+api.content.listAfflictionLibraries();
 api.content.registerEffect(definition);
 api.content.registerPoison(definition);
 api.content.registerSpellProfile(definition);
@@ -365,10 +446,10 @@ api.sources.getStatus();
 api.sources.clearCache();
 
 api.sources.getDefaults();
-await api.sources.setDefaults({ categories: [], subtypes: [] });
+await api.sources.setDefaults({ categories: [], subtypes: [], abilities: [], auras: [], afflictions: [] });
 ```
 
-`CreatureGenerationRequest.sources.categories` and `.subtypes` are independent arrays. Core and non-compendium extension content remains visible regardless of these arrays. Compendium-discovered content is filtered to the selected pack ids.
+`CreatureGenerationRequest.sources.categories`, `.subtypes`, `.abilities`, `.auras`, and `.afflictions` are independent arrays. Core and non-compendium extension content remains visible regardless of these arrays. Compendium-discovered content is filtered to the selected pack ids.
 
 When a request uses unprepared compendium sources, prefer `await api.generateAsync(request)`. For repeated synchronous generation, call `await api.sources.ensure(request.sources)` once before `api.generate(request)`.
 
@@ -387,7 +468,7 @@ api.integrations.getLootApi();
 
 ```js
 api.ui.openCreatureForge();
-api.ui.creatureEditor.contractVersion; // 7
+api.ui.creatureEditor.contractVersion; // 9
 api.ui.creatureEditor.modes;           // ["create", "edit", "view"]
 api.ui.creatureEditor.layouts;         // ["full", "compact"]
 api.ui.creatureEditor.tabs;            // ["creature", "sources"]
@@ -408,4 +489,4 @@ editor.unmount();
 editor.destroy();
 ```
 
-The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v5 keeps source selection in the dedicated `sources` tab and adds the host-controllable `effectEditing` capability for mounting Critical Forge's public Embedded Effect Editor inside ability cards. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.
+The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v9 keeps source selection in the dedicated `sources` tab and adds host-controllable `effectEditing`, `auraEditing`, and `afflictionEditing` capabilities for mounting the public Forge editors in the same editor workspace. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.

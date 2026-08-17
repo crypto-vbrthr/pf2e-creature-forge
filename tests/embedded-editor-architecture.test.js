@@ -6,9 +6,9 @@ const editorUrl = new URL("../scripts/ui/creature-editor.js", import.meta.url);
 const appUrl = new URL("../scripts/ui/creature-forge-app.js", import.meta.url);
 const cssUrl = new URL("../styles/creature-forge.css", import.meta.url);
 
-test("embedded editor v8 keeps source controls separate and presents the public Effect Editor as a dedicated workspace", async () => {
+test("embedded editor v9 exposes Effect, Aura, and Affliction subeditors with dedicated source controls", async () => {
   const source = await readFile(editorUrl, "utf8");
-  assert.match(source, /static CONTRACT_VERSION = 8/);
+  assert.match(source, /static CONTRACT_VERSION = 9/);
   assert.match(source, /this\.root = this\.container\.querySelector\("\[data-cf-editor\]"\)/);
   assert.match(source, /data-cf-editor-scroll/);
   assert.match(source, /data-cf-editor-footer/);
@@ -23,12 +23,21 @@ test("embedded editor v8 keeps source controls separate and presents the public 
   assert.match(source, /setActiveTab\(tab\)/);
   assert.match(source, /name="categorySources"/);
   assert.match(source, /name="subtypeSources"/);
+  assert.match(source, /name="abilitySources"/);
+  assert.match(source, /name="auraSources"/);
+  assert.match(source, /name="afflictionSources"/);
   assert.match(source, /persistSourceSelection/);
   assert.match(source, /effectEditing: true/);
+  assert.match(source, /auraEditing: true/);
+  assert.match(source, /afflictionEditing: true/);
   assert.match(source, /getEffectApi/);
   assert.match(source, /effectApi\?\.ui\?\.effectEditor\?\.create/);
   assert.match(source, /data-cf-effect-editor-host/);
   assert.match(source, /data-cf-action="edit-ability-effect"/);
+  assert.match(source, /data-cf-action="edit-aura"/);
+  assert.match(source, /data-cf-action="edit-affliction"/);
+  assert.match(source, /auraApi\?\.ui\?\.auraEditor\?\.create/);
+  assert.match(source, /afflictionApi\?\.ui\?\.afflictionEditor\?\.create/);
   assert.match(source, /layout: "compact"/);
   assert.match(source, /cf-effect-mode/);
   assert.match(source, /cf-effect-workspace-header/);
@@ -69,7 +78,7 @@ test("compendium pickers are rendered in the dedicated sources panel", async () 
 });
 
 
-test("effect editing replaces the scrolling creature work area and delegates compact editor framing to Effect Forge", async () => {
+test("subeditor editing replaces the scrolling creature work area and delegates compact editor framing to Effect Forge", async () => {
   const source = await readFile(cssUrl, "utf8");
   assert.match(source, /\.cf-editor\.cf-effect-mode \.cf-editor-scroll \{[^}]*display: none/s);
   assert.match(source, /\.cf-editor \.cf-effect-workspace \{[^}]*flex: 1 1 auto/s);
@@ -80,9 +89,9 @@ test("effect editing replaces the scrolling creature work area and delegates com
 });
 
 
-test("closing effect mode preserves the creature tab scroll position", async () => {
+test("closing subeditor mode preserves the creature tab scroll position", async () => {
   const source = await readFile(editorUrl, "utf8");
-  assert.match(source, /previousRenderWasEffectMode/);
-  assert.match(source, /captureScroll && this\.scrollElement && !previousRenderWasEffectMode/);
+  assert.match(source, /previousRenderWasSubeditorMode/);
+  assert.match(source, /captureScroll && this\.scrollElement && !previousRenderWasSubeditorMode/);
   assert.match(source, /hidden element at scrollTop 0/);
 });

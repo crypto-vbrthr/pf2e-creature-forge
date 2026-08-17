@@ -1,20 +1,29 @@
 # Changelog
 
+## 0.4.0 - Auras & Afflictions Integration
+
+- Added optional concept-sensitive Aura and Affliction generation with independent `auto`, `none`, and `required` modes.
+- Added `rare`, `normal`, and `high` special-feature frequency; automatic generation may deliberately produce no Aura and/or no Affliction.
+- Added seeded category/subtype-aware probability and weighted selection for Aura/Affliction candidates.
+- Added a shared special-feature power budget: selected Auras and Afflictions reserve power before ordinary abilities are generated.
+- Added scoped Aura/Affliction/special-feature rerolls plus lock preservation.
+- Added core Aura and Affliction starter libraries and public external `registerAuraLibrary()` / `registerAfflictionLibrary()` APIs.
+- Added Aura/Affliction library controls to the Sources tab with standalone world defaults and embedded-host-local source behavior.
+- Added Embedded Aura Forge and Affliction Forge editors in the same full-width subeditor workspace used by Effect Forge.
+- Added actor-local Aura materialization through Aura Forge `instances.assignDefinition()` so generated Auras do not populate the global Aura Library.
+- Added generated PF2E Affliction Action items and a manual **Apply affliction** runtime control delegated to Affliction Forge `engine.applyDefinition()`.
+- Added public Aura/Affliction validation/application bridges and special-feature runtime APIs.
+- Aligned core Aura definitions with the supplied Aura Forge schema v1 contract, including valid `turnStart` events and trigger-based instant damage.
+- Aligned core Affliction definitions with the supplied Affliction Forge schema v2 contract and unlimited stage-effect duration owned by the Affliction Engine.
+- Promoted request, Blueprint, and content schemas to v5; Embedded Creature Editor contract to v9; API/module version to 0.4.0.
+- Expanded automated coverage to 99 tests.
+
 ## 0.3.8 - Ability Sources, Power Budget & Dependency Hardening
 
-- Added first-class ability libraries via `api.content.registerAbilityLibrary()`, including library metadata, provenance, default-enabled policy, listing, validation, and unregister support.
-- Moved core abilities/effects into the built-in selectable Creature Forge Core Ability Library.
-- Added an **Ability libraries** multi-select to the Sources tab; standalone selections persist as world defaults while embedded editors keep host-local source policy.
-- Kept loose API/bundle abilities without a library available for backward compatibility.
-- Added `powerCost` to materialized abilities plus deterministic estimation for definitions that omit an explicit cost.
-- Added automatic/manual ability power budgets and Blueprint `metadata.abilityBudget` accounting.
-- Prevented the weighted selector from choosing abilities that would exceed the remaining power budget.
-- Added dependency validation for referenced effects, auras, afflictions, and explicit `requiredContent`; invalid abilities are excluded before generation and reported in diagnostics.
-- Hardened ability rerolls so locked abilities are preserved inside the budgeted selection pass rather than overlaid afterward.
-- Added duplicate-family and stale/exceeded power-budget Blueprint diagnostics.
-- Expanded the public API with ability library, dependency, and power-budget helpers.
-- Promoted request/blueprint/content schemas to v4, Embedded Creature Editor contract to v8, and API/module version to 0.3.8.
-- Expanded automated coverage to 84 tests.
+- Added selectable external ability libraries and world/host-local source selection.
+- Added per-ability power costs, automatic/manual ability budgets, dependency validation, and budget-aware rerolls.
+- Excluded abilities with missing Effect/Aura/Affliction dependencies before weighted selection.
+- Preserved library provenance and power metadata through generation and compilation.
 
 ## 0.3.7 - Localization & Ability Presentation Regression Fix
 

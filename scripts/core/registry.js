@@ -12,10 +12,26 @@ function assertType(type) {
   return type;
 }
 
-function normalizedLibraryContent(library = {}) {
+function normalizedAbilityLibraryContent(library = {}) {
   const content = library.content ?? {};
   return {
     abilities: [...(content.abilities ?? library.abilities ?? [])],
+    effects: [...(content.effects ?? library.effects ?? [])]
+  };
+}
+
+function normalizedAuraLibraryContent(library = {}) {
+  const content = library.content ?? {};
+  return {
+    auras: [...(content.auras ?? library.auras ?? [])],
+    effects: [...(content.effects ?? library.effects ?? [])]
+  };
+}
+
+function normalizedAfflictionLibraryContent(library = {}) {
+  const content = library.content ?? {};
+  return {
+    afflictions: [...(content.afflictions ?? library.afflictions ?? [])],
     effects: [...(content.effects ?? library.effects ?? [])]
   };
 }
@@ -25,6 +41,8 @@ export class ContentRegistry {
     this.maps = new Map(CONTENT_TYPES.map((type) => [type, new Map()]));
     this.bundleIndex = new Map();
     this.abilityLibraries = new Map();
+    this.auraLibraries = new Map();
+    this.afflictionLibraries = new Map();
     this.diagnostics = [];
   }
 
@@ -109,7 +127,7 @@ export class ContentRegistry {
 
     const moduleId = String(library.moduleId ?? options.moduleId ?? id.split(".")[0]);
     const version = String(library.version ?? "0.0.0");
-    const content = normalizedLibraryContent(library);
+    const content = normalizedAbilityLibraryContent(library);
     const bundle = this.registerBundle({
       id,
       moduleId,
@@ -133,6 +151,112 @@ export class ContentRegistry {
     };
     this.abilityLibraries.set(id, normalized);
     return deepClone(normalized);
+  }
+
+
+
+  registerAuraLibrary(library, options = {}) {
+    if (!library || typeof library !== "object") throw new TypeError("Aura library must be an object.");
+    const id = normalizeId(library.id);
+    if (this.auraLibraries.has(id) && !options.replace) throw new Error(`Creature Forge aura library '${id}' is already registered.`);
+    if (this.auraLibraries.has(id) && options.replace) this.unregisterAuraLibrary(id);
+    const moduleId = String(library.moduleId ?? options.moduleId ?? id.split(".")[0]);
+    const version = String(library.version ?? "0.0.0");
+    const content = normalizedAuraLibraryContent(library);
+    const bundle = this.registerBundle({ id, moduleId, version, content }, { libraryId: id, replace: Boolean(options.replace) });
+    const normalized = {
+      id, moduleId, version,
+      label: library.label ?? id,
+      labelKey: library.labelKey ?? null,
+      description: library.description ?? "",
+      descriptionKey: library.descriptionKey ?? null,
+      defaultEnabled: library.defaultEnabled !== false,
+      tags: [...new Set(library.tags ?? [])],
+      auraCount: bundle.registered.filter((entry) => entry.type === "aura").length,
+      effectCount: bundle.registered.filter((entry) => entry.type === "effect").length,
+      source: deepClone(library.source ?? {})
+    };
+    this.auraLibraries.set(id, normalized);
+    return deepClone(normalized);
+  }
+
+  unregisterAuraLibrary(libraryId) {
+    const id = String(libraryId ?? "");
+    const existed = this.auraLibraries.delete(id);
+    const removed = this.unregisterBundle(id);
+    return existed || removed > 0;
+  }
+
+  getAuraLibrary(libraryId) {
+    const value = this.auraLibraries.get(String(libraryId ?? ""));
+    return value ? deepClone(value) : null;
+  }
+
+  listAuraLibraries(filters = {}) {
+    return [...this.auraLibraries.values()].filter((entry) => {
+      if (filters.moduleId && entry.moduleId !== filters.moduleId) return false;
+      if (filters.defaultEnabled != null && entry.defaultEnabled !== Boolean(filters.defaultEnabled)) return false;
+      if (filters.tags?.length && !filters.tags.every((tag) => entry.tags.includes(tag))) return false;
+      return true;
+    }).map(deepClone).sort((a, b) => String(a.labelKey ?? a.label).localeCompare(String(b.labelKey ?? b.label)));
+  }
+
+  getDefaultAuraLibraryIds() { return this.listAuraLibraries({ defaultEnabled: true }).map((entry) => entry.id); }
+  resolveAuraLibrarySelection(selected = []) {
+    const requested = [...new Set((selected ?? []).map(String).filter(Boolean))];
+    return requested.length ? requested : this.getDefaultAuraLibraryIds();
+  }
+
+  registerAfflictionLibrary(library, options = {}) {
+    if (!library || typeof library !== "object") throw new TypeError("Affliction library must be an object.");
+    const id = normalizeId(library.id);
+    if (this.afflictionLibraries.has(id) && !options.replace) throw new Error(`Creature Forge affliction library '${id}' is already registered.`);
+    if (this.afflictionLibraries.has(id) && options.replace) this.unregisterAfflictionLibrary(id);
+    const moduleId = String(library.moduleId ?? options.moduleId ?? id.split(".")[0]);
+    const version = String(library.version ?? "0.0.0");
+    const content = normalizedAfflictionLibraryContent(library);
+    const bundle = this.registerBundle({ id, moduleId, version, content }, { libraryId: id, replace: Boolean(options.replace) });
+    const normalized = {
+      id, moduleId, version,
+      label: library.label ?? id,
+      labelKey: library.labelKey ?? null,
+      description: library.description ?? "",
+      descriptionKey: library.descriptionKey ?? null,
+      defaultEnabled: library.defaultEnabled !== false,
+      tags: [...new Set(library.tags ?? [])],
+      afflictionCount: bundle.registered.filter((entry) => entry.type === "affliction").length,
+      effectCount: bundle.registered.filter((entry) => entry.type === "effect").length,
+      source: deepClone(library.source ?? {})
+    };
+    this.afflictionLibraries.set(id, normalized);
+    return deepClone(normalized);
+  }
+
+  unregisterAfflictionLibrary(libraryId) {
+    const id = String(libraryId ?? "");
+    const existed = this.afflictionLibraries.delete(id);
+    const removed = this.unregisterBundle(id);
+    return existed || removed > 0;
+  }
+
+  getAfflictionLibrary(libraryId) {
+    const value = this.afflictionLibraries.get(String(libraryId ?? ""));
+    return value ? deepClone(value) : null;
+  }
+
+  listAfflictionLibraries(filters = {}) {
+    return [...this.afflictionLibraries.values()].filter((entry) => {
+      if (filters.moduleId && entry.moduleId !== filters.moduleId) return false;
+      if (filters.defaultEnabled != null && entry.defaultEnabled !== Boolean(filters.defaultEnabled)) return false;
+      if (filters.tags?.length && !filters.tags.every((tag) => entry.tags.includes(tag))) return false;
+      return true;
+    }).map(deepClone).sort((a, b) => String(a.labelKey ?? a.label).localeCompare(String(b.labelKey ?? b.label)));
+  }
+
+  getDefaultAfflictionLibraryIds() { return this.listAfflictionLibraries({ defaultEnabled: true }).map((entry) => entry.id); }
+  resolveAfflictionLibrarySelection(selected = []) {
+    const requested = [...new Set((selected ?? []).map(String).filter(Boolean))];
+    return requested.length ? requested : this.getDefaultAfflictionLibraryIds();
   }
 
   unregisterAbilityLibrary(libraryId) {
@@ -311,6 +435,8 @@ export class ContentRegistry {
     }
     this.bundleIndex.delete(id);
     this.abilityLibraries.delete(id);
+    this.auraLibraries.delete(id);
+    this.afflictionLibraries.delete(id);
     return count;
   }
 
@@ -318,6 +444,8 @@ export class ContentRegistry {
     for (const map of this.maps.values()) map.clear();
     this.bundleIndex.clear();
     this.abilityLibraries.clear();
+    this.auraLibraries.clear();
+    this.afflictionLibraries.clear();
     this.diagnostics = [];
   }
 
@@ -328,7 +456,9 @@ export class ContentRegistry {
   snapshot() {
     return {
       ...Object.fromEntries(CONTENT_TYPES.map((type) => [type, this.list(type)])),
-      abilityLibraries: this.listAbilityLibraries()
+      abilityLibraries: this.listAbilityLibraries(),
+      auraLibraries: this.listAuraLibraries(),
+      afflictionLibraries: this.listAfflictionLibraries()
     };
   }
 }

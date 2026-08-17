@@ -112,6 +112,23 @@ export function validateGenerationRequest(request, { registry } = {}) {
     }
   }
 
+  if (!["rare", "normal", "high"].includes(request?.specialFeatures?.frequency)) {
+    issues.push(issue("error", "INVALID_SPECIAL_FEATURE_FREQUENCY", "specialFeatures.frequency", "Special feature frequency must be rare, normal, or high."));
+  }
+  for (const [kind, value] of [["auras", request?.specialFeatures?.auras?.mode], ["afflictions", request?.specialFeatures?.afflictions?.mode]]) {
+    if (!["auto", "none", "required"].includes(value)) {
+      issues.push(issue("error", "INVALID_SPECIAL_FEATURE_MODE", `specialFeatures.${kind}.mode`, `${kind} mode must be auto, none, or required.`));
+    }
+  }
+  if (registry) {
+    for (const libraryId of request?.sources?.auras ?? []) {
+      if (!registry.getAuraLibrary?.(libraryId)) issues.push(issue("warning", "UNKNOWN_AURA_LIBRARY", "sources.auras", `Aura library '${libraryId}' is not registered.`));
+    }
+    for (const libraryId of request?.sources?.afflictions ?? []) {
+      if (!registry.getAfflictionLibrary?.(libraryId)) issues.push(issue("warning", "UNKNOWN_AFFLICTION_LIBRARY", "sources.afflictions", `Affliction library '${libraryId}' is not registered.`));
+    }
+  }
+
   const skillCount = request?.skills?.count;
   if (skillCount !== "role" && (!Number.isInteger(Number(skillCount)) || Number(skillCount) < 0 || Number(skillCount) > 8)) {
     issues.push(issue("error", "INVALID_SKILL_COUNT", "skills.count", "Skill count must be 'role' or an integer from 0 to 8."));
@@ -259,6 +276,25 @@ export function validateBlueprint(blueprint) {
       issues.push(issue("error", "INVALID_EFFECT_RESOURCE", `resources.effects.${index}`, "Effect resources require an Effect Forge-compatible definition with a name and components."));
     }
   }
+
+  for (let index = 0; index < (blueprint?.resources?.auras ?? []).length; index += 1) {
+    const resource = blueprint.resources.auras[index];
+    const definition = resource?.definition;
+    if (!String(resource?.id ?? "").trim()) issues.push(issue("error", "AURA_RESOURCE_ID_REQUIRED", `resources.auras.${index}`, "Aura resources require an id."));
+    if (!definition || typeof definition !== "object" || !String(definition?.name ?? "").trim() || !Number.isFinite(Number(definition?.radius)) || Number(definition.radius) <= 0) {
+      issues.push(issue("error", "INVALID_AURA_RESOURCE", `resources.auras.${index}`, "Aura resources require an Aura Forge-compatible definition with a name and positive radius."));
+    }
+  }
+  for (let index = 0; index < (blueprint?.resources?.afflictions ?? []).length; index += 1) {
+    const resource = blueprint.resources.afflictions[index];
+    const definition = resource?.definition;
+    if (!String(resource?.id ?? "").trim()) issues.push(issue("error", "AFFLICTION_RESOURCE_ID_REQUIRED", `resources.afflictions.${index}`, "Affliction resources require an id."));
+    if (!definition || typeof definition !== "object" || !String(definition?.name ?? "").trim() || !Array.isArray(definition?.stages) || !definition.stages.length) {
+      issues.push(issue("error", "INVALID_AFFLICTION_RESOURCE", `resources.afflictions.${index}`, "Affliction resources require an Affliction Forge-compatible definition with a name and at least one stage."));
+    }
+  }
+  if ((blueprint?.resources?.auras ?? []).length > 1) issues.push(issue("warning", "MULTIPLE_GENERATED_AURAS", "resources.auras", "The 0.4.0 generator normally creates at most one aura."));
+  if ((blueprint?.resources?.afflictions ?? []).length > 1) issues.push(issue("warning", "MULTIPLE_GENERATED_AFFLICTIONS", "resources.afflictions", "The 0.4.0 generator normally creates at most one affliction."));
   const abilityBudget = blueprint?.metadata?.abilityBudget ?? null;
   if (abilityBudget) {
     const spent = generatedAbilities.reduce((sum, ability) => sum + Number(ability?.powerCost ?? 0), 0);
@@ -270,6 +306,17 @@ export function validateBlueprint(blueprint) {
       issues.push(issue("warning", "ABILITY_POWER_BUDGET_STALE", "metadata.abilityBudget.spent", "Stored ability power usage does not match the generated abilities."));
     }
   }
+  const specialBudget = blueprint?.metadata?.specialFeatureBudget ?? null;
+  if (specialBudget) {
+    const abilitySpent = generatedAbilities.reduce((sum, ability) => sum + Number(ability?.powerCost ?? 0), 0);
+    const auraSpent = (blueprint?.resources?.auras ?? []).reduce((sum, entry) => sum + Number(entry?.powerCost ?? 0), 0);
+    const afflictionSpent = (blueprint?.resources?.afflictions ?? []).reduce((sum, entry) => sum + Number(entry?.powerCost ?? 0), 0);
+    const spent = abilitySpent + auraSpent + afflictionSpent;
+    const limit = Number(specialBudget.limit ?? 0);
+    if (Number.isFinite(limit) && spent > limit) issues.push(issue("warning", "SPECIAL_POWER_BUDGET_EXCEEDED", "metadata.specialFeatureBudget", `Abilities, auras, and afflictions spend ${spent} power against a shared budget of ${limit}.`));
+    if (Number(specialBudget.spent ?? spent) !== spent) issues.push(issue("warning", "SPECIAL_POWER_BUDGET_STALE", "metadata.specialFeatureBudget.spent", "Stored shared power usage does not match generated content."));
+  }
+
   const uniqueFamilies = new Set();
   for (const ability of generatedAbilities) {
     if (ability?.uniquePerCreature === false) continue;

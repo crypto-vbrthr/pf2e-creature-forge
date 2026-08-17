@@ -126,13 +126,23 @@
 - Dependency-invalid abilities excluded before weighted selection.
 - Lock-aware budgeted rerolls and duplicate-family hardening.
 
-## 0.4.x - Auras and afflictions
+## 0.4.0 - Auras & Afflictions Integration ✅
 
-- Aura recipe selection and Embedded Aura Editor.
-- Actor-local Aura Forge assignment.
-- Affliction recipe selection and Embedded Affliction Editor.
-- Poison/injury-poison attack links.
-- Dependency-aware rerolls.
+- Optional concept-sensitive Aura/Affliction generation with `auto | none | required` modes.
+- Rare/normal/high special-feature frequency and deterministic seeded variation.
+- Shared power budget with ordinary abilities.
+- Core Aura/Affliction libraries plus selectable external libraries in the Sources tab.
+- Scoped rerolls, locks, provenance, and required-feature diagnostics.
+- Embedded Aura Forge and Affliction Forge editors in the canonical Creature Editor.
+- Actor-local Aura Forge assignment so generated Auras do not pollute the global library.
+- PF2E Affliction Action items plus manual Affliction Forge runtime application.
+- Contract compatibility with supplied Aura Forge schema v1 and Affliction Forge schema v2.
+
+## 0.4.x - Special-feature hardening
+
+- Bind selected Afflictions to compatible attacks/abilities or exposure mechanisms.
+- Broader Aura/Affliction libraries and additional external dependency diagnostics.
+- Optional automatic runtime triggers after the manual application paths are proven.
 
 ## 0.5.x - Spellcasting
 
