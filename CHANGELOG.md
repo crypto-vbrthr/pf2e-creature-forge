@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.3 - Affliction Runtime Localization Fix
+
+- Fixed English Affliction delivery UI fragments on otherwise German generated NPC sheets (`Transmits affliction`, `Delivery`, raw trigger/application slugs).
+- Regenerated the embedded Creature Forge DE/EN fallback catalog from the shipped language files so all 484 package-owned keys are covered in both languages.
+- Localized hosted Affliction metadata to labels such as `Überträgt Leiden`, `Übertragung`, `Bei verursachtem Schaden`, and `Automatisch` when Foundry returns raw localization IDs.
+- Added regression coverage for the new Affliction runtime labels and a full parity test that fails whenever a shipped language key is missing from the embedded fallback catalog.
+- Kept Blueprint/content schemas at v7 and Embedded Creature Editor contract at v10; this release changes localization only.
+- Promoted API/module version to 0.4.3.
+- Expanded automated coverage to 107 passing tests.
+
 ## 0.4.2 - Affliction Library Bridge & Delivery Fix
 
 - Added a real Affliction Forge library bridge so Creature Forge can use enabled provider/world Affliction libraries as generation sources instead of relying only on its own small Affliction registry.

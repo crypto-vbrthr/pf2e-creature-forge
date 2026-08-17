@@ -65,3 +65,38 @@ test("runtime creates actor-local Affliction template and attaches an Affliction
   assert.equal(refs.get("item-attack")[0].metadata.originModule, "pf2e-creature-forge");
   assert.match(attack.system.description.value, /Transmits affliction|Überträgt Leiden/);
 });
+
+test("generated Affliction delivery descriptions localize runtime metadata in German even when Foundry returns raw keys", async () => {
+  const previous = globalThis.game;
+  globalThis.game = { i18n: { lang: "de", localize: (key) => key } };
+  try {
+    const { buildAfflictionDescription, buildAfflictionHostDescription } = await import("../scripts/core/compiler.js");
+    const resource = {
+      id: "test.venom",
+      definition: { name: "Riffstachelgift", afflictionType: "poison", description: "Testbeschreibung", stages: [{ number: 1, name: "Phase 1" }] }
+    };
+    const binding = {
+      afflictionRef: "test.venom",
+      mode: "hosted",
+      status: "verified",
+      verified: true,
+      templateUuid: "Compendium.test.affliction.Item.venom",
+      hostItemUuid: "Actor.a.Item.attack",
+      hostName: "Krallen",
+      delivery: { trigger: "on-damage", application: "automatic" }
+    };
+    const host = buildAfflictionHostDescription("", [{ binding, resource }]);
+    const affliction = buildAfflictionDescription(resource, { actorUuid: "Actor.a", runtimeAvailable: true, binding });
+    assert.match(host, /Überträgt Leiden/);
+    assert.match(host, /Bei verursachtem Schaden/);
+    assert.match(host, /Automatisch/);
+    assert.doesNotMatch(host, /Transmits affliction|on-damage|automatic/);
+    assert.match(affliction, /Übertragung/);
+    assert.match(affliction, /Bei verursachtem Schaden/);
+    assert.match(affliction, /Automatisch/);
+    assert.match(affliction, /Verknüpft/);
+    assert.doesNotMatch(affliction, /Delivery|on-damage|automatic/);
+  } finally {
+    globalThis.game = previous;
+  }
+});

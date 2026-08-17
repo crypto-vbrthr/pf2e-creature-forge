@@ -2,9 +2,19 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.4.2** adds the **Affliction Library Bridge & Delivery Fix**. Creature Forge can now draw suitable afflictions from actual Affliction Forge libraries, preserve their canonical template provenance, and verify that automatic attack/ability delivery references really persisted before presenting them as active.
+Version **0.4.3** adds the **Affliction Runtime Localization Fix**. All generated Affliction delivery labels, trigger/application metadata, and host-link descriptions now resolve through the same robust embedded DE/EN fallback catalog used by the rest of Creature Forge.
 
-## What 0.4.2 provides
+## What 0.4.3 provides
+
+- Localized generated host descriptions such as **Überträgt Leiden** instead of `Transmits affliction`.
+- Localized delivery metadata such as **Bei verursachtem Schaden · Automatisch** instead of `on-damage · automatic`.
+- Localized Affliction action delivery labels such as **Übertragung**.
+- Regenerated the embedded DE/EN fallback catalog from the shipped language files so every package-owned key is available even when Foundry returns raw localization IDs.
+- Added a regression test that verifies every shipped language key exists in the embedded fallback catalog.
+- No schema or Embedded Editor contract change; this is a localization-only hardening release.
+- 107 automated tests pass, including direct German runtime-description regression coverage.
+
+## What 0.4.2 provided
 
 - Real Affliction Forge provider/world libraries appear as selectable Creature Forge Affliction sources.
 - Implicit generic Item-compendium libraries remain opt-in so Creature Forge does not scan every Item pack by default.

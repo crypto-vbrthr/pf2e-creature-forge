@@ -143,6 +143,12 @@
 - Assign generated Afflictions to compatible attacks/abilities and delegate hosted triggers to native Affliction Forge references.
 - Materialize actor-local templates for generated definitions and harden Aura validation/reconciliation.
 
+## 0.4.3 - Affliction Runtime Localization Fix ✅
+
+- Synced the embedded DE/EN fallback catalog with all shipped runtime Affliction delivery keys.
+- Localized host/delivery/trigger/application strings on generated PF2E NPC sheets.
+- Added full language-catalog parity regression coverage.
+
 ## 0.4.2 - Affliction Library Bridge & Delivery Fix ✅
 
 - Bridge actual Affliction Forge provider/world libraries into Creature Forge source selection.
