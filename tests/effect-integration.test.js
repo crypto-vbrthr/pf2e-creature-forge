@@ -21,7 +21,7 @@ test("public Effect bridge delegates validation, analysis, compile, and item-sou
     ui: { effectEditor: { create: () => ({}) } },
     version: "1.0.0"
   };
-  const creatureRecord = { id: "pf2e-creature-forge", version: "0.4.1", active: true, api: null };
+  const creatureRecord = { id: "pf2e-creature-forge", version: "0.4.2", active: true, api: null };
   globalThis.game = {
     modules: new Map([
       ["pf2e-creature-forge", creatureRecord],

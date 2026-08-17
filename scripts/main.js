@@ -8,6 +8,15 @@ import { initializeSpecialFeatureRuntimeUi } from "./runtime/special-feature-run
 Hooks.once("init", () => {
   registerSettings();
   initializePublicApi({ openCreatureForge });
+  Hooks.on("pf2eAfflictionForgeReady", async () => {
+    try {
+      const api = getPublicApi();
+      await api?.sources?.refreshAfflictionLibraries?.({ force: true });
+      Hooks.callAll("pf2eCreatureForgeContentReady", api?.content?.getRegistrySnapshot?.());
+    } catch (error) {
+      console.warn(`${MODULE_ID} | Affliction Forge library bridge refresh failed.`, error);
+    }
+  });
 });
 
 Hooks.once("ready", () => {
@@ -19,8 +28,13 @@ Hooks.once("ready", () => {
     return;
   }
 
-  initializeCreatureForgeUi();
   const api = getPublicApi();
+  initializeCreatureForgeUi();
+  api.sources.refreshAfflictionLibraries().then(() => {
+    Hooks.callAll("pf2eCreatureForgeContentReady", api.content.getRegistrySnapshot());
+  }).catch((error) => {
+    console.warn(`${MODULE_ID} | Could not discover Affliction Forge libraries during ready.`, error);
+  });
   initializeEffectRuntimeUi({
     apply: (options) => api.runtime.applyEffect(options),
     cleanupActorResources: (actor) => api.runtime.cleanupActorEffects(actor)

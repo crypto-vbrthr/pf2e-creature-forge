@@ -632,3 +632,25 @@
 .pf2e-creature-forge-host-afflictions span { margin-left: .35rem; opacity: .78; font-size: .9em; }
 .pf2e-creature-forge-host-afflictions > div { margin-top: .25rem; }
 .pf2e-creature-forge-host-afflictions i { color: #a9bc4d; margin-right: .2rem; }
+
+/* 0.4.2 verified Affliction delivery diagnostics. */
+.pf2e-creature-forge-affliction-delivery.warning {
+  border-color: color-mix(in srgb, #b86a2f 65%, currentColor 12%);
+  border-left-color: #b86a2f;
+  background: linear-gradient(90deg, rgba(184,106,47,.16), transparent 72%);
+}
+.pf2e-creature-forge-affliction-delivery.warning > i { color: #d99a58; margin-right: .28rem; }
+.pf2e-creature-forge-affliction-binding-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: .2rem;
+  margin-left: .45rem;
+  padding: .05rem .35rem;
+  border: 1px solid rgba(118,154,62,.55);
+  border-radius: 999px;
+  background: rgba(118,154,62,.12);
+  opacity: 1 !important;
+  font-size: .82em !important;
+  font-weight: 600;
+}
+.pf2e-creature-forge-affliction-binding-ok i { color: #88ad47; }

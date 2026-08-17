@@ -479,5 +479,8 @@
   "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.Manual": "Manual",
   "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Automatic": "Automatic",
   "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Prompt": "Prompt",
-  "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Manual": "Manual"
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Manual": "Manual",
+  "PF2E_CREATURE_FORGE.Source.AfflictionForge": "Affliction Forge",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionReferenceVerified": "Linked",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionReferenceFailed": "Automatic delivery could not be linked. Manual application remains available."
 }

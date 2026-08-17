@@ -2,6 +2,7 @@ import { MODULE_ID } from "../constants.js";
 import { buildAfflictionDescription, buildAfflictionHostDescription } from "../core/compiler.js";
 import { localize, format } from "../i18n.js";
 import { localizeAuraResourceDefinition, localizeAfflictionResourceDefinition } from "../special-feature-localization.js";
+import { definitionFingerprint } from "../integration/affliction-library-bridge.js";
 
 function actorBlueprint(actor) { return actor?.flags?.[MODULE_ID]?.blueprint ?? null; }
 function itemsOf(actor) { try { return actor?.items ? [...actor.items] : []; } catch { return []; } }
@@ -11,11 +12,46 @@ function localizedAffliction(resource) { return localizeAfflictionResourceDefini
 function cfFlags(item) { return item?.flags?.[MODULE_ID] ?? {}; }
 function affFlags(item) { return item?.flags?.["pf2e-affliction-forge"] ?? {}; }
 
-function hostItemFor(actor, delivery = {}) {
+function hostItemFor(actor, delivery = {}, blueprint = actorBlueprint(actor)) {
   if (delivery?.mode !== "hosted") return null;
-  if (delivery.hostType === "attack") return itemsOf(actor).find((item) => cfFlags(item).attackId === delivery.hostId) ?? null;
-  if (delivery.hostType === "ability") return itemsOf(actor).find((item) => cfFlags(item).abilityId === delivery.hostId) ?? null;
+  const items = itemsOf(actor);
+  if (delivery.hostType === "attack") {
+    const exact = items.find((item) => cfFlags(item).attackId === delivery.hostId);
+    if (exact) return exact;
+    // Runtime fallback: PF2e or another hook may normalize an embedded melee Item
+    // before Creature Forge materializes Affliction references. Generated attacks
+    // are created in blueprint order, so recover the intended host by position.
+    const attackIndex = (blueprint?.combat?.attacks ?? []).findIndex((entry) => entry.id === delivery.hostId);
+    const meleeItems = items.filter((item) => item?.type === "melee");
+    if (attackIndex >= 0 && meleeItems[attackIndex]) return meleeItems[attackIndex];
+  }
+  if (delivery.hostType === "ability") {
+    const exact = items.find((item) => cfFlags(item).abilityId === delivery.hostId);
+    if (exact) return exact;
+    const abilityIndex = (blueprint?.abilities ?? []).findIndex((entry) => entry.id === delivery.hostId);
+    const abilityItems = items.filter((item) => item?.type === "action" && !cfFlags(item).afflictionRef);
+    if (abilityIndex >= 0 && abilityItems[abilityIndex]) return abilityItems[abilityIndex];
+  }
   return null;
+}
+
+function canonicalTemplateUuid(resource) {
+  const source = resource?.source ?? {};
+  const uuid = String(resource?.templateUuid ?? source.templateUuid ?? "").trim();
+  if (!uuid || source.sourceKind !== "affliction-forge-library" || source.detached === true) return null;
+  const expected = String(source.definitionFingerprint ?? "").trim();
+  if (expected && definitionFingerprint(resource?.definition ?? {}) !== expected) return null;
+  return uuid;
+}
+
+function persistedReference(api, actor, host, referenceId) {
+  const fresh = actor?.items?.get?.(host?.id) ?? itemsOf(actor).find((item) => item?.id === host?.id) ?? host;
+  try {
+    const direct = api?.references?.get?.(fresh, referenceId);
+    if (direct) return direct;
+  } catch { /* fall through */ }
+  try { return (api?.references?.list?.(fresh) ?? []).find((entry) => entry?.id === referenceId) ?? null; }
+  catch { return null; }
 }
 
 function definitionValid(report) {
@@ -101,31 +137,55 @@ export class CreatureSpecialFeatureRuntime {
     const result = { available: this.afflictionMaterializationAvailable, templates: [], bindings: [], warnings: [], cleanup: null };
     if (!actor || !blueprint) return result;
     result.cleanup = await this.cleanupAfflictions(actor);
-    if (!this.afflictionMaterializationAvailable || typeof actor.createEmbeddedDocuments !== "function") return result;
+    if (!this.afflictionMaterializationAvailable) return result;
 
     for (const resource of blueprint.resources?.afflictions ?? []) {
       try {
         const definition = localizedAffliction(resource);
         const report = api.definitions?.validate?.(definition);
         if (!definitionValid(report)) throw new Error((report?.errors ?? []).map((entry) => entry?.message ?? String(entry)).join(" ") || "Invalid Affliction definition.");
-        const source = api.documents.buildTemplateSource(definition);
-        source.flags ??= {};
-        source.flags[MODULE_ID] = { runtimeAfflictionTemplate: true, runtimeAfflictionRef: resource.id, generated: true };
-        if (source.system?.tokenIcon) source.system.tokenIcon.show = false;
-        const created = await actor.createEmbeddedDocuments("Item", [source], { render: false });
-        const template = Array.isArray(created) ? created[0] : created;
-        if (!template) throw new Error("Actor-local Affliction template could not be created.");
-        result.templates.push({ afflictionRef: resource.id, itemId: template.id, uuid: template.uuid });
 
-        const host = hostItemFor(actor, resource.delivery);
+        let templateUuid = canonicalTemplateUuid(resource);
+        let template = null;
+        let templateKind = "library";
+        if (!templateUuid) {
+          if (typeof actor.createEmbeddedDocuments !== "function") throw new Error("Actor-local Affliction templates require createEmbeddedDocuments().");
+          const source = api.documents.buildTemplateSource(definition);
+          source.flags ??= {};
+          source.flags[MODULE_ID] = { runtimeAfflictionTemplate: true, runtimeAfflictionRef: resource.id, generated: true };
+          if (source.system?.tokenIcon) source.system.tokenIcon.show = false;
+          const created = await actor.createEmbeddedDocuments("Item", [source], { render: false });
+          template = Array.isArray(created) ? created[0] : created;
+          if (!template) throw new Error("Actor-local Affliction template could not be created.");
+          templateUuid = template.uuid;
+          templateKind = "actor";
+        }
+        result.templates.push({ afflictionRef: resource.id, itemId: template?.id ?? null, uuid: templateUuid, kind: templateKind, canonical: templateKind === "library" });
+
+        const host = hostItemFor(actor, resource.delivery, blueprint);
         if (!host) {
-          result.bindings.push({ afflictionRef: resource.id, mode: "manual", templateUuid: template.uuid, delivery: resource.delivery ?? null });
+          const intended = resource.delivery?.mode === "hosted";
+          const binding = {
+            afflictionRef: resource.id,
+            mode: "manual",
+            status: intended ? "host-missing" : "manual",
+            templateUuid,
+            delivery: resource.delivery ?? null
+          };
+          result.bindings.push(binding);
+          if (intended) result.warnings.push({ afflictionRef: resource.id, code: "AFFLICTION_HOST_NOT_FOUND", message: `Could not resolve the generated ${resource.delivery?.hostType ?? "host"} '${resource.delivery?.hostId ?? ""}' for Affliction delivery.` });
           continue;
         }
+        if (api.references?.isHostItem && !api.references.isHostItem(host)) {
+          result.bindings.push({ afflictionRef: resource.id, mode: "manual", status: "host-ineligible", templateUuid, delivery: resource.delivery ?? null, intendedHostItemId: host.id });
+          result.warnings.push({ afflictionRef: resource.id, code: "AFFLICTION_HOST_INELIGIBLE", message: `Resolved host '${host.name ?? host.id}' is not eligible for Affliction references.` });
+          continue;
+        }
+
         const label = localize(resource.nameKey, definition.name ?? resource.name ?? resource.id);
         const base = {
           id: `cf-${String(resource.id).replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${host.id}`,
-          templateUuid: template.uuid,
+          templateUuid,
           label,
           trigger: resource.delivery?.trigger ?? "on-hit",
           application: resource.delivery?.application ?? "prompt",
@@ -136,9 +196,41 @@ export class CreatureSpecialFeatureRuntime {
           ? api.references.createInjuryPoison({ ...base, charges: resource.delivery?.charges ?? 1 })
           : api.references.create(base);
         await api.references.add(host, reference);
-        result.bindings.push({ afflictionRef: resource.id, mode: "hosted", templateUuid: template.uuid, hostItemId: host.id, hostItemUuid: host.uuid, hostName: host.name, referenceId: reference.id, reference, delivery: resource.delivery });
+
+        const persisted = persistedReference(api, actor, host, reference.id);
+        if (!persisted) {
+          result.bindings.push({
+            afflictionRef: resource.id,
+            mode: "manual",
+            status: "reference-not-persisted",
+            templateUuid,
+            intendedHostItemId: host.id,
+            intendedHostItemUuid: host.uuid,
+            hostName: host.name,
+            referenceId: reference.id,
+            delivery: resource.delivery
+          });
+          result.warnings.push({ afflictionRef: resource.id, code: "AFFLICTION_REFERENCE_NOT_PERSISTED", message: `Affliction reference '${reference.id}' was written to '${host.name ?? host.id}' but could not be read back. Manual application remains available.` });
+          continue;
+        }
+
+        result.bindings.push({
+          afflictionRef: resource.id,
+          mode: "hosted",
+          status: "verified",
+          verified: true,
+          templateUuid,
+          hostItemId: host.id,
+          hostItemUuid: host.uuid,
+          hostName: host.name,
+          referenceId: persisted.id,
+          reference: persisted,
+          delivery: resource.delivery,
+          templateKind
+        });
       } catch (error) {
-        result.warnings.push({ afflictionRef: resource.id, message: error?.message ?? String(error) });
+        result.warnings.push({ afflictionRef: resource.id, code: "AFFLICTION_BINDING_FAILED", message: error?.message ?? String(error) });
+        result.bindings.push({ afflictionRef: resource.id, mode: "manual", status: "error", delivery: resource.delivery ?? null, error: error?.message ?? String(error) });
         console.warn(`${MODULE_ID} | Affliction materialization/binding failed for ${resource.id}.`, error);
       }
     }
@@ -156,7 +248,7 @@ export class CreatureSpecialFeatureRuntime {
     }
     const updates = [];
     for (const item of itemsOf(actor)) {
-      if (!cfFlags(item).attackId && !cfFlags(item).abilityId) continue;
+      if (!cfFlags(item).attackId && !cfFlags(item).abilityId && !byHost.has(item.id)) continue;
       const linked = byHost.get(item.id) ?? [];
       const current = item.system?.description?.value ?? "";
       updates.push({ _id: item.id, "system.description.value": buildAfflictionHostDescription(current, linked) });
@@ -192,10 +284,14 @@ export class CreatureSpecialFeatureRuntime {
     const resolvedTargets = targets ? (Array.isArray(targets) ? targets : [targets]) : selectedTargets();
     if (!resolvedTargets.length) throw new Error(localize("PF2E_CREATURE_FORGE.Runtime.NoTargets", "Select at least one target before applying this affliction."));
     const definition = localizedAffliction(resource);
-    const result = await this.integrations.afflictionApi.engine.applyDefinition(definition, resolvedTargets, {
+    const templateUuid = canonicalTemplateUuid(resource);
+    const options = {
       sourceActorUuid: actor?.uuid ?? null, sourceActor: actor,
       creatureForge: { actorUuid: actor?.uuid ?? null, afflictionRef: resource.id }
-    });
+    };
+    const result = templateUuid && typeof this.integrations.afflictionApi.engine?.applyTemplate === "function"
+      ? await this.integrations.afflictionApi.engine.applyTemplate(templateUuid, resolvedTargets, options)
+      : await this.integrations.afflictionApi.engine.applyDefinition(definition, resolvedTargets, options);
     return { result, actor, resource, targets: resolvedTargets };
   }
 

@@ -138,6 +138,19 @@
 - PF2E Affliction Action items plus manual Affliction Forge runtime application.
 - Contract compatibility with supplied Aura Forge schema v1 and Affliction Forge schema v2.
 
+## 0.4.1 - Affliction Delivery & Aura/Affliction Runtime Hardening ✅
+
+- Assign generated Afflictions to compatible attacks/abilities and delegate hosted triggers to native Affliction Forge references.
+- Materialize actor-local templates for generated definitions and harden Aura validation/reconciliation.
+
+## 0.4.2 - Affliction Library Bridge & Delivery Fix ✅
+
+- Bridge actual Affliction Forge provider/world libraries into Creature Forge source selection.
+- Preserve canonical template UUID provenance and detach only after editing.
+- Keep library level/DC intact rather than rescaling published definitions.
+- Harden attack/ability host resolution and verify native Affliction references after persistence.
+- Fail closed to manual application with visible diagnostics when automatic delivery cannot be verified.
+
 ## 0.4.x - Special-feature hardening
 
 - Bind selected Afflictions to compatible attacks/abilities or exposure mechanisms.
@@ -175,8 +188,3 @@
 ## 1.0
 
 - Release hardening, migration policy, API stability commitment, and complete documentation.
-
-
-## 0.4.1 - Affliction Delivery & Aura/Affliction Runtime Hardening ✅
-
-Generated Afflictions can bind to compatible attacks/abilities using actor-local Affliction Forge templates and native Affliction references. Aura assignment validates and reconciles actor-local definitions.

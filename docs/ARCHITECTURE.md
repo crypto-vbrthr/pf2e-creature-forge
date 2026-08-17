@@ -168,6 +168,27 @@ At Actor creation time, actor-local Aura definitions are assigned through Aura F
 
 External modules can register Aura/Affliction libraries with stable provenance. Source selection is request-local for embedded hosts and world-default-capable for the standalone Creature Forge, matching the existing ability-library model.
 
+### Affliction Forge library bridge and verified delivery
+
+0.4.2 treats Affliction Forge itself as an additional content provider. Its enabled provider/world libraries are indexed into Creature Forge as bridge libraries, while each candidate keeps the original Affliction Forge template UUID and source provenance. The bridge normalizes only Creature Forge selection metadata; the Affliction definition remains owned by Affliction Forge.
+
+```text
+Affliction Forge library
+        |
+        +-- template UUID + definition
+        |
+Creature Forge bridge metadata
+        |
+weighted concept selection
+        |
+CreatureBlueprint resource
+        |
+        +-- unchanged -> canonical template UUID
+        +-- edited     -> detached local definition
+```
+
+At Actor creation time, hosted delivery is fail-closed. Creature Forge resolves the generated melee/action Item, asks Affliction Forge to persist its native reference, and then reads the reference back from the host. Only a successful round trip is reported as automatic delivery. Missing/ineligible hosts or non-persisted references remain manual and generate diagnostics. This avoids maintaining a second combat-trigger implementation in Creature Forge.
+
 ## Skills, Movement & Senses
 
 0.1.4 adds a separate exploration-stat layer. `skills.js` selects appropriate skills using role/category/subtype/ability affinities and resolves their modifiers from the level/rank skill table. `mobility.js` derives land and alternate movement plus low-light vision, darkvision, and scent from the creature concept, while explicit request values always override automatic suggestions.
@@ -218,4 +239,4 @@ Creature ability
 
 ## Embedded editor
 
-`api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v9), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, persistent bottom action footer, and its own Creature/Sources sub-tabs. The host owns the surrounding window, higher-level navigation, persistence policy, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.
+`api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v10), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, persistent bottom action footer, and its own Creature/Sources sub-tabs. The host owns the surrounding window, higher-level navigation, persistence policy, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.

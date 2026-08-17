@@ -1,4 +1,4 @@
-# Public API 0.4.1
+# Public API 0.4.2
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;
@@ -449,6 +449,20 @@ api.sources.getDefaults();
 await api.sources.setDefaults({ categories: [], subtypes: [], abilities: [], auras: [], afflictions: [] });
 ```
 
+### Affliction Forge library bridge
+
+```js
+api.afflictions.libraries.available;
+await api.afflictions.libraries.refresh({ force: true });
+api.afflictions.libraries.list();
+await api.afflictions.libraries.ensure(["pf2e-creature-forge.affliction-forge.some-library"]);
+api.afflictions.libraries.status();
+
+await api.sources.refreshAfflictionLibraries({ force: true });
+```
+
+Provider/world Affliction Forge libraries are bridged as selectable Creature Forge Affliction sources. Generic implicit Item-compendium libraries are visible but are not default-enabled. Unedited bridged entries retain their canonical `templateUuid`; editing them detaches the Creature Blueprint resource so actor creation cannot mutate or misrepresent the source template. `api.sources.ensure(...)`, `isPrepared(...)`, and `getStatus()` include the Affliction bridge as well as category/subtype compendium discovery.
+
 `CreatureGenerationRequest.sources.categories`, `.subtypes`, `.abilities`, `.auras`, and `.afflictions` are independent arrays. Core and non-compendium extension content remains visible regardless of these arrays. Compendium-discovered content is filtered to the selected pack ids.
 
 When a request uses unprepared compendium sources, prefer `await api.generateAsync(request)`. For repeated synchronous generation, call `await api.sources.ensure(request.sources)` once before `api.generate(request)`.
@@ -468,7 +482,7 @@ api.integrations.getLootApi();
 
 ```js
 api.ui.openCreatureForge();
-api.ui.creatureEditor.contractVersion; // 9
+api.ui.creatureEditor.contractVersion; // 10
 api.ui.creatureEditor.modes;           // ["create", "edit", "view"]
 api.ui.creatureEditor.layouts;         // ["full", "compact"]
 api.ui.creatureEditor.tabs;            // ["creature", "sources"]
@@ -489,4 +503,4 @@ editor.unmount();
 editor.destroy();
 ```
 
-The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v9 keeps source selection in the dedicated `sources` tab and adds host-controllable `effectEditing`, `auraEditing`, and `afflictionEditing` capabilities for mounting the public Forge editors in the same editor workspace. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.
+The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v10 keeps source selection in the dedicated `sources` tab and adds host-controllable `effectEditing`, `auraEditing`, and `afflictionEditing` capabilities for mounting the public Forge editors in the same editor workspace. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.

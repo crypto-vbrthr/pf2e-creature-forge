@@ -189,7 +189,13 @@ export function buildAfflictionDescription(resource, { actorUuid = null, runtime
     const trigger = afflictionTriggerLabel(binding.delivery?.trigger);
     const application = afflictionApplicationLabel(binding.delivery?.application);
     const hostName = escapeAttribute(binding.hostName ?? binding.delivery?.hostId ?? "Host");
-    delivery = `<div class="pf2e-creature-forge-affliction-delivery"><strong>${label}:</strong> @UUID[${binding.hostItemUuid}]{${hostName}} <span>${escapeAttribute(trigger)} · ${escapeAttribute(application)}</span></div>`;
+    const verified = binding.verified === true || binding.status === "verified"
+      ? ` <span class="pf2e-creature-forge-affliction-binding-ok"><i class="fa-solid fa-circle-check"></i> ${escapeAttribute(localizeKey("PF2E_CREATURE_FORGE.Runtime.AfflictionReferenceVerified", "Linked"))}</span>`
+      : "";
+    delivery = `<div class="pf2e-creature-forge-affliction-delivery"><strong>${label}:</strong> @UUID[${binding.hostItemUuid}]{${hostName}} <span>${escapeAttribute(trigger)} · ${escapeAttribute(application)}</span>${verified}</div>`;
+  } else if (binding?.status && !["manual", "verified"].includes(binding.status)) {
+    const warning = localizeKey("PF2E_CREATURE_FORGE.Runtime.AfflictionReferenceFailed", "Automatic delivery could not be linked. Manual application remains available.");
+    delivery = `<div class="pf2e-creature-forge-affliction-delivery warning"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeAttribute(warning)}</div>`;
   } else if (resource?.delivery?.mode === "manual" || binding?.mode === "manual") {
     delivery = `<div class="pf2e-creature-forge-affliction-delivery"><strong>${localizeKey("PF2E_CREATURE_FORGE.Runtime.AfflictionDelivery", "Delivery")}:</strong> ${escapeAttribute(afflictionTriggerLabel("manual"))}</div>`;
   }

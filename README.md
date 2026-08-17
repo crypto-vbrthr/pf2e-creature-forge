@@ -2,27 +2,20 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.4.1** hardens **Affliction Delivery & Aura/Affliction Runtime** on top of the 0.4.0 integration. Auras and afflictions are optional, concept-sensitive special features that participate in the same seeded variation and shared power budget as generated abilities. They can be disabled, generated automatically, or required explicitly.
+Version **0.4.2** adds the **Affliction Library Bridge & Delivery Fix**. Creature Forge can now draw suitable afflictions from actual Affliction Forge libraries, preserve their canonical template provenance, and verify that automatic attack/ability delivery references really persisted before presenting them as active.
 
-## What 0.4.0 provides
+## What 0.4.2 provides
 
-- `specialFeatures.frequency`: `rare`, `normal`, or `high`.
-- Independent Aura/Affliction modes: `auto`, `none`, or `required`.
-- `auto` is genuinely optional: a valid generation may contain no Aura and/or no Affliction.
-- Concept-sensitive probability from category and subtypes; poison, disease, ghost, elemental, fiend, celestial, fungus, and related concepts alter the odds rather than forcing content.
-- `required` selects only a valid matching feature. If no candidate fits the concept, selected sources, dependencies, and remaining budget, generation keeps the slot empty and emits a diagnostic instead of inserting unrelated content.
-- Auras, afflictions, and ordinary abilities share one power budget.
-- Seeded selection, scoped rerolls, and locks for Auras and Afflictions.
-- Core Aura and Affliction starter libraries plus public external library registration.
-- Dedicated Aura/Affliction library selectors in the **Sources** tab, with standalone world defaults and embedded host-local selection.
-- Embedded Aura Forge and Affliction Forge editors inside the canonical Embedded Creature Editor.
-- Actor creation materializes generated Auras as actor-local Aura Forge definitions, keeping the global Aura Library clean.
-- Generated Afflictions compile to PF2E Action items with a manual **Apply affliction** runtime control and delegate the actual controller/application lifecycle to Affliction Forge.
-- Definitions are generated against the current integration contracts used by the supplied Aura Forge (schema v1) and Affliction Forge (schema v2); stage effects use Affliction-owned unlimited effect duration.
-- External modules can register complete Aura/Affliction libraries and participate in the same source filtering, weighting, power budgeting, reroll, and provenance logic as core content.
-- Embedded Creature Editor contract v9 and request/blueprint/content schema v5.
-
-Existing 0.3.x features remain: weighted ability libraries, Effect Forge integration and manual runtime, deterministic seeded generation, GM Core statistic tables, attacks, skills, movement, senses, defensive affinities, compendium category/subtype discovery, and DE/EN localization.
+- Real Affliction Forge provider/world libraries appear as selectable Creature Forge Affliction sources.
+- Implicit generic Item-compendium libraries remain opt-in so Creature Forge does not scan every Item pack by default.
+- Unmodified library afflictions keep their canonical Affliction Forge template UUID and published level/DC.
+- Editing a bridged affliction detaches it into a creature-local definition so the source library entry is never mutated.
+- Poison/disease/curse semantics, traits, level windows, categories/subtypes, and delivery preferences feed weighted selection.
+- Hosted delivery resolves the generated PF2E attack/ability, writes the native Affliction Forge reference, then reads it back to verify persistence.
+- Verified bindings are shown as linked; failures visibly fall back to manual application instead of silently pretending the host is wired.
+- Unchanged library content uses Affliction Forge `engine.applyTemplate()`; generated/edited definitions use `engine.applyDefinition()`.
+- Existing optional Aura/Affliction generation, shared power budget, seeded rerolls, Embedded Aura/Affliction/Effect editors, and external Creature Forge libraries remain available.
+- Embedded Creature Editor contract v10, Blueprint/content schema v7, request schema v5.
 
 ## Public API
 
@@ -263,7 +256,7 @@ editor.unmount();
 editor.destroy();
 ```
 
-`api.ui.creatureEditor.contractVersion` is **9**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`. The public editor exposes the `creature` and `sources` tabs when source selection is enabled, and hosts can switch tabs with `editor.setActiveTab(...)`.
+`api.ui.creatureEditor.contractVersion` is **10**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`. The public editor exposes the `creature` and `sources` tabs when source selection is enabled, and hosts can switch tabs with `editor.setActiveTab(...)`.
 
 ## Integrations
 
@@ -281,6 +274,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.4.0 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, and optional Aura/Affliction selection/editing/runtime delegation. Automatic combat-workflow trigger execution, spell packages, and loot generation remain later milestones. 0.4.1 binds compatible generated Afflictions to attacks or abilities through actor-local Affliction Forge templates and references; unsupported concepts keep a manual fallback.
+0.4.0 owns the core numeric statistics, category/subtype defensive affinities, source-filtered category/subtype discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, and optional Aura/Affliction selection/editing/runtime delegation. Automatic combat-workflow trigger execution, spell packages, and loot generation remain later milestones. Affliction delivery binding to generated attacks is also a later 0.4.x hardening step.
 
 See `docs/ROADMAP.md`.

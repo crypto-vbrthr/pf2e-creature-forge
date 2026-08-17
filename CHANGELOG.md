@@ -1,16 +1,28 @@
 # Changelog
 
-## 0.4.1 – Affliction Delivery & Aura/Affliction Runtime Hardening
+## 0.4.2 - Affliction Library Bridge & Delivery Fix
 
-- Added concept-sensitive Affliction delivery plans that bind generated poisons, diseases, and curses to compatible generated attacks or abilities when possible.
-- Intrinsic creature venoms now use normal Affliction references instead of consumable injury-poison coating semantics.
-- Materializes generated Affliction definitions as actor-local Affliction Forge template Items, avoiding world-library clutter.
-- Attaches Affliction Forge references to generated melee/action host Items, allowing Affliction Forge's own combat-trigger runtime to process on-use, on-hit, and on-damage delivery.
-- Added localized delivery summaries to both the Affliction ability and its host attack/ability, while keeping manual application as a fallback.
-- Added idempotent cleanup/rebinding for generated Affliction references and actor-local templates.
-- Aura materialization now validates definitions before assignment and reconciles the actor after assignment.
-- Public runtime API now exposes Affliction materialization and special-feature cleanup.
-- Blueprint/content schema v6; API/module 0.4.1.
+- Added a real Affliction Forge library bridge so Creature Forge can use enabled provider/world Affliction libraries as generation sources instead of relying only on its own small Affliction registry.
+- Exposed bridged Affliction Forge libraries in the Creature Forge Sources tab while keeping implicit catch-all Item compendium libraries opt-in to avoid scanning every Item pack by default.
+- Preserved canonical Affliction Forge `templateUuid` provenance for unchanged library afflictions and use the source template directly at runtime instead of creating duplicate actor-local templates.
+- Editing a bridged affliction in the Embedded Affliction Editor now detaches it from the canonical source template and safely materializes it as creature-local content.
+- Added semantic bridge metadata for poison, disease, curse, known traits/categories/subtypes, level windows, and preferred delivery profiles.
+- Preserved published/library Affliction level and save DC instead of silently rescaling bridged definitions to the generated creature level.
+- Hardened delivery host resolution with Creature Forge flag lookup plus Blueprint-order fallback for PF2E-normalized melee/action Items.
+- Added post-write round-trip verification for Affliction Forge references. A delivery is considered automatic only when the reference can actually be read back from the host Item.
+- Failed or ineligible automatic bindings now degrade to a visible manual-application fallback with diagnostics instead of silently claiming to be linked.
+- Verified hosted afflictions display their successful binding in the generated NPC description; failed bindings display an explicit warning.
+- Manual application of unchanged library afflictions delegates to Affliction Forge `engine.applyTemplate()` using the canonical template UUID; detached/core afflictions continue through `engine.applyDefinition()`.
+- Added `api.afflictions.libraries` and expanded `api.sources` preparation/status APIs to include the Affliction Forge bridge.
+- Promoted API/module version to 0.4.2, Blueprint/content schemas to v7, and Embedded Creature Editor contract to v10.
+- Expanded automated coverage to 105 tests.
+
+## 0.4.1 - Affliction Delivery & Aura/Affliction Runtime Hardening
+
+- Added concept-sensitive Affliction delivery assignment to compatible attacks and abilities.
+- Added actor-local Affliction Forge template materialization plus native Affliction references for hosted delivery.
+- Added Aura validation/reconciliation hardening and special-feature cleanup/refresh runtime operations.
+- Kept natural creature venom separate from consumable injury-poison charge semantics.
 
 ## 0.4.0 - Auras & Afflictions Integration
 

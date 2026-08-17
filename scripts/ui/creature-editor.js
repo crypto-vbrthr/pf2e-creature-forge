@@ -149,7 +149,7 @@ function triStateOptions(current) {
 }
 
 export class EmbeddedCreatureEditor {
-  static CONTRACT_VERSION = 9;
+  static CONTRACT_VERSION = 10;
 
   constructor({ api, session = null, request = {}, blueprint = null, mode = "create", layout = "full", activeTab = "creature", capabilities = {}, onChange = null, onGenerate = null } = {}) {
     if (!api) throw new Error("EmbeddedCreatureEditor requires the Creature Forge API.");
@@ -600,6 +600,10 @@ export class EmbeddedCreatureEditor {
       onChange: () => {
         resource.definition = deepClone(this.afflictionEditor.value);
         resource.name = resource.definition?.name ?? resource.name;
+        if (resource.source?.sourceKind === "affliction-forge-library") {
+          resource.source = { ...(resource.source ?? {}), detached: true };
+          resource.templateUuid = null;
+        }
         this.session.dirty = true;
         this.#emitChange("affliction-change");
       }
@@ -666,8 +670,14 @@ export class EmbeddedCreatureEditor {
     const afflictionLibraryOptions = afflictionLibraries.map((library) => {
       const moduleTitle = globalThis.game?.modules?.get?.(library.moduleId)?.title ?? library.moduleId;
       const label = localize(library.labelKey, library.label ?? library.id);
-      const suffix = library.moduleId && library.moduleId !== "pf2e-creature-forge" ? ` · ${moduleTitle}` : "";
-      return option(library.id, escapeHtml(`${label}${suffix} · ${library.afflictionCount} ${localize("PF2E_CREATURE_FORGE.Component.Afflictions", "afflictions")}`), selectedAfflictionLibraries.includes(library.id));
+      const isAfflictionForge = library.source?.sourceKind === "affliction-forge-library";
+      const suffix = isAfflictionForge
+        ? ` · ${localize("PF2E_CREATURE_FORGE.Source.AfflictionForge", "Affliction Forge")}`
+        : library.moduleId && library.moduleId !== "pf2e-creature-forge" ? ` · ${moduleTitle}` : "";
+      const countSuffix = isAfflictionForge && library.source?.loaded !== true
+        ? ""
+        : ` · ${library.afflictionCount} ${localize("PF2E_CREATURE_FORGE.Component.Afflictions", "afflictions")}`;
+      return option(library.id, escapeHtml(`${label}${suffix}${countSuffix}`), selectedAfflictionLibraries.includes(library.id));
     }).join("");
     const categories = this.api.sources.listContent("category", { selectedSources: request.sources.categories }).map((entry) => ({
       value: entry.slug ?? entry.id,

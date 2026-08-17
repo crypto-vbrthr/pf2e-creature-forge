@@ -479,5 +479,8 @@
   "PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.Manual": "Manuell",
   "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Automatic": "Automatisch",
   "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Prompt": "Mit Bestätigung",
-  "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Manual": "Manuell"
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Manual": "Manuell",
+  "PF2E_CREATURE_FORGE.Source.AfflictionForge": "Affliction Forge",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionReferenceVerified": "Verknüpft",
+  "PF2E_CREATURE_FORGE.Runtime.AfflictionReferenceFailed": "Die automatische Übertragung konnte nicht verknüpft werden. Die manuelle Anwendung bleibt verfügbar."
 }

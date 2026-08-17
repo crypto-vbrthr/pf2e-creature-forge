@@ -85,6 +85,10 @@ function scaleAuraDefinition(entry, level) {
 
 function scaleAfflictionDefinition(entry, level) {
   const definition = deepClone(entry.definition ?? entry);
+  // Definitions bridged from the Affliction Forge library remain canonical.
+  // Their level/DC values belong to the source template and must not be silently
+  // rewritten when Creature Forge selects them.
+  if (entry.preserveDefinitionScale === true || entry.source?.sourceKind === "affliction-forge-library") return definition;
   definition.level = Number(level);
   for (const check of definition.checks ?? []) {
     if (check?.dcMode === "fixed") check.dc = Math.max(14, 14 + Number(level));
@@ -105,6 +109,7 @@ function materialize(entry, kind, level) {
     definition: kind === "aura" ? scaleAuraDefinition(entry, level) : scaleAfflictionDefinition(entry, level),
     source: deepClone(entry.source ?? {}),
     deliveryProfile: kind === "affliction" ? deepClone(entry.deliveryProfile ?? null) : null,
+    templateUuid: kind === "affliction" ? (entry.templateUuid ?? entry.source?.templateUuid ?? null) : null,
     locked: false
   };
 }

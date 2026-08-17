@@ -43,6 +43,11 @@ export class ForgeIntegrationHub {
         buildTemplateSource: (api) => typeof api.documents?.buildTemplateSource === "function",
         createReference: (api) => typeof api.references?.create === "function",
         addReference: (api) => typeof api.references?.add === "function",
+        getReference: (api) => typeof api.references?.get === "function",
+        listReferences: (api) => typeof api.references?.list === "function",
+        libraryList: (api) => typeof api.libraries?.list === "function",
+        libraryTemplates: (api) => typeof api.libraries?.templates === "function",
+        templateRead: (api) => typeof api.templates?.read === "function",
         triggerRuntime: (api) => typeof api.triggers?.status === "function",
         editor: (api) => typeof api.ui?.afflictionEditor?.create === "function"
       }),

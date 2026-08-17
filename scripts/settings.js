@@ -15,7 +15,9 @@ export function registerSettings() {
     default: {
       categories: [],
       subtypes: [],
-      abilities: []
+      abilities: [],
+      auras: [],
+      afflictions: []
     }
   });
 }

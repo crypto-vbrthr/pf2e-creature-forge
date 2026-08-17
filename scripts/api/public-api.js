@@ -12,6 +12,7 @@ import { createGenerationRequest } from "../core/schemas.js";
 import { listCompendiumSources } from "../core/sources.js";
 import { validateBlueprint, validateGenerationRequest } from "../core/validator.js";
 import { ForgeIntegrationHub } from "../integration/adapters.js";
+import { AfflictionForgeLibraryBridge } from "../integration/affliction-library-bridge.js";
 import { createCreatureEditorUiApi } from "../ui/creature-editor.js";
 import { estimateAbilityPower, listAbilityCandidates, resolveAbilityPowerBudget } from "../core/ability-engine.js";
 import { CreatureEffectRuntime } from "../runtime/effect-runtime.js";
@@ -27,6 +28,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
   const generator = new CreatureGenerator({ registry });
   const discovery = new CompendiumDiscoveryManager({ registry });
   const integrations = new ForgeIntegrationHub();
+  const afflictionLibraryBridge = new AfflictionForgeLibraryBridge({ registry, integrations });
   const runtime = new CreatureEffectRuntime({ integrations });
   const specialRuntime = new CreatureSpecialFeatureRuntime({ integrations });
 
@@ -45,14 +47,15 @@ export function initializePublicApi({ openCreatureForge } = {}) {
     createRequest: (input = {}) => createGenerationRequest(input),
     generate: (request = {}) => {
       const normalized = createGenerationRequest(request);
-      if (!discovery.isPrepared(normalized.sources)) {
-        throw new Error("Creature Forge compendium sources are not prepared. Call api.generateAsync(request) or await api.sources.ensure(request.sources) before synchronous generation.");
+      if (!discovery.isPrepared(normalized.sources) || !afflictionLibraryBridge.isPrepared(normalized.sources)) {
+        throw new Error("Creature Forge sources are not prepared. Call api.generateAsync(request) or await api.sources.ensure(request.sources) before synchronous generation.");
       }
       return generator.generate(normalized);
     },
     generateAsync: async (request = {}) => {
       const normalized = createGenerationRequest(request);
       await discovery.ensure(normalized.sources);
+      await afflictionLibraryBridge.ensure(normalized.sources);
       return generator.generate(normalized);
     },
     reroll: (blueprint, options = {}) => generator.reroll(blueprint, options),
@@ -135,6 +138,13 @@ export function initializePublicApi({ openCreatureForge } = {}) {
         const afflictionApi = integrations.afflictionApi;
         if (!afflictionApi?.engine?.applyDefinition) throw new Error("Affliction Forge integration is unavailable.");
         return afflictionApi.engine.applyDefinition(definition, targets, options);
+      },
+      libraries: {
+        get available() { return afflictionLibraryBridge.available; },
+        refresh: (options = {}) => afflictionLibraryBridge.refreshLibraries(options),
+        ensure: (sources = {}, options = {}) => afflictionLibraryBridge.ensure(sources, options),
+        list: () => afflictionLibraryBridge.listLibraries(),
+        status: () => afflictionLibraryBridge.status()
       }
     },
 
@@ -243,11 +253,18 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       listCompendiums: (options = {}) => listCompendiumSources(options),
       listCreatureCompendiums: () => discovery.listCompendiums(),
       discover: (compendiumId, options = {}) => discovery.discover(compendiumId, options),
-      ensure: (sources = {}, options = {}) => discovery.ensure(sources, options),
+      ensure: async (sources = {}, options = {}) => {
+        const [compendiums, afflictions] = await Promise.all([
+          discovery.ensure(sources, options),
+          afflictionLibraryBridge.ensure(sources, options)
+        ]);
+        return { compendiums, afflictions };
+      },
       listContent: (type, options = {}) => discovery.listContent(type, options),
-      getStatus: () => discovery.getStatus(),
-      isPrepared: (sources = {}) => discovery.isPrepared(sources),
-      clearCache: () => discovery.clearCache(),
+      getStatus: () => ({ compendiums: discovery.getStatus(), afflictions: afflictionLibraryBridge.status() }),
+      isPrepared: (sources = {}) => discovery.isPrepared(sources) && afflictionLibraryBridge.isPrepared(sources),
+      refreshAfflictionLibraries: (options = {}) => afflictionLibraryBridge.refreshLibraries(options),
+      clearCache: () => { discovery.clearCache(); afflictionLibraryBridge.clearCache(); return true; },
       getDefaults: () => {
         try {
           const stored = globalThis.game?.settings?.get?.(MODULE_ID, SETTINGS.SOURCE_DEFAULTS) ?? {};
@@ -259,10 +276,13 @@ export function initializePublicApi({ openCreatureForge } = {}) {
             subtypes: [...new Set((stored.subtypes ?? []).map(String).filter(Boolean))],
             abilities: abilities.length ? abilities : registry.getDefaultAbilityLibraryIds(),
             auras: auras.length ? auras : registry.getDefaultAuraLibraryIds(),
-            afflictions: afflictions.length ? afflictions : registry.getDefaultAfflictionLibraryIds()
+            // Empty means "use the current default Affliction libraries". This lets
+            // Affliction Forge provider libraries discovered after ready participate
+            // without baking a stale library list into the request.
+            afflictions
           };
         } catch {
-          return { categories: [], subtypes: [], abilities: registry.getDefaultAbilityLibraryIds(), auras: registry.getDefaultAuraLibraryIds(), afflictions: registry.getDefaultAfflictionLibraryIds() };
+          return { categories: [], subtypes: [], abilities: registry.getDefaultAbilityLibraryIds(), auras: registry.getDefaultAuraLibraryIds(), afflictions: [] };
         }
       },
       setDefaults: async (sources = {}) => {
