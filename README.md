@@ -2,9 +2,20 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.5.0** adds **Spellcasting & Thematic Spell Selection**. Creature Forge can now decide whether spellcasting fits a creature concept, select a tradition and casting style, index spells from chosen PF2E spell compendiums, choose a thematic repertoire, and materialize real PF2E NPC spellcasting entries and spell Items.
+Version **0.5.1** is a focused **Required Special Feature Budget Fix**. Explicitly required Auras and Afflictions are no longer silently suppressed when spellcasting has already consumed the shared special-feature power budget. Required special features now mirror required spellcasting: the explicit GM request wins, the feature is kept, and the Blueprint records an over-budget warning. Automatic special features remain budget-constrained.
 
-## What 0.5.0 provides
+## What 0.5.1 changes
+
+- `specialFeatures.auras.mode = "required"` may exceed the remaining shared power budget when a valid matching Aura exists.
+- `specialFeatures.afflictions.mode = "required"` may exceed the remaining shared power budget when a valid matching Affliction exists.
+- Required over-budget content emits `REQUIRED_AURA_OVER_BUDGET` or `REQUIRED_AFFLICTION_OVER_BUDGET` plus the existing shared-budget warning instead of disappearing.
+- `REQUIRED_*_UNAVAILABLE` now means that no concept/source-compatible candidate exists, not merely that the remaining budget is exhausted.
+- Automatic Aura/Affliction selection still respects the remaining budget exactly as before.
+- Added regression coverage for the reported spellcaster case: standard required spellcasting plus required Affliction.
+- Embedded Creature Editor contract remains v11; request schema remains v6; Blueprint/content schemas remain v8; API/module version is 0.5.1.
+- 124 automated tests pass.
+
+## What 0.5.0 provided
 
 - Optional, seeded, concept-sensitive spellcasting with `auto | none | required` modes.
 - Innate, prepared, and spontaneous creature spellcasting. Focus spells and rituals are deliberately deferred.
@@ -15,8 +26,7 @@ Version **0.5.0** adds **Spellcasting & Thematic Spell Selection**. Creature For
 - Whole-spellcasting and individual-spell locks/rerolls.
 - PF2E Actor materialization for spellcasting entries plus linked spell Items, prepared slots, spontaneous rank pools, innate daily uses, and at-will cantrips.
 - External modules can register `spellProfile` content to bias tradition/theme selection without replacing the engine.
-- Embedded Creature Editor contract v11; request schema v6; Blueprint/content schemas v8; API/module version 0.5.0.
-- 122 automated tests pass across generation, source indexing, UI contracts, compiler/runtime integration, localization, and regression coverage.
+- Embedded Creature Editor contract v11; request schema v6; Blueprint/content schemas v8.
 
 ## What 0.4.3 provided
 
@@ -298,6 +308,6 @@ api.integrations.getStatus();
 
 ## Current boundaries
 
-0.5.0 owns the core numeric statistics, category/subtype defensive affinities, source-filtered discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, optional Aura/Affliction selection and verified delivery, plus thematic PF2E spellcasting generation and materialization. Automatic combat-workflow trigger execution, focus-spell generation, advanced hand-curated spell packages, and loot generation remain later milestones.
+0.5.1 owns the core numeric statistics, category/subtype defensive affinities, source-filtered discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, optional Aura/Affliction selection and verified delivery, plus thematic PF2E spellcasting generation and materialization. Automatic combat-workflow trigger execution, focus-spell generation, advanced hand-curated spell packages, and loot generation remain later milestones.
 
 See `docs/ROADMAP.md`.

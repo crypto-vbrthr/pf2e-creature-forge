@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.1 - Required Special Feature Budget Fix
+
+- Fixed explicitly required Auras and Afflictions being silently suppressed when spellcasting or another special feature had already consumed the shared power budget.
+- `required` Aura/Affliction generation now mirrors required spellcasting: a valid matching feature is kept even when it exceeds the remaining budget, with an explicit over-budget diagnostic.
+- Automatic Aura/Affliction generation remains budget-constrained and unchanged.
+- Clarified `REQUIRED_*_UNAVAILABLE` diagnostics so they now mean that no concept/source-compatible candidate exists, not merely that the remaining budget is too small.
+- Added regression coverage for required Aura over-budget behavior and the reported `Spellcaster + required standard spellcasting + required Affliction` case.
+- Promoted API/module version to 0.5.1; request, Blueprint/content schemas, and Embedded Editor contract remain unchanged.
+
 ## 0.5.0 - Spellcasting & Thematic Spell Selection
 
 - Added first-class spellcasting request/Blueprint contracts with `auto | none | required` generation modes.

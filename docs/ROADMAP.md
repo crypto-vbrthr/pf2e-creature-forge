@@ -163,6 +163,13 @@
 - Broader Aura/Affliction libraries and additional external dependency diagnostics.
 - Optional automatic runtime triggers after the manual application paths are proven.
 
+
+## 0.5.1 - Required Special Feature Budget Fix ✅
+
+- Required Auras/Afflictions may overrun an exhausted shared budget with explicit diagnostics, matching required spellcasting semantics.
+- Automatic special features remain budget constrained.
+- Regression coverage for required spellcasting + required Affliction.
+
 ## 0.5.0 - Spellcasting & Thematic Spell Selection ✅
 
 - Optional concept-sensitive spellcasting with `auto | none | required`.

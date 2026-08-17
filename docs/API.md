@@ -1,4 +1,6 @@
-# Public API 0.5.0
+# Public API 0.5.1
+
+> **0.5.1 budget fix:** `required` Auras and Afflictions are allowed to exceed the remaining shared special-feature power budget, matching required spellcasting. Automatic special features remain budget-constrained.
 
 ```js
 const api = game.modules.get("pf2e-creature-forge")?.api;
@@ -123,7 +125,7 @@ const blueprint = await api.generateAsync({
 });
 ```
 
-`auto` is deliberately optional: a mundane creature can receive no spellcasting at all. `required` still requires valid spells in the active sources. Automatic tradition and spell selection are constrained by the actually indexed source content and weighted by category, resolved subtypes, role, core/external `spellProfile` content, spell traits, and explicit request themes. Normal spells and cantrips are indexed in 0.5.0; rituals and focus spells are intentionally excluded from this milestone.
+`auto` is deliberately optional: a mundane creature can receive no spellcasting at all. `required` still requires valid spells in the active sources. Automatic tradition and spell selection are constrained by the actually indexed source content and weighted by category, resolved subtypes, role, core/external `spellProfile` content, spell traits, and explicit request themes. Normal spells and cantrips are indexed in 0.5.1; rituals and focus spells are intentionally excluded from this milestone.
 
 Spellcasting uses the same seeded random service and shared power budget as the other special mechanics. `focused`, `standard`, and `broad` control repertoire breadth. Whole spellcasting and individual spell slots can be locked/rerolled with the scopes above.
 

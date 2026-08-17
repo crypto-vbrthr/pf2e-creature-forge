@@ -131,19 +131,32 @@ function pickFeature({ request, registry, kind, level, category, subtypes, role,
   if (mode === "none") return { feature: null, spent: 0, diagnostics };
   const candidates = candidateList({ request, registry, kind, level, category, subtypes, role })
     .filter((entry) => !excludeContentIds.includes(entry.id));
-  const eligible = candidates.filter((entry) => estimateSpecialPower(entry, kind) <= availableBudget);
+  const required = mode === "required";
+  const budget = Math.max(0, Number(availableBudget ?? 0));
+  // Explicitly required special features behave like required spellcasting: the
+  // GM's request wins over the shared power budget. Automatic features remain
+  // budget-constrained, while a required Aura/Affliction may overrun the budget
+  // and records a diagnostic instead of silently disappearing.
+  const eligible = required
+    ? candidates
+    : candidates.filter((entry) => estimateSpecialPower(entry, kind) <= budget);
   if (!eligible.length) {
-    if (mode === "required") diagnostics.push({
+    if (required) diagnostics.push({
       level: "warning",
       code: `REQUIRED_${kind.toUpperCase()}_UNAVAILABLE`,
-      message: `A ${kind} was required, but no matching ${kind} fits the active sources and remaining power budget.`
+      message: `A ${kind} was required, but no matching ${kind} exists in the active sources.`
     });
     return { feature: null, spent: 0, diagnostics };
   }
   const chance = specialFeatureChance({ request, kind, category, subtypes });
-  if (mode !== "required" && !random.fork(`${kind}:presence`).chance(chance)) return { feature: null, spent: 0, diagnostics };
+  if (!required && !random.fork(`${kind}:presence`).chance(chance)) return { feature: null, spent: 0, diagnostics };
   const picked = random.fork(`${kind}:pick`).weightedPick(eligible.map((entry) => ({ value: entry, weight: scoreEntry(entry, { category, subtypes, role }) })));
   const feature = materialize(picked, kind, level);
+  if (required && feature.powerCost > budget) diagnostics.push({
+    level: "warning",
+    code: `REQUIRED_${kind.toUpperCase()}_OVER_BUDGET`,
+    message: `Required ${kind} costs ${feature.powerCost} power, but only ${budget} remains. It is kept because it was explicitly required.`
+  });
   return { feature, spent: feature.powerCost, diagnostics };
 }
 

@@ -74,6 +74,20 @@ test("required mode forces a matching affliction and none mode excludes the othe
   assert.equal(blueprint.resources.afflictions[0].contentId, "pf2e-creature-forge.affliction.predator-venom");
 });
 
+test("required special features override an exhausted power budget and report the overrun", () => {
+  const { generator } = setup();
+  const blueprint = generator.generate({
+    identity: { level: 6, role: "spellcaster", category: "undead", subtypes: ["ghost"] },
+    abilities: { mode: "off", powerBudget: 1 },
+    specialFeatures: { auras: { mode: "required" }, afflictions: { mode: "none" } },
+    generation: { seed: "required-aura-over-budget" }
+  });
+  assert.equal(blueprint.resources.auras.length, 1);
+  assert.ok(blueprint.resources.auras[0].powerCost > blueprint.metadata.specialFeatureBudget.limit);
+  assert.ok(blueprint.diagnostics.some((entry) => entry.code === "REQUIRED_AURA_OVER_BUDGET"));
+  assert.ok(blueprint.diagnostics.some((entry) => entry.code === "SPECIAL_POWER_BUDGET_EXCEEDED"));
+});
+
 test("required mode reports a warning instead of inserting an unrelated feature", () => {
   const { generator } = setup();
   const blueprint = generator.generate({

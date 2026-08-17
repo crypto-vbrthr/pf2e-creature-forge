@@ -196,3 +196,25 @@ test("spellcasting participates in the shared creature power budget before optio
   assert.equal(blueprint.abilities.length, 0, "primary spellcasting should consume the spellcaster role's default special budget instead of being free extra power");
   assert.ok(!blueprint.diagnostics.some((entry) => entry.code === "SPECIAL_POWER_BUDGET_STALE"));
 });
+
+
+test("spellcaster can keep required standard spellcasting and an explicitly required affliction over budget", async () => {
+  const { CreatureGenerator } = await import("../scripts/core/generator.js");
+  const { registry, spellSources } = setup();
+  const generator = new CreatureGenerator({ registry, spellSources });
+  const blueprint = generator.generate({
+    identity: { level: 10, role: "spellcaster", category: "undead" },
+    spellcasting: { mode: "required", tradition: "arcane", style: "prepared", breadth: "standard" },
+    specialFeatures: { frequency: "normal", auras: { mode: "none" }, afflictions: { mode: "required" } },
+    abilities: { mode: "off" },
+    generation: { seed: "required-spellcasting-plus-affliction" }
+  });
+  assert.equal(blueprint.combat.spellcasting.length, 1);
+  assert.equal(blueprint.resources.afflictions.length, 1);
+  assert.equal(blueprint.metadata.specialFeatureBudget.limit, 3);
+  assert.equal(blueprint.metadata.specialFeatureBudget.spellcastingSpent, 3);
+  assert.ok(blueprint.metadata.specialFeatureBudget.afflictionSpent > 0);
+  assert.ok(blueprint.metadata.specialFeatureBudget.spent > blueprint.metadata.specialFeatureBudget.limit);
+  assert.ok(blueprint.diagnostics.some((entry) => entry.code === "REQUIRED_AFFLICTION_OVER_BUDGET"));
+  assert.ok(blueprint.diagnostics.some((entry) => entry.code === "SPECIAL_POWER_BUDGET_EXCEEDED"));
+});
