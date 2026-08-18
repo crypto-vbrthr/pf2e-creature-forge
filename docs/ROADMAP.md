@@ -269,3 +269,21 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - Added signature-power metadata/resolution with elemental Dragon Breath as the first dynamic implementation.
 - Added GM Core limited-use area-damage scaling, dynamic save/area/recharge mechanics, generated Effect Forge damage resources, signature rerolls, and auto-budget allowance.
 - Request schema v7; Blueprint/content schemas v10; Embedded Creature Editor contract v12.
+
+## 0.7.1 - Inline Area Templates ✅
+
+- Native PF2E inline templates for generated area abilities.
+- Explicit area geometry for static core area powers and dynamic Dragon Breath.
+
+## 0.7.2 - Signature Powers Expansion ✅
+
+- Troll Regeneration, Vampiric Drain, Hydra Heads, Phoenix Rebirth, and affinity-aware Elemental Retaliation.
+- Signature priorities, generated Effect Forge resources, and structured signature mechanics.
+
+## 0.7.3 - Ability & Signature Runtime Review / Hardening ✅
+
+- Preserve hosted Affliction markup across independent Effect refreshes.
+- Harden area target semantics and executable ability-mechanic validation.
+- Promote nested runtime warnings to consolidated Actor runtime status with `degraded` state.
+- Correct release/download metadata and stale editor-contract documentation.
+- Permanent test suite: 169 passing tests. One-off review audit: 1,008 core level/role/category generations plus 63 signature-interaction rerolls, all structurally valid.

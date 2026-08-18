@@ -74,3 +74,71 @@ test("createActor isolates optional runtime integration failures and still runs 
     globalThis.Folder = previousFolder;
   }
 });
+
+test("runtime status reports degraded when a subsystem completes with per-resource warnings", async () => {
+  const previousGame = globalThis.game;
+  const previousActor = globalThis.Actor;
+  const previousFolder = globalThis.Folder;
+  const moduleRecord = { id: "pf2e-creature-forge", version: "0.7.3", active: true, api: null };
+  const effectModule = {
+    id: "pf2e-critical-forge",
+    active: true,
+    version: "test",
+    api: {
+      effects: {
+        apply: async () => [],
+        createItems: async () => { throw new Error("simulated resource materialization failure"); }
+      }
+    }
+  };
+  globalThis.game = {
+    modules: new Map([["pf2e-creature-forge", moduleRecord], ["pf2e-critical-forge", effectModule]]),
+    items: [], folders: [], packs: [],
+    i18n: { lang: "en", localize: (key) => key }
+  };
+  globalThis.Folder = undefined;
+  globalThis.Actor = {
+    create: async (source) => {
+      const items = source.items.map((item, index) => ({
+        ...structuredClone(item),
+        id: `item-${index + 1}`,
+        uuid: `Actor.degraded.Item.item-${index + 1}`,
+        system: structuredClone(item.system),
+        flags: structuredClone(item.flags)
+      }));
+      return {
+        id: "degraded",
+        uuid: "Actor.degraded",
+        flags: structuredClone(source.flags),
+        items,
+        async update(changes) {
+          for (const [key, value] of Object.entries(changes)) {
+            if (key === "flags.pf2e-creature-forge.runtimeStatus") this.runtimeStatus = value;
+          }
+          return this;
+        },
+        async updateEmbeddedDocuments(_type, updates) {
+          for (const update of updates) {
+            const item = this.items.find((entry) => entry.id === update._id);
+            if (item && update["system.description.value"] !== undefined) item.system.description.value = update["system.description.value"];
+          }
+          return updates;
+        },
+        async deleteEmbeddedDocuments() { return []; },
+        sheet: { render: () => {} }
+      };
+    }
+  };
+  try {
+    const api = initializePublicApi();
+    const result = await api.createActor(effectBlueprint(), { renderSheet: false });
+    assert.equal(result.runtime.creatureForge.runtimeStatus.schemaVersion, 2);
+    assert.equal(result.runtime.creatureForge.runtimeStatus.effects, "degraded");
+    assert.ok(result.runtime.creatureForge.diagnostics.some((entry) => entry.subsystem === "effects" && entry.level === "warning"));
+    assert.equal(result.runtime.creatureForge.runtimeStatus.specialFeatures, "ready");
+  } finally {
+    globalThis.game = previousGame;
+    globalThis.Actor = previousActor;
+    globalThis.Folder = previousFolder;
+  }
+});

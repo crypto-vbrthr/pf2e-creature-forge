@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.3 – Ability & Signature Runtime Review / Hardening
+
+- Reviewed normal abilities, dynamic signature powers, Effect Forge resources, inline area templates, hosted Afflictions, spellcasting, and loot runtime boundaries together rather than as isolated subsystems.
+- Fixed effect-runtime refreshes erasing a verified Affliction delivery block when the same generated ability is both effect-backed and an Affliction carrier. Marker-based Affliction host markup now survives independent Effect refreshes.
+- Hardened manual area-effect targeting: the public/runtime `area` target mode now resolves every selected Foundry target instead of silently falling back to the first selection.
+- Tightened Blueprint validation for executable ability mechanics. Unsupported area shapes, non-positive template distances/widths, invalid saves/DCs, and unknown Effect target modes are rejected before Actor materialization.
+- Consolidated runtime status now distinguishes **degraded** from **failed**. Per-resource Effect/Aura/Affliction/Spell warnings are promoted into the Actor-level runtime diagnostics instead of being hidden inside nested subsystem results. Runtime-status schema is now v2; strict runtime still fails only on error-level diagnostics.
+- Fixed release metadata drift: `module.json` now points its download URL at the matching 0.7.3 release instead of the old 0.7.0 asset.
+- Corrected stale README Embedded Creature Editor contract documentation from v11 to the actual v12 contract.
+- Added 0.7.3 regression coverage plus a one-off audit of 1,008 core generation combinations and 63 signature-interaction rerolls with zero invalid Blueprints.
+- Request schema remains v7, Blueprint/content schemas remain v10, and Embedded Creature Editor contract remains v12.
+
 ## 0.7.2 – Signature Powers Expansion
 
 - Expanded the signature-power resolver beyond dragon breath with Troll Regeneration, Vampiric Drain, Hydra Heads, Phoenix Rebirth, and affinity-aware Elemental Retaliation.

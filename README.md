@@ -2,10 +2,22 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.7.2** expands the signature-power layer with Troll Regeneration, Vampiric Drain, Hydra Heads, Phoenix Rebirth, and affinity-aware Elemental Retaliation. The native PF2E inline area-template support introduced in 0.7.1 remains available for every generated area power.
+Version **0.7.3** is the ability/signature runtime hardening pass. It keeps the 0.7.2 signature-power expansion while tightening cross-runtime refresh behavior, area targeting/validation, and consolidated runtime diagnostics.
 
 Signature powers remain seeded, budget-aware content-library entries rather than hard-coded creature exceptions. Area-based signatures such as Dragon Breath, Phoenix Rebirth, and Elemental Retaliation expose clickable PF2E templates in their descriptions.
 
+
+
+## What 0.7.3 hardens
+
+- Effect refreshes preserve verified Affliction-delivery markup on abilities that participate in both runtimes.
+- `area` Effect targets resolve all selected Foundry targets.
+- Blueprint validation rejects area/template/save/target mechanics that Creature Forge cannot execute safely.
+- Actor runtime status reports `ready | degraded | failed | skipped` per subsystem and lifts nested per-resource warnings into consolidated diagnostics.
+- `strictRuntime` remains error-oriented: warnings make a subsystem degraded but do not by themselves reject an already-created Actor.
+- Release metadata now references the matching 0.7.3 download asset.
+- Request schema v7, Blueprint/content schemas v10, Embedded Creature Editor contract v12; API/module version 0.7.3.
+- 169 automated tests pass; the 0.7.3 review additionally audited 1,008 core generation combinations and 63 signature-interaction rerolls without invalid Blueprints.
 
 ## What 0.7.2 adds
 
@@ -360,7 +372,7 @@ editor.unmount();
 editor.destroy();
 ```
 
-`api.ui.creatureEditor.contractVersion` is **11**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`. The public editor exposes the `creature` and `sources` tabs when source selection is enabled, and hosts can switch tabs with `editor.setActiveTab(...)`.
+`api.ui.creatureEditor.contractVersion` is **12**. Supported modes are `create`, `edit`, and `view`; supported layouts are `full` and `compact`. The public editor exposes the `creature` and `sources` tabs when source selection is enabled, and hosts can switch tabs with `editor.setActiveTab(...)`.
 
 ## Integrations
 

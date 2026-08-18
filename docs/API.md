@@ -1,4 +1,7 @@
-# Public API 0.7.2
+# Public API 0.7.3
+
+> **0.7.3 runtime hardening:** `flags.pf2e-creature-forge.runtimeStatus` uses schema v2 and reports `ready`, `degraded`, `failed`, or `skipped` for each subsystem. Per-resource warnings are consolidated at Actor level. Effect refreshes preserve hosted Affliction delivery blocks, and `area` target mode resolves all selected targets.
+
 
 > **0.7.2 area-template presentation:** Compiled ability descriptions emit native PF2E `@Template[...]` links whenever `ability.mechanics.area` is present. No public schema change is required.
 >
@@ -61,6 +64,8 @@ runtime.creatureForge.diagnostics;
 // Optional fail-fast mode for automation/import pipelines:
 await api.createActor(blueprint, { strictRuntime: true });
 ```
+
+Runtime-status schema v2 reports each subsystem as `ready`, `degraded`, `failed`, or `skipped`. A subsystem is `degraded` when it completed but isolated one or more resource-level diagnostics. `strictRuntime: true` fails only when error-level runtime diagnostics remain; warning-only degradation does not reject the already-created Actor.
 
 When possible, the same status is persisted as `flags.pf2e-creature-forge.runtimeStatus` on the Actor. Failure to persist that diagnostic flag is itself reported without deleting the successfully created Actor. Caller-provided `postCreate` hooks retain normal exception semantics.
 

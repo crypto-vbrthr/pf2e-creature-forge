@@ -216,7 +216,7 @@ export function buildAfflictionDescription(resource, { actorUuid = null, runtime
 const AFFLICTION_HOST_BLOCK_START = "<!-- pf2e-creature-forge:host-afflictions:start -->";
 const AFFLICTION_HOST_BLOCK_END = "<!-- pf2e-creature-forge:host-afflictions:end -->";
 
-function stripAfflictionHostBlock(current = "") {
+export function stripAfflictionHostBlock(current = "") {
   let value = String(current ?? "");
   const start = value.indexOf(AFFLICTION_HOST_BLOCK_START);
   const end = value.indexOf(AFFLICTION_HOST_BLOCK_END);
@@ -228,6 +228,20 @@ function stripAfflictionHostBlock(current = "") {
   // so consume the complete legacy wrapper rather than the first inner row only.
   value = value.replace(/<div class="pf2e-creature-forge-host-afflictions"[^>]*>[\s\S]*?<\/div>\s*<\/div>/g, "");
   return value.trim();
+}
+
+export function extractAfflictionHostBlock(current = "") {
+  const value = String(current ?? "");
+  const start = value.indexOf(AFFLICTION_HOST_BLOCK_START);
+  const end = value.indexOf(AFFLICTION_HOST_BLOCK_END, start >= 0 ? start : 0);
+  if (start < 0 || end < start) return "";
+  return value.slice(start, end + AFFLICTION_HOST_BLOCK_END.length);
+}
+
+export function preserveAfflictionHostBlock(current = "", replacement = "") {
+  const block = extractAfflictionHostBlock(current);
+  const cleanReplacement = stripAfflictionHostBlock(replacement);
+  return block ? `${cleanReplacement}${block}` : cleanReplacement;
 }
 
 export function buildAfflictionHostDescription(current = "", linked = []) {

@@ -1,6 +1,6 @@
 import { MODULE_ID } from "../constants.js";
 import { deepClone } from "../core/clone.js";
-import { buildAbilityDescription } from "../core/compiler.js";
+import { buildAbilityDescription, preserveAfflictionHostBlock } from "../core/compiler.js";
 import { localize, format } from "../i18n.js";
 
 const RESOURCE_FOLDER_NAME = "PF2E Creature Forge – Runtime Effects";
@@ -103,7 +103,7 @@ function selectedTargets() {
 }
 
 function targetModeIsPlural(mode) {
-  return ["targets", "failed-save-targets", "selected-targets", "all-selected"].includes(mode);
+  return ["targets", "failed-save-targets", "selected-targets", "all-selected", "area"].includes(mode);
 }
 
 async function ensureResourceFolder() {
@@ -290,13 +290,17 @@ export class CreatureEffectRuntime {
       if (!abilityId) continue;
       const ability = abilityById.get(abilityId);
       if (!ability) continue;
+      const rebuilt = buildAbilityDescription(ability, effectResources, {
+        runtimeLinks,
+        actorUuid: actor.uuid,
+        runtimeAvailable: this.available
+      });
       updates.push({
         _id: item.id,
-        "system.description.value": buildAbilityDescription(ability, effectResources, {
-          runtimeLinks,
-          actorUuid: actor.uuid,
-          runtimeAvailable: this.available
-        }),
+        // Affliction delivery is authored by the special-feature runtime after the
+        // base ability description. Effect refreshes must not erase that verified
+        // host block when an ability is both effect-backed and an Affliction carrier.
+        "system.description.value": preserveAfflictionHostBlock(item.system?.description?.value ?? "", rebuilt),
         [`flags.${MODULE_ID}.runtimeEffects`]: deepClone((ability.applications ?? []).filter((entry) => entry.type === "effect"))
       });
     }

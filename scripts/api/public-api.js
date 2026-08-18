@@ -37,10 +37,41 @@ function serializeRuntimeError(error) {
   };
 }
 
+function runtimeResultDiagnostics(name, result) {
+  const raw = [];
+  if (name === "effects") raw.push(...(result?.materialization?.warnings ?? []));
+  if (name === "specialFeatures") {
+    raw.push(...(result?.auras?.warnings ?? []));
+    raw.push(...(result?.afflictions?.warnings ?? []));
+  }
+  if (name === "spellcasting") raw.push(...(result?.diagnostics ?? []));
+  if (name === "loot") {
+    raw.push(...(result?.warnings ?? []));
+    raw.push(...(result?.diagnostics ?? []));
+  }
+  return raw.map((entry, index) => ({
+    level: entry?.level ?? "warning",
+    code: entry?.code ?? `RUNTIME_${name.toUpperCase()}_WARNING_${index + 1}`,
+    subsystem: name,
+    ...entry
+  }));
+}
+
+function runtimeStepStatus(name, enabled, result, diagnostics) {
+  if (!enabled) return "skipped";
+  if (!result) return "failed";
+  const own = diagnostics.filter((entry) => entry.subsystem === name);
+  if (own.some((entry) => entry.level === "error")) return "degraded";
+  if (own.length) return "degraded";
+  return "ready";
+}
+
 async function runRuntimeStep(name, enabled, task, diagnostics) {
   if (!enabled) return null;
   try {
-    return await task();
+    const result = await task();
+    diagnostics.push(...runtimeResultDiagnostics(name, result));
+    return result;
   } catch (error) {
     const serialized = serializeRuntimeError(error);
     diagnostics.push({ level: "error", code: `RUNTIME_${name.toUpperCase()}_FAILED`, subsystem: name, ...serialized });
@@ -140,11 +171,11 @@ export function initializePublicApi({ openCreatureForge } = {}) {
           diagnostics
         );
         const runtimeStatus = {
-          schemaVersion: 1,
-          effects: options.materializeEffects === false ? "skipped" : effectResult ? "ready" : "failed",
-          specialFeatures: options.materializeSpecialFeatures === false ? "skipped" : specialResult ? "ready" : "failed",
-          spellcasting: options.materializeSpellcasting === false ? "skipped" : spellResult ? "ready" : "failed",
-          loot: options.materializeLoot === false ? "skipped" : lootResult ? "ready" : "failed",
+          schemaVersion: 2,
+          effects: runtimeStepStatus("effects", options.materializeEffects !== false, effectResult, diagnostics),
+          specialFeatures: runtimeStepStatus("specialFeatures", options.materializeSpecialFeatures !== false, specialResult, diagnostics),
+          spellcasting: runtimeStepStatus("spellcasting", options.materializeSpellcasting !== false, spellResult, diagnostics),
+          loot: runtimeStepStatus("loot", options.materializeLoot !== false, lootResult, diagnostics),
           diagnostics
         };
         if (typeof actor?.update === "function") {
@@ -156,9 +187,10 @@ export function initializePublicApi({ openCreatureForge } = {}) {
             console.warn(`${MODULE_ID} | Could not persist consolidated runtime status.`, error);
           }
         }
-        if (options.strictRuntime === true && diagnostics.length) {
-          const error = new Error(`Creature Forge runtime initialization failed in ${[...new Set(diagnostics.map((entry) => entry.subsystem))].join(", ")}.`);
-          error.diagnostics = diagnostics;
+        const runtimeErrors = diagnostics.filter((entry) => entry.level === "error");
+        if (options.strictRuntime === true && runtimeErrors.length) {
+          const error = new Error(`Creature Forge runtime initialization failed in ${[...new Set(runtimeErrors.map((entry) => entry.subsystem))].join(", ")}.`);
+          error.diagnostics = runtimeErrors;
           throw error;
         }
         // External host callbacks still keep normal exception semantics. Internal

@@ -7,6 +7,11 @@ const SPEED_TOKENS = Object.freeze(["role", "auto", "none", "off"]);
 const SENSE_TOKENS = Object.freeze(["auto", "on", "off", true, false]);
 const AFFINITY_MODES = Object.freeze(["auto", "off"]);
 const HP_COMPENSATION_MODES = Object.freeze(["auto", "off"]);
+const ABILITY_AREA_SHAPES = Object.freeze(["burst", "cone", "emanation", "line"]);
+const EFFECT_TARGET_MODES = Object.freeze([
+  "self", "target", "targets", "failed-save-target", "failed-save-targets",
+  "selected-targets", "all-selected", "area"
+]);
 
 function issue(level, code, path, message) {
   return { level, code, path, message };
@@ -320,10 +325,23 @@ export function validateBlueprint(blueprint) {
     if (ability?.type === "action" && (!Number.isInteger(Number(ability?.actionCost)) || Number(ability.actionCost) < 1 || Number(ability.actionCost) > 3)) {
       issues.push(issue("error", "INVALID_ABILITY_ACTION_COST", `${path}.actionCost`, "Action abilities require an action cost from 1 to 3."));
     }
+    const area = ability?.mechanics?.area;
+    if (area) {
+      if (!ABILITY_AREA_SHAPES.includes(area.shape)) issues.push(issue("error", "INVALID_ABILITY_AREA_SHAPE", `${path}.mechanics.area.shape`, `Unsupported area shape '${area.shape}'.`));
+      if (!Number.isFinite(Number(area.distanceFeet)) || Number(area.distanceFeet) <= 0) issues.push(issue("error", "INVALID_ABILITY_AREA_DISTANCE", `${path}.mechanics.area.distanceFeet`, "Area mechanics require a positive distance in feet."));
+      if (area.widthFeet !== undefined && (!Number.isFinite(Number(area.widthFeet)) || Number(area.widthFeet) <= 0)) issues.push(issue("error", "INVALID_ABILITY_AREA_WIDTH", `${path}.mechanics.area.widthFeet`, "Area width must be a positive number when specified."));
+    }
+    const save = ability?.mechanics?.save;
+    if (save) {
+      if (!["fortitude", "reflex", "will"].includes(save.type)) issues.push(issue("error", "INVALID_ABILITY_SAVE", `${path}.mechanics.save.type`, `Unsupported save type '${save.type}'.`));
+      if (!Number.isFinite(Number(save.dc)) || Number(save.dc) <= 0) issues.push(issue("error", "INVALID_ABILITY_SAVE_DC", `${path}.mechanics.save.dc`, "Ability save DC must be a positive number."));
+    }
     for (const application of ability?.applications ?? []) {
       if (application?.type === "effect") {
         if (!String(application.ref ?? "").trim()) issues.push(issue("error", "EFFECT_REF_REQUIRED", path, "Effect applications require a resource reference."));
         else if (!effectResources.has(application.ref)) issues.push(issue("error", "MISSING_EFFECT_RESOURCE", path, `Ability '${ability.contentId}' references missing effect '${application.ref}'.`));
+        const target = String(application?.target ?? "target");
+        if (!EFFECT_TARGET_MODES.includes(target)) issues.push(issue("error", "INVALID_EFFECT_TARGET_MODE", `${path}.applications`, `Unsupported effect target mode '${target}'.`));
       }
     }
   }
