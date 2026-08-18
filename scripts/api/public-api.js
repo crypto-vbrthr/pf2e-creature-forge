@@ -25,7 +25,7 @@ import { CreatureSpellRuntime } from "../runtime/spell-runtime.js";
 import { CreatureLootIntegration } from "../integration/loot-integration.js";
 import { CreatureLootRuntime } from "../runtime/loot-runtime.js";
 import { createLootPlan, lootChannelChance } from "../core/loot.js";
-import { limitedAreaDamageFormula, resolveDragonBreathProfile, resolveSignaturePlan } from "../core/signature-powers.js";
+import { limitedAreaDamageFormula, resolveDragonBreathProfile, resolveElementalSignatureProfile, resolveSignaturePlan } from "../core/signature-powers.js";
 
 let apiInstance = null;
 
@@ -201,6 +201,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       signature: {
         limitedAreaDamageFormula,
         resolveDragonBreathProfile,
+        resolveElementalSignatureProfile,
         plan: (request = {}, options = {}) => {
           const normalized = createGenerationRequest(request);
           const random = new SeededRandom(options.seed ?? `${normalized.generation.seed || createRandomSeed()}:signature-api`);

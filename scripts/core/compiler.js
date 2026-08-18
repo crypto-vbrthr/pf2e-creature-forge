@@ -68,7 +68,9 @@ function effectTimingLabel(timing) {
     "trigger": "PF2E_CREATURE_FORGE.Runtime.Timing.Trigger",
     "failed-save": "PF2E_CREATURE_FORGE.Runtime.Timing.FailedSave",
     "on-hit": "PF2E_CREATURE_FORGE.Runtime.Timing.OnHit",
-    "on-success": "PF2E_CREATURE_FORGE.Runtime.Timing.OnSuccess"
+    "on-success": "PF2E_CREATURE_FORGE.Runtime.Timing.OnSuccess",
+    "always": "PF2E_CREATURE_FORGE.Runtime.Timing.Always",
+    "rebirth": "PF2E_CREATURE_FORGE.Runtime.Timing.Rebirth"
   };
   const key = keyByTiming[String(timing ?? "")];
   return key ? localizeKey(key, timing) : String(timing ?? "");

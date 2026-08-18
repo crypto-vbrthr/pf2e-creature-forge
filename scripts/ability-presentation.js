@@ -46,5 +46,22 @@ export function abilityMechanicsLabel(ability) {
   if (mechanics.recharge?.formula) {
     parts.push(`${localize("PF2E_CREATURE_FORGE.Signature.Recharge", "Recharge")} ${mechanics.recharge.formula} ${localize("PF2E_CREATURE_FORGE.Signature.Rounds", "rounds")}`);
   }
+  if (mechanics.regeneration?.value) {
+    const deactivated = (mechanics.regeneration.deactivatedBy ?? []).map((type) => localize(`PF2E_CREATURE_FORGE.DamageType.${type}`, type)).join(", ");
+    parts.push(`${localize("PF2E_CREATURE_FORGE.Signature.Regeneration", "Regeneration")} ${mechanics.regeneration.value}${deactivated ? ` (${localize("PF2E_CREATURE_FORGE.Signature.DeactivatedBy", "deactivated by")}: ${deactivated})` : ""}`);
+  }
+  if (mechanics.vampiricDrain) {
+    parts.push(`${localize("PF2E_CREATURE_FORGE.Signature.Drained", "Drained")} ${mechanics.vampiricDrain.drained ?? 1}`);
+    parts.push(`${localize("PF2E_CREATURE_FORGE.Signature.TemporaryHP", "Temporary HP")} ${mechanics.vampiricDrain.temporaryHitPoints ?? 0}`);
+  }
+  if (mechanics.heads?.count) {
+    parts.push(`${mechanics.heads.count} ${localize("PF2E_CREATURE_FORGE.Signature.Heads", "heads")}`);
+    parts.push(`${mechanics.heads.reactionsPerRound ?? 1} ${localize("PF2E_CREATURE_FORGE.Signature.ReactionsPerRound", "reactions/round")}`);
+    if (mechanics.heads.regrowth) parts.push(localize("PF2E_CREATURE_FORGE.Signature.HeadRegrowth", "head regrowth"));
+  }
+  if (mechanics.rebirth) {
+    const once = mechanics.rebirth.once ? `${localize("PF2E_CREATURE_FORGE.Signature.Once", "once")} · ` : "";
+    parts.push(`${localize("PF2E_CREATURE_FORGE.Signature.Rebirth", "Rebirth")}: ${once}${localize("PF2E_CREATURE_FORGE.Signature.Delay", "delay")} ${mechanics.rebirth.delay ?? "1d4"} ${localize("PF2E_CREATURE_FORGE.Signature.Rounds", "rounds")} · ${mechanics.rebirth.hitPointsPercent ?? 50}% ${localize("PF2E_CREATURE_FORGE.Signature.HitPoints", "HP")}`);
+  }
   return parts.join(" · ");
 }

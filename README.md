@@ -2,23 +2,28 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.7.1** adds native PF2E inline area templates to generated area abilities. Dragon Breath and the expanded core area powers now expose clickable cone, line, burst, or emanation links in their descriptions so the GM can place the matching template directly on the scene. The 0.7.0 signature-power and expanded-ability architecture remains unchanged.
+Version **0.7.2** expands the signature-power layer with Troll Regeneration, Vampiric Drain, Hydra Heads, Phoenix Rebirth, and affinity-aware Elemental Retaliation. The native PF2E inline area-template support introduced in 0.7.1 remains available for every generated area power.
+
+Signature powers remain seeded, budget-aware content-library entries rather than hard-coded creature exceptions. Area-based signatures such as Dragon Breath, Phoenix Rebirth, and Elemental Retaliation expose clickable PF2E templates in their descriptions.
 
 
-## What 0.7.1 adds
+## What 0.7.2 adds
 
-- Native PF2E `@Template[...]` links for abilities with explicit area geometry.
-- Dragon Breath cone/line templates use the generated shape and distance automatically.
-- Static core area abilities now carry explicit cone, line, burst, or emanation geometry for scene placement.
-- A dedicated seeded **signature-power** selection phase that keeps iconic powers separate from ordinary weighted abilities while still using the same content-library architecture.
-- Dynamic **Dragon Breath** for dragons with fire, cold, electricity, acid, poison, or generic elemental affinities. Shape, damage type, save, DC, area, recharge metadata, and generated direct-damage effect are stored in the Blueprint.
+- New core subtypes for **Troll, Vampire, Hydra, and Phoenix**.
+- **Troll Regeneration** with a level-scaled Effect Forge regeneration definition that is deactivated by acid or fire.
+- **Vampiric Drain** with linked drained 1 and level-scaled temporary-Hit-Point effects.
+- **Hydra Heads** with structured, level-scaled head and reaction counts.
+- **Phoenix Rebirth** with structured rebirth metadata, level-scaled fire burst, basic Reflex save data, and an inline burst template. Resurrection itself remains GM-adjudicated.
+- **Elemental Retaliation** that derives its damage type from the creature's elemental affinity and supplies a matching emanation effect/template.
+- Signature resolution now honors per-family priority and probability, so a Phoenix signature outranks a generic elemental signature when both match.
+- Native PF2E `@Template[...]` links remain available for all abilities with explicit area geometry, including Dragon Breath.
 - GM Core limited-use area-damage scaling from level -1 through 24 for the breath weapon.
 - Auto power budgets gain a signature allowance only when a signature power is actually selected; manually configured budgets remain exact.
 - Expanded category content for dragons, undead, constructs, elementals, plants/fungi, oozes, fiends/celestials/monitors, aberrations, and giants.
 - Signature mechanics are visible in the embedded editor and compiled PF2E action description.
-- Public helpers under `api.abilities.signature` for breath profiles, limited-area scaling, and signature planning.
-- Request schema v7, Blueprint/content schemas v10, Embedded Creature Editor contract v12; API/module version 0.7.1.
-- 159 automated tests pass.
+- Public helpers under `api.abilities.signature` for breath/elemental affinity profiles, limited-area scaling, and signature planning.
+- Request schema v7, Blueprint/content schemas v10, Embedded Creature Editor contract v12; API/module version 0.7.2.
+- 165 automated tests pass.
 
 
 ## What 0.6.5 fixes

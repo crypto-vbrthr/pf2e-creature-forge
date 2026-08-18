@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.2 – Signature Powers Expansion
+
+- Expanded the signature-power resolver beyond dragon breath with Troll Regeneration, Vampiric Drain, Hydra Heads, Phoenix Rebirth, and affinity-aware Elemental Retaliation.
+- Added core Troll, Vampire, Hydra, and Phoenix subtypes so the new signature families can be selected directly or discovered through external subtype sources.
+- Troll Regeneration creates an Effect Forge regeneration definition with level-scaled healing and acid/fire deactivation.
+- Vampiric Drain links a drained 1 target effect plus level-scaled temporary Hit Points for the creature.
+- Hydra Heads generates level-scaled head and reaction counts as structured mechanics.
+- Phoenix Rebirth creates a level-scaled fire burst, simple Reflex save metadata, an inline burst template, and structured once-per-creature rebirth metadata. Resurrection itself remains GM-adjudicated.
+- Elemental Retaliation derives its damage type from the elemental subtype and creates a matching emanation damage effect and inline template.
+- Signature candidate resolution now honors per-family priorities and chances, allowing iconic subtype-specific powers to outrank generic elemental signatures.
+- Added DE/EN localization and embedded fallback coverage for all new subtypes, abilities, effects, timing labels, and mechanics.
+
+
 ## 0.7.1 - Inline Area Templates
 
 - Added native PF2E `@Template[...]` inline template links to compiled creature abilities whenever explicit area geometry is available. Clicking the link places the matching measured template on the current scene.

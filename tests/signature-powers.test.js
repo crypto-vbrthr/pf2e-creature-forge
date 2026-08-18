@@ -145,3 +145,120 @@ test("expanded core ability library covers additional creature families", () => 
     assert.ok(ids.has(id), `missing expanded core ability ${id}`);
   }
 });
+
+test("forced troll signature produces level-scaled regeneration with acid/fire deactivation", () => {
+  const { registry } = setup();
+  const request = {
+    identity: { category: "giant", subtypes: ["troll"] },
+    abilities: { mode: "auto", count: 2, complexity: "standard", powerBudget: "auto", focus: [] },
+    sources: { abilities: [] },
+    generation: { variation: "balanced" }
+  };
+  const result = resolveSignaturePlan({ request, registry, level: 10, roleId: "brute", category: "giant", subtypes: ["troll"], random: new SeededRandom("troll-signature"), force: true });
+  assert.equal(result.ability.signature.kind, "troll-regeneration");
+  assert.ok(result.ability.mechanics.regeneration.value >= 3);
+  assert.deepEqual(result.ability.mechanics.regeneration.deactivatedBy, ["acid", "fire"]);
+  assert.deepEqual(result.ability.generatedEffects[0].definition.components[0], {
+    type: "regeneration",
+    value: result.ability.mechanics.regeneration.value,
+    deactivatedBy: ["acid", "fire"]
+  });
+  assert.equal(result.ability.applications[0].target, "self");
+  assert.deepEqual(result.ability.generatedEffects[0].definition.duration, { value: -1, unit: "unlimited", expiry: null });
+});
+
+test("forced vampire signature combines drained target effect with stolen vitality", () => {
+  const { registry } = setup();
+  const request = {
+    identity: { category: "undead", subtypes: ["vampire"] },
+    abilities: { mode: "auto", count: 2, complexity: "standard", powerBudget: "auto", focus: [] },
+    sources: { abilities: [] },
+    generation: { variation: "balanced" }
+  };
+  const result = resolveSignaturePlan({ request, registry, level: 8, roleId: "skirmisher", category: "undead", subtypes: ["vampire"], random: new SeededRandom("vampire-signature"), force: true });
+  assert.equal(result.ability.signature.kind, "vampiric-drain");
+  assert.equal(result.ability.mechanics.vampiricDrain.drained, 1);
+  assert.ok(result.ability.mechanics.vampiricDrain.temporaryHitPoints > 0);
+  assert.equal(result.ability.applications[0].ref, "pf2e-creature-forge.effect.drained-1");
+  assert.equal(result.ability.applications[1].target, "self");
+  assert.equal(result.ability.generatedEffects[0].definition.components[0].type, "temporaryHitPoints");
+  assert.equal(result.ability.generatedEffects[0].definition.duration.unit, "minutes");
+  assert.equal(registry.get("effect", "pf2e-creature-forge.effect.drained-1").definition.duration.unit, "unlimited");
+});
+
+test("forced hydra signature exposes structured head and reaction counts", () => {
+  const { registry } = setup();
+  const request = {
+    identity: { category: "beast", subtypes: ["hydra"] },
+    abilities: { mode: "auto", count: 2, complexity: "standard", powerBudget: "auto", focus: [] },
+    sources: { abilities: [] },
+    generation: { variation: "balanced" }
+  };
+  const result = resolveSignaturePlan({ request, registry, level: 12, roleId: "brute", category: "beast", subtypes: ["hydra"], random: new SeededRandom("hydra-signature"), force: true });
+  assert.equal(result.ability.signature.kind, "hydra-heads");
+  assert.ok(result.ability.mechanics.heads.count >= 3);
+  assert.ok(result.ability.mechanics.heads.reactionsPerRound >= 1);
+  assert.equal(result.ability.mechanics.heads.regrowth, true);
+});
+
+test("phoenix rebirth outranks generic elemental retaliation and compiles a burst template", () => {
+  const previous = globalThis.game;
+  globalThis.game = { i18n: { lang: "de", localize: (key) => key } };
+  try {
+    const { registry } = setup();
+    const request = {
+      identity: { category: "elemental", subtypes: ["phoenix", "fire"] },
+      abilities: { mode: "auto", count: 2, complexity: "standard", powerBudget: "auto", focus: [] },
+      sources: { abilities: [] },
+      generation: { variation: "balanced" }
+    };
+    const result = resolveSignaturePlan({ request, registry, level: 12, roleId: "magicalStriker", category: "elemental", subtypes: ["phoenix", "fire"], random: new SeededRandom("phoenix-signature"), force: true });
+    assert.equal(result.ability.signature.kind, "phoenix-rebirth");
+    assert.equal(result.ability.mechanics.rebirth.hitPointsPercent, 50);
+    assert.equal(result.ability.mechanics.area.shape, "burst");
+    assert.equal(result.ability.mechanics.damage.type, "fire");
+
+    const blueprint = setup().generator.generate({
+      identity: { name: "Ashwing", level: 12, role: "magicalStriker", category: "elemental", subtypes: ["phoenix", "fire"] },
+      abilities: { mode: "auto", count: 2, powerBudget: "auto" },
+      specialFeatures: { auras: { mode: "none" }, afflictions: { mode: "none" } },
+      spellcasting: { mode: "none" },
+      generation: { seed: "phoenix-compiled", variation: "balanced" }
+    });
+    const signature = blueprint.abilities.find((ability) => ability.signature?.kind === "phoenix-rebirth");
+    assert.ok(signature);
+    const source = compileActorSource(blueprint).actorSource;
+    const item = source.items.find((entry) => entry.flags?.["pf2e-creature-forge"]?.signature?.kind === "phoenix-rebirth");
+    assert.match(item.system.description.value, /@Template\[type:burst\|distance:(?:15|30)\]/);
+    assert.match(item.system.description.value, /Wiedergeburt/);
+  } finally {
+    globalThis.game = previous;
+  }
+});
+
+test("elemental retaliation follows the creature's elemental affinity", () => {
+  const { registry } = setup();
+  const request = {
+    identity: { category: "elemental", subtypes: ["electricity"] },
+    abilities: { mode: "auto", count: 2, complexity: "standard", powerBudget: "auto", focus: [] },
+    sources: { abilities: [] },
+    generation: { variation: "balanced" }
+  };
+  const result = resolveSignaturePlan({ request, registry, level: 8, roleId: "skirmisher", category: "elemental", subtypes: ["electricity"], random: new SeededRandom("elemental-signature"), force: true });
+  assert.equal(result.ability.signature.kind, "elemental-retaliation");
+  assert.equal(result.ability.signature.affinity, "electricity");
+  assert.equal(result.ability.mechanics.damage.type, "electricity");
+  assert.equal(result.ability.mechanics.area.shape, "emanation");
+  assert.equal(result.ability.generatedEffects[0].definition.components[0].damageType, "electricity");
+});
+
+test("expanded signature subtypes and ability families ship in core content", () => {
+  const { registry } = setup();
+  for (const subtype of ["troll", "vampire", "hydra", "phoenix"]) {
+    assert.ok(registry.resolve("subtype", subtype), `missing subtype ${subtype}`);
+  }
+  const ids = new Set(CORE_ABILITIES.map((ability) => ability.slug));
+  for (const id of ["troll-regeneration", "vampiric-drain", "hydra-heads", "phoenix-rebirth", "elemental-retaliation"]) {
+    assert.ok(ids.has(id), `missing signature ability ${id}`);
+  }
+});

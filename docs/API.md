@@ -1,6 +1,6 @@
-# Public API 0.7.1
+# Public API 0.7.2
 
-> **0.7.1 area-template presentation:** Compiled ability descriptions emit native PF2E `@Template[...]` links whenever `ability.mechanics.area` is present. No public schema change is required.
+> **0.7.2 area-template presentation:** Compiled ability descriptions emit native PF2E `@Template[...]` links whenever `ability.mechanics.area` is present. No public schema change is required.
 >
 > **0.7.0 signature powers:** `api.abilities.signature` exposes dynamic signature planning and the Dragon Breath profile/scaling helpers. Dragon Breath is stored as a normal generated ability plus a generated Effect Forge direct-damage resource.
 >
@@ -656,3 +656,8 @@ editor.destroy();
 ```
 
 The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v12 keeps source selection in the dedicated `sources` tab, adds loot Item-compendium selection plus loot controls/channel locks/rerolls, preserves spellcasting controls, and retains host-controllable `effectEditing`, `auraEditing`, and `afflictionEditing` capabilities for mounting the public Forge editors in the same editor workspace. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.
+
+
+### Signature powers 0.7.2
+
+`api.abilities.signature.resolveElementalSignatureProfile(subtypes)` resolves the same locale-neutral elemental affinity used by the new Elemental Retaliation signature family. `api.abilities.signature.plan(...)` can now return dragon-breath, troll-regeneration, vampiric-drain, hydra-heads, phoenix-rebirth, or elemental-retaliation abilities when their category/subtype requirements match.

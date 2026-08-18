@@ -156,6 +156,10 @@ const subtypes = [
   subtype("acid"),
   subtype("poison"),
   subtype("disease"),
+  subtype("troll", { supports: { categories: ["giant", "humanoid"] } }),
+  subtype("vampire", { supports: { categories: ["undead"] } }),
+  subtype("hydra", { supports: { categories: ["beast", "dragon"] } }),
+  subtype("phoenix", { supports: { categories: ["beast", "elemental", "celestial"] }, impliedSubtypes: ["fire"] }),
   subtype("cold", {
     defensiveAffinities: [
       { id: "cold-elemental-immunity", kind: "immunity", type: "cold", when: { categories: ["elemental"] }, priority: 60 },

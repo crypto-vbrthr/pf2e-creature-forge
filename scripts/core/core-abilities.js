@@ -65,7 +65,10 @@ export const CORE_EFFECTS = [
   }, { name: "Stupefied", img: "icons/svg/daze.svg", tags: ["mental", "debuff"] }),
   effect("slowed-1", "PF2E_CREATURE_FORGE.Effect.Slowed1", {
     components: [{ type: "condition", slug: "slowed", value: 1 }]
-  }, { name: "Slowed", img: "icons/svg/clockwork.svg", tags: ["control", "debuff"] })
+  }, { name: "Slowed", img: "icons/svg/clockwork.svg", tags: ["control", "debuff"] }),
+  effect("drained-1", "PF2E_CREATURE_FORGE.Effect.Drained1", {
+    components: [{ type: "condition", slug: "drained", value: 1 }]
+  }, { name: "Drained", img: "icons/svg/blood.svg", tags: ["void", "debuff"], duration: { value: -1, unit: "unlimited", expiry: null } })
 ];
 
 const ability = (slug, nameKey, descriptionKey, extra = {}) => ({
@@ -258,6 +261,31 @@ export const CORE_ABILITIES = [
   ability("hurl-debris", "PF2E_CREATURE_FORGE.Ability.HurlDebris.Name", "PF2E_CREATURE_FORGE.Ability.HurlDebris.Description", {
     actionCost: 2, tags: ["giant", "ranged", "area", "control"], mechanics: { area: { shape: "burst", distanceFeet: 10 } }, selection: { categories: ["giant"], minimumLevel: 2 },
     applications: [{ type: "effect", ref: `${MODULE_ID}.effect.clumsy-1`, target: "failed-save-targets", timing: "failed-save" }], baseWeight: 70
+  }),
+  ability("troll-regeneration", "PF2E_CREATURE_FORGE.Ability.TrollRegeneration.Name", "PF2E_CREATURE_FORGE.Ability.TrollRegeneration.Description", {
+    type: "passive", category: "defensive", powerCost: 3, tags: ["troll", "regeneration", "signature"],
+    selection: { categories: ["giant", "humanoid"], anySubtypes: ["troll"], minimumLevel: 3 },
+    signature: { kind: "troll-regeneration", priority: 115, budgetBonus: 3, chance: { conservative: 0.9, balanced: 0.98, experimental: 1 } }, baseWeight: 1000
+  }),
+  ability("vampiric-drain", "PF2E_CREATURE_FORGE.Ability.VampiricDrain.Name", "PF2E_CREATURE_FORGE.Ability.VampiricDrain.Description", {
+    actionCost: 1, category: "offensive", powerCost: 3, traits: ["void"], tags: ["vampire", "drain", "signature"],
+    selection: { categories: ["undead"], anySubtypes: ["vampire"], minimumLevel: 2 },
+    signature: { kind: "vampiric-drain", priority: 115, budgetBonus: 3, chance: { conservative: 0.85, balanced: 0.97, experimental: 1 } }, baseWeight: 1000
+  }),
+  ability("hydra-heads", "PF2E_CREATURE_FORGE.Ability.HydraHeads.Name", "PF2E_CREATURE_FORGE.Ability.HydraHeads.Description", {
+    type: "passive", category: "defensive", powerCost: 3, tags: ["hydra", "many-heads", "reaction", "signature"],
+    selection: { categories: ["beast", "dragon"], anySubtypes: ["hydra"], minimumLevel: 3 },
+    signature: { kind: "hydra-heads", priority: 125, budgetBonus: 3, chance: { conservative: 0.95, balanced: 1, experimental: 1 } }, baseWeight: 1000
+  }),
+  ability("phoenix-rebirth", "PF2E_CREATURE_FORGE.Ability.PhoenixRebirth.Name", "PF2E_CREATURE_FORGE.Ability.PhoenixRebirth.Description", {
+    type: "passive", category: "defensive", powerCost: 4, traits: ["fire"], tags: ["phoenix", "fire", "rebirth", "area", "signature"],
+    selection: { categories: ["beast", "elemental", "celestial"], anySubtypes: ["phoenix"], minimumLevel: 6 },
+    signature: { kind: "phoenix-rebirth", priority: 135, budgetBonus: 4, chance: { conservative: 0.95, balanced: 1, experimental: 1 } }, baseWeight: 1000
+  }),
+  ability("elemental-retaliation", "PF2E_CREATURE_FORGE.Ability.ElementalRetaliation.Name", "PF2E_CREATURE_FORGE.Ability.ElementalRetaliation.Description", {
+    type: "reaction", category: "offensive", powerCost: 2, tags: ["elemental", "energy", "reaction", "area", "signature"],
+    selection: { categories: ["elemental"], anySubtypes: ["fire", "cold", "electricity", "acid", "air", "water", "earth", "metal", "wood"], minimumLevel: 2 },
+    signature: { kind: "elemental-retaliation", priority: 80, budgetBonus: 2, chance: { conservative: 0.45, balanced: 0.7, experimental: 0.9 } }, baseWeight: 900
   }),
   ability("astral-displacement", "PF2E_CREATURE_FORGE.Ability.AstralDisplacement.Name", "PF2E_CREATURE_FORGE.Ability.AstralDisplacement.Description", {
     type: "reaction", category: "defensive", tags: ["astral", "ethereal", "movement", "reaction"], selection: { categories: ["astral", "ethereal"] }, baseWeight: 90

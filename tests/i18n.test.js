@@ -21,6 +21,9 @@ test("embedded Creature Forge catalog keeps German UI localized when Foundry ret
     assert.equal(localize("PF2E_CREATURE_FORGE.Loot.Ui.Title", "Creature Forge loot"), "Creature Forge: Beute");
     assert.equal(localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined", "Create loot"), "Beute erzeugen");
     assert.equal(localize("PF2E_CREATURE_FORGE.Trait.fear", "fear"), "Furcht");
+    assert.equal(localize("PF2E_CREATURE_FORGE.Ability.TrollRegeneration.Name", "troll-regeneration"), "Trollregeneration");
+    assert.equal(localize("PF2E_CREATURE_FORGE.Ability.PhoenixRebirth.Name", "phoenix-rebirth"), "Wiedergeburt aus der Glut");
+    assert.equal(localize("PF2E_CREATURE_FORGE.Runtime.Timing.Rebirth", "rebirth"), "Bei Wiedergeburt");
     assert.equal(format("PF2E_CREATURE_FORGE.Runtime.Applied", { name: "Gedeckt", count: 1 }, "fallback"), "Gedeckt wurde auf 1 Ziel(e) angewendet.");
     assert.equal(hasEmbeddedTranslation("PF2E_CREATURE_FORGE.Open", "de"), true);
   } finally {
