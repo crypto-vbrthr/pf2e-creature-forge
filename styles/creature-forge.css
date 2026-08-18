@@ -828,3 +828,9 @@
   .cf-deferred-loot-actions button,
   .cf-deferred-loot-footer button { width: 100%; }
 }
+
+/* 0.6.3 explicit deferred-loot header navigation feedback */
+.cf-deferred-loot-panel.cf-deferred-loot-highlight {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

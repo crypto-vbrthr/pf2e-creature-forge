@@ -198,6 +198,18 @@
 - Broader semantic spell tagging and source diagnostics.
 - Additional PF2E runtime edge-case coverage for spontaneous/prepared entries.
 
+## 0.6.3 - Deferred Loot Materialization & Sheet Entry Fix ✅
+
+- Explicit Beute/Loot sheet-header control for deferred Creature Forge loot.
+- PF2E-compatible salvage treasure source schema and sanitized copied hoard item sources.
+- Fail-safe Loot Actor materialization and non-fatal post-create UI/provenance steps.
+
+## 0.6.2 - Deferred Loot Label & UX Cleanup ✅
+
+- Clarify the combined deferred-loot action as **Beute erzeugen** / **Create loot**.
+- Keep the dedicated Creature Forge loot-panel title and explicit salvage/hoard actions.
+- Keep shipped and embedded fallback localizations synchronized.
+
 ## 0.6.1 - Deferred Loot UX ✅
 
 - GM-only NPC-sheet summary for deferred salvage and hoard/environment treasure.
@@ -238,3 +250,8 @@
 ## 1.0
 
 - Release hardening, migration policy, API stability commitment, and complete documentation.
+
+
+## 0.6.4 - Deferred Loot PF2e 8.4 Compatibility Fix ✅
+
+PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and reliable ApplicationV1 NPC-sheet Beute/Loot entry.

@@ -230,7 +230,7 @@ test("creating deferred loot from an NPC records the created Loot Actor per mate
 test("public createActor enriches an unresolved loot plan before runtime materialization", async () => {
   const previousGame = globalThis.game;
   const previousActor = globalThis.Actor;
-  const creatureModule = { id: MODULE_ID, active: true, version: "0.6.1", api: null };
+  const creatureModule = { id: MODULE_ID, active: true, version: "0.6.4", api: null };
   let lootCalls = 0;
   const lootModule = {
     id: "pf2e-loot-forge", active: true, version: "test",
@@ -276,4 +276,87 @@ test("public createActor enriches an unresolved loot plan before runtime materia
     globalThis.game = previousGame;
     globalThis.Actor = previousActor;
   }
+});
+
+test("deferred salvage uses PF2E treasure-compatible source shape and hoard copies are sanitized", async () => {
+  let received = null;
+  const integrations = { lootApi: {
+    createLootActorWithLoot: async (name, loot) => { received = { name, loot }; return { id: "loot", name }; }
+  } };
+  const bp = blueprint("dragon", "brute", 12);
+  bp.loot = {
+    channels: {
+      salvage: { result: { entries: [{ id: "scale", fallbackName: "Dragon scales", quantity: 2, valueGp: 7.5 }] } },
+      hoard: { result: { loot: {
+        coins: { gp: 10 },
+        pf2eItems: [{ _id: "compendium-id", name: "Ruby", type: "treasure", system: { description: { value: "" }, price: { value: { gp: 10 } }, quantity: 1, bulk: { value: 0 }, stackGroup: "" } }],
+        generatedItems: []
+      } } }
+    }
+  };
+
+  await new CreatureLootRuntime({ integrations }).createDeferredLootActor(bp);
+  assert.equal(received.loot.pf2eItems.length, 2);
+  assert.equal(received.loot.pf2eItems[0]._id, undefined);
+  const copied = received.loot.pf2eItems[0];
+  assert.equal(copied._id, undefined);
+  assert.equal(copied.system.stackGroup, undefined);
+  assert.equal(copied.system.category, null);
+  assert.deepEqual(copied.system.price.value, { gp: 10 });
+
+  const salvage = received.loot.pf2eItems[1];
+  assert.equal(salvage.type, "treasure");
+  assert.equal(salvage.system.stackGroup, undefined);
+  assert.equal(salvage.system.category, null);
+  assert.equal(salvage.system.level.value, 0);
+  assert.equal(salvage.system.size, "med");
+  assert.deepEqual(salvage.system.traits, { value: [], rarity: "common", otherTags: [] });
+  assert.deepEqual(salvage.system.bulk, { value: 0 });
+  assert.deepEqual(salvage.system.price.value, { gp: 7, sp: 5 });
+  assert.equal(salvage.system.quantity, 2);
+});
+
+test("deferred loot uses the PF2E-native writer instead of Loot Forge's legacy item writer and cleans up on failure", async () => {
+  const previousActor = globalThis.Actor;
+  let deleted = false;
+  let addLootCalled = false;
+  let oneShotCalled = false;
+  const created = {
+    id: "partial-loot",
+    name: "Partial",
+    system: { currency: {} },
+    async update() { return this; },
+    async createEmbeddedDocuments() { throw new Error("strict PF2E item validation"); },
+    async delete() { deleted = true; }
+  };
+  globalThis.Actor = { create: async () => created };
+  const bp = blueprint("dragon", "brute", 12);
+  bp.loot = { channels: { salvage: { result: { entries: [{ id: "scale", fallbackName: "Scales", quantity: 1, valueGp: 1 }] } }, hoard: { result: null } } };
+  const runtime = new CreatureLootRuntime({ integrations: { lootApi: {
+    addLootToActor: async () => { addLootCalled = true; },
+    createLootActorWithLoot: async () => { oneShotCalled = true; }
+  } } });
+  try {
+    await assert.rejects(() => runtime.createDeferredLootActor(bp, { includeHoard: false }), /strict PF2E item validation/);
+    assert.equal(addLootCalled, false);
+    assert.equal(oneShotCalled, false);
+    assert.equal(deleted, true);
+  } finally {
+    globalThis.Actor = previousActor;
+  }
+});
+
+test("successful deferred Loot Actor creation survives provenance persistence failure", async () => {
+  const bp = blueprint("dragon", "brute", 12);
+  bp.loot = { channels: { salvage: { result: null }, hoard: { result: { loot: { coins: { gp: 5 }, pf2eItems: [], generatedItems: [], totalValueGp: 5 } } } } };
+  const sourceActor = {
+    flags: { [MODULE_ID]: { blueprint: bp, loot: { materialized: {} } } },
+    async setFlag() { throw new Error("flag write denied"); }
+  };
+  const created = { id: "loot-ok", uuid: "Actor.loot-ok", name: "Loot OK" };
+  const runtime = new CreatureLootRuntime({ integrations: { lootApi: {
+    createLootActorWithLoot: async () => created
+  } } });
+  const result = await runtime.createDeferredLootActor(sourceActor, { includeSalvage: false, includeHoard: true });
+  assert.equal(result, created);
 });

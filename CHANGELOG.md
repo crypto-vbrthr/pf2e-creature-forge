@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.6.4 - Deferred Loot PF2e 8.4 Compatibility Fix
+
+- Fixed missing **Beute/Loot** header button on PF2e 8.4 NPC sheets by registering the legacy ApplicationV1 `getApplicationHeaderButtons` / `getActorSheetHeaderButtons` and render hook chain alongside Foundry v14 generic hooks.
+- Confirmed PF2e 8.4 NPC sheets still extend Foundry ApplicationV1 ActorSheet; the unrelated built-in **Bogen/Sheet** control is no longer treated as the Creature Forge loot entry point.
+- Added a PF2e 8.4 treasure-source normalizer: legacy `system.stackGroup`, `usage`, `apex`, `subitems`, and stale schema fields are removed before persistence; treasure category/default physical fields are normalized.
+- Fixed decimal treasure prices such as `7.5 gp`: PF2e 8.4 PriceField requires integer coin denominations, so values are converted to canonical pp/gp/sp/cp integers.
+- Deferred loot now uses the native Foundry/PF2e Actor + embedded Item writer in real Foundry worlds. Loot Forge remains the generator but its older persistence helper can no longer reintroduce pre-8.4 item fields.
+- Added regression coverage for PF2e 8.4 legacy sheet hooks and strict treasure source normalization.
+- Promoted API/module version to 0.6.4; request schema remains v7, Blueprint/content schemas remain v9, and Embedded Creature Editor contract remains v12.
+
+## 0.6.3 - Deferred Loot Materialization & Sheet Entry Fix
+
+- Added an explicit GM-only **Beute / Loot** ApplicationV2 header control for Creature Forge NPCs with deferred loot; it navigates to the Creature Forge loot panel instead of leaving discovery to PF2E's generic **Bogen / Sheet** control.
+- Fixed body-salvage treasure sources to match the PF2E/Loot Forge treasure schema by removing invalid creature-only `level`, `size`, and `traits` fields and using treasure-compatible bulk/stack fields.
+- Sanitized copied hoard item sources before embedding them in a deferred Loot Actor.
+- Hardened Loot Forge integration by preferring `addLootToActor()` when available, allowing Creature Forge to clean up an incomplete Actor if item/currency materialization throws.
+- Made provenance persistence, automatic Loot-Actor sheet opening, and source-sheet refresh non-fatal after successful creation so UI follow-up failures cannot masquerade as creation failures.
+- Added more useful materialization error details to the GM notification and console.
+- Promoted API/module version to 0.6.3; request schema remains v7, Blueprint/content schemas remain v9, and Embedded Creature Editor contract remains v12.
+- Expanded automated coverage to 145 passing tests.
+
+## 0.6.2 - Deferred Loot Label & UX Cleanup
+
+- Clarified the combined deferred-loot action label from **Gesamtbeute erzeugen** to **Beute erzeugen** in German and from **Create combined loot** to **Create loot** in English.
+- Kept the explicit **Creature Forge: Beute** panel title and the channel-specific **Überreste erzeugen** / **Hort erzeugen** actions unchanged so the NPC-sheet workflow is immediately distinguishable from Foundry's generic sheet controls.
+- Updated the embedded fallback localization catalog together with the shipped DE/EN language files, preventing raw or stale labels when Foundry localization returns keys unchanged.
+- Promoted API/module version to 0.6.2; request schema remains v7, Blueprint/content schemas remain v9, and Embedded Creature Editor contract remains v12.
+
 ## 0.6.1 - Deferred Loot UX
 
 - Added a GM-only deferred-loot panel to generated PF2E NPC sheets when body salvage and/or hoard/environment loot exists.

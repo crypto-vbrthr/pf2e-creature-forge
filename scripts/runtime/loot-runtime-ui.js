@@ -71,7 +71,7 @@ function buildPanel(actor) {
   if (sameActor) {
     footer = `<div class="cf-deferred-loot-footer">${button({ action: "open", channel: "both", icon: "fa-box-open", label: localize("PF2E_CREATURE_FORGE.Loot.Ui.OpenCombined", "Open loot") })}</div>`;
   } else if (summary.salvage.available && summary.hoard.available && !salvageActor && !hoardActor && !materialized.salvage && !materialized.hoard) {
-    footer = `<div class="cf-deferred-loot-footer">${button({ action: "create", channel: "both", icon: "fa-boxes-stacked", label: localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined", "Create combined loot") })}</div>`;
+    footer = `<div class="cf-deferred-loot-footer">${button({ action: "create", channel: "both", icon: "fa-boxes-stacked", label: localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined", "Create loot") })}</div>`;
   }
 
   return `<section class="cf-deferred-loot-panel" data-cf-deferred-loot-panel>
@@ -81,8 +81,32 @@ function buildPanel(actor) {
 }
 
 async function openActor(actor) {
-  if (!actor?.sheet?.render) return;
-  await actor.sheet.render({ force: true });
+  if (!actor?.sheet?.render) return false;
+  try {
+    await actor.sheet.render({ force: true });
+    return true;
+  } catch (error) {
+    console.warn(`${MODULE_ID} | Loot Actor was created but its sheet could not be opened automatically.`, error);
+    return false;
+  }
+}
+
+function hasDeferredLoot(actor) {
+  const blueprint = actor?.flags?.[MODULE_ID]?.blueprint;
+  const summary = summarizeDeferredLoot(blueprint);
+  return Boolean(summary.salvage.available || summary.hoard.available);
+}
+
+function scrollToLootPanel(application) {
+  const element = application?.element instanceof HTMLElement
+    ? application.element
+    : rootElement(application?.element);
+  const panel = element?.querySelector?.("[data-cf-deferred-loot-panel]");
+  if (!panel) return false;
+  panel.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  panel.classList.add("cf-deferred-loot-highlight");
+  globalThis.setTimeout?.(() => panel.classList.remove("cf-deferred-loot-highlight"), 1200);
+  return true;
 }
 
 export function initializeLootRuntimeUi({ createDeferredLootActor } = {}) {
@@ -127,25 +151,84 @@ export function initializeLootRuntimeUi({ createDeferredLootActor } = {}) {
       if (action !== "create") return;
       busy.add(key);
       target.setAttribute("disabled", "");
+      let created = null;
       try {
         const includeSalvage = channel === "salvage" || channel === "both";
         const includeHoard = channel === "hoard" || channel === "both";
-        const created = await createDeferredLootActor(actor, { includeSalvage, includeHoard });
-        globalThis.ui?.notifications?.info?.(format("PF2E_CREATURE_FORGE.Loot.Ui.Created", { name: created?.name ?? "" }, `Created ${created?.name ?? "loot"}.`));
-        await openActor(created);
-        await application?.render?.(false);
+        created = await createDeferredLootActor(actor, { includeSalvage, includeHoard });
       } catch (error) {
         console.error(`${MODULE_ID} | Deferred loot creation failed.`, error);
-        globalThis.ui?.notifications?.error?.(localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed", "Deferred loot could not be created."));
+        const detail = error?.message ? ` (${error.message})` : "";
+        globalThis.ui?.notifications?.error?.(`${localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed", "Deferred loot could not be created.")}${detail}`);
         target.removeAttribute("disabled");
+        busy.delete(key);
+        return;
+      }
+
+      globalThis.ui?.notifications?.info?.(format("PF2E_CREATURE_FORGE.Loot.Ui.Created", { name: created?.name ?? "" }, `Created ${created?.name ?? "loot"}.`));
+      // Opening the new sheet or refreshing the source sheet is convenience
+      // work only. A failure here must never be reported as failed creation.
+      await openActor(created);
+      try {
+        await application?.render?.({ force: false });
+      } catch (error) {
+        console.warn(`${MODULE_ID} | Loot Actor was created but the source sheet could not be refreshed.`, error);
       } finally {
         busy.delete(key);
       }
     });
   };
 
-  // PF2e v8.x runs on Foundry v14 and uses ApplicationV2 actor sheets. The V1
-  // hook remains as a compatibility fallback for alternate/legacy Actor sheets.
+  // Add an explicit "Loot / Beute" header control. PF2e 8.4's NPC sheet is
+  // still an ApplicationV1 ActorSheet on Foundry v14, so the legacy class-name
+  // hooks are the primary path. ApplicationV2 remains supported for future or
+  // alternate sheets.
+  Hooks.on("getHeaderControlsApplicationV2", (application, controls) => {
+    const actor = actorFromApplication(application);
+    if (!actor || actor.type !== "npc" || !globalThis.game?.user?.isGM || !hasDeferredLoot(actor)) return;
+    if (controls.some?.((entry) => entry?.action === "pf2e-creature-forge-loot")) return;
+    controls.unshift({
+      action: "pf2e-creature-forge-loot",
+      label: localize("PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl", "Loot"),
+      icon: "fa-solid fa-box-open",
+      visible: true,
+      onClick: () => {
+        if (scrollToLootPanel(application)) return;
+        application?.render?.({ force: true });
+        globalThis.setTimeout?.(() => scrollToLootPanel(application), 0);
+      }
+    });
+  });
+
+  const addV1HeaderButton = (application, buttons) => {
+    const actor = actorFromApplication(application);
+    if (!actor || actor.type !== "npc" || !globalThis.game?.user?.isGM || !hasDeferredLoot(actor)) return;
+    if (buttons.some?.((entry) => entry?.class === "pf2e-creature-forge-loot")) return;
+    buttons.unshift({
+      label: localize("PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl", "Loot"),
+      class: "pf2e-creature-forge-loot",
+      icon: "fas fa-box-open",
+      onclick: () => {
+        if (scrollToLootPanel(application)) return;
+        application?.render?.(true);
+        globalThis.setTimeout?.(() => scrollToLootPanel(application), 0);
+      }
+    });
+  };
+
+  // Foundry v14 documents the generic V1 hook as getApplicationV1HeaderButtons,
+  // while legacy ApplicationV1 itself still fires class-name hooks such as
+  // getApplicationHeaderButtons/getActorSheetHeaderButtons. Register all three
+  // and deduplicate by our CSS class so PF2e's V1 NPC sheet cannot miss it.
+  Hooks.on("getApplicationV1HeaderButtons", addV1HeaderButton);
+  Hooks.on("getApplicationHeaderButtons", addV1HeaderButton);
+  Hooks.on("getActorSheetHeaderButtons", addV1HeaderButton);
+
+  // Likewise support both the v14 generic render hook names and the legacy
+  // class-name hooks fired by PF2e's ApplicationV1 NPC sheet. buildPanel() is
+  // idempotent, so duplicate inheritance-chain hook calls are harmless.
   Hooks.on("renderApplicationV2", render);
   Hooks.on("renderApplicationV1", render);
+  Hooks.on("renderApplication", render);
+  Hooks.on("renderActorSheet", render);
 }

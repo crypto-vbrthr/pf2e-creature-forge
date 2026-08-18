@@ -57,7 +57,9 @@ export class ForgeIntegrationHub {
       loot: integrationStatus(IDS.loot, {
         embeddedEditor: (api) => typeof api.createEmbeddedEditor === "function",
         generateCreatureLoot: (api) => typeof api.generateLootForCreature === "function",
-        generateCreatureInventory: (api) => typeof api.generateInventoryForCreature === "function"
+        generateCreatureInventory: (api) => typeof api.generateInventoryForCreature === "function",
+        addLootToActor: (api) => typeof api.addLootToActor === "function",
+        createLootActorWithLoot: (api) => typeof api.createLootActorWithLoot === "function"
       })
     };
   }

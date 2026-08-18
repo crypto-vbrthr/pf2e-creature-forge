@@ -585,12 +585,13 @@ const CATALOGS = Object.freeze({
     "PF2E_CREATURE_FORGE.Loot.Ui.CreateHoard": "Hort erzeugen",
     "PF2E_CREATURE_FORGE.Loot.Ui.RecreateHoard": "Hort neu erzeugen",
     "PF2E_CREATURE_FORGE.Loot.Ui.OpenHoard": "Hort öffnen",
-    "PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined": "Gesamtbeute erzeugen",
+    "PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined": "Beute erzeugen",
     "PF2E_CREATURE_FORGE.Loot.Ui.OpenCombined": "Beute öffnen",
     "PF2E_CREATURE_FORGE.Loot.Ui.MissingActor": "vorheriger Beute-Actor fehlt",
     "PF2E_CREATURE_FORGE.Loot.Ui.ActorMissing": "Der zuvor erzeugte Beute-Actor existiert nicht mehr.",
     "PF2E_CREATURE_FORGE.Loot.Ui.Created": "{name} wurde erzeugt.",
-    "PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed": "Die zurückgestellte Beute konnte nicht erzeugt werden."
+    "PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed": "Die zurückgestellte Beute konnte nicht erzeugt werden.",
+    "PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl": "Beute"
   },
   "en": {
     "PF2E_CREATURE_FORGE.WindowTitle": "PF2E Creature Forge",
@@ -1175,12 +1176,13 @@ const CATALOGS = Object.freeze({
     "PF2E_CREATURE_FORGE.Loot.Ui.CreateHoard": "Create hoard",
     "PF2E_CREATURE_FORGE.Loot.Ui.RecreateHoard": "Recreate hoard",
     "PF2E_CREATURE_FORGE.Loot.Ui.OpenHoard": "Open hoard",
-    "PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined": "Create combined loot",
+    "PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined": "Create loot",
     "PF2E_CREATURE_FORGE.Loot.Ui.OpenCombined": "Open loot",
     "PF2E_CREATURE_FORGE.Loot.Ui.MissingActor": "previous Loot Actor missing",
     "PF2E_CREATURE_FORGE.Loot.Ui.ActorMissing": "The previously created Loot Actor no longer exists.",
     "PF2E_CREATURE_FORGE.Loot.Ui.Created": "Created {name}.",
-    "PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed": "Deferred loot could not be created."
+    "PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed": "Deferred loot could not be created.",
+    "PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl": "Loot"
   }
 });
 function configuredLanguage() {

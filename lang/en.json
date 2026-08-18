@@ -581,10 +581,11 @@
   "PF2E_CREATURE_FORGE.Loot.Ui.CreateHoard": "Create hoard",
   "PF2E_CREATURE_FORGE.Loot.Ui.RecreateHoard": "Recreate hoard",
   "PF2E_CREATURE_FORGE.Loot.Ui.OpenHoard": "Open hoard",
-  "PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined": "Create combined loot",
+  "PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined": "Create loot",
   "PF2E_CREATURE_FORGE.Loot.Ui.OpenCombined": "Open loot",
   "PF2E_CREATURE_FORGE.Loot.Ui.MissingActor": "previous Loot Actor missing",
   "PF2E_CREATURE_FORGE.Loot.Ui.ActorMissing": "The previously created Loot Actor no longer exists.",
   "PF2E_CREATURE_FORGE.Loot.Ui.Created": "Created {name}.",
-  "PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed": "Deferred loot could not be created."
+  "PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed": "Deferred loot could not be created.",
+  "PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl": "Loot"
 }

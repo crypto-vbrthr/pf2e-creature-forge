@@ -18,6 +18,8 @@ test("embedded Creature Forge catalog keeps German UI localized when Foundry ret
     assert.equal(localize("PF2E_CREATURE_FORGE.Runtime.AfflictionDelivery", "Delivery"), "Übertragung");
     assert.equal(localize("PF2E_CREATURE_FORGE.Runtime.AfflictionTrigger.OnDamage", "on-damage"), "Bei verursachtem Schaden");
     assert.equal(localize("PF2E_CREATURE_FORGE.Runtime.AfflictionApplication.Automatic", "automatic"), "Automatisch");
+    assert.equal(localize("PF2E_CREATURE_FORGE.Loot.Ui.Title", "Creature Forge loot"), "Creature Forge: Beute");
+    assert.equal(localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined", "Create loot"), "Beute erzeugen");
     assert.equal(localize("PF2E_CREATURE_FORGE.Trait.fear", "fear"), "Furcht");
     assert.equal(format("PF2E_CREATURE_FORGE.Runtime.Applied", { name: "Gedeckt", count: 1 }, "fallback"), "Gedeckt wurde auf 1 Ziel(e) angewendet.");
     assert.equal(hasEmbeddedTranslation("PF2E_CREATURE_FORGE.Open", "de"), true);
@@ -32,6 +34,7 @@ test("embedded catalog follows English Foundry language", () => {
   try {
     assert.equal(localize("PF2E_CREATURE_FORGE.Action.Generate", "Generate"), "Generate");
     assert.equal(localize("PF2E_CREATURE_FORGE.Ability.DefensiveBrace.Name", "defensive-brace"), "Defensive Brace");
+    assert.equal(localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined", "Create loot"), "Create loot");
   } finally {
     globalThis.game = previous;
   }

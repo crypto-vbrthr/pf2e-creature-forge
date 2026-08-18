@@ -1,6 +1,6 @@
-# Public API 0.6.1
+# Public API 0.6.4
 
-> **0.6.1 deferred-loot UX:** Generated Creature Forge NPC sheets expose deferred salvage/hoard to GMs and persist the created Loot Actor reference. The underlying public API remains `api.runtime.createDeferredLootActor(actorOrBlueprint, options)` / `api.loot.createLootActor(...)`.
+> **0.6.4 deferred-loot compatibility hardening:** PF2e 8.4 still renders its NPC sheet as an ApplicationV1 ActorSheet, so Creature Forge now binds both legacy and v14-generic sheet hooks. Deferred treasure is normalized to the strict PF2e 8.4 Treasure schema and materialized through Foundry/PF2e directly. The public API remains `api.runtime.createDeferredLootActor(actorOrBlueprint, options)` / `api.loot.createLootActor(...)`.
 >
 > **0.6.0 loot integration:** Creature generation now carries a first-class loot plan. Loot Forge/Item Forge enrichment is asynchronous, while `api.createActor()` automatically resolves an unresolved loot plan before compiling the NPC. Carried loot and deferred salvage/hoard remain deliberately separate.
 
