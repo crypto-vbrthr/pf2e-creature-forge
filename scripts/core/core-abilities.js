@@ -53,7 +53,19 @@ export const CORE_EFFECTS = [
   }, { name: "Guarded", img: "icons/svg/shield.svg", tags: ["defense", "self-buff"] }),
   effect("weakened-will", "PF2E_CREATURE_FORGE.Effect.WeakenedWill", {
     components: [{ type: "modifier", selector: "will", value: -1, modifierType: "status" }]
-  }, { name: "Weakened Will", img: "icons/svg/terror.svg", tags: ["mental", "debuff"] })
+  }, { name: "Weakened Will", img: "icons/svg/terror.svg", tags: ["mental", "debuff"] }),
+  effect("clumsy-1", "PF2E_CREATURE_FORGE.Effect.Clumsy1", {
+    components: [{ type: "condition", slug: "clumsy", value: 1 }]
+  }, { name: "Clumsy", img: "icons/svg/falling.svg", tags: ["control", "debuff"] }),
+  effect("sickened-1", "PF2E_CREATURE_FORGE.Effect.Sickened1", {
+    components: [{ type: "condition", slug: "sickened", value: 1 }]
+  }, { name: "Sickened", img: "icons/svg/poison.svg", tags: ["debuff"] }),
+  effect("stupefied-1", "PF2E_CREATURE_FORGE.Effect.Stupefied1", {
+    components: [{ type: "condition", slug: "stupefied", value: 1 }]
+  }, { name: "Stupefied", img: "icons/svg/daze.svg", tags: ["mental", "debuff"] }),
+  effect("slowed-1", "PF2E_CREATURE_FORGE.Effect.Slowed1", {
+    components: [{ type: "condition", slug: "slowed", value: 1 }]
+  }, { name: "Slowed", img: "icons/svg/clockwork.svg", tags: ["control", "debuff"] })
 ];
 
 const ability = (slug, nameKey, descriptionKey, extra = {}) => ({
@@ -73,6 +85,9 @@ const ability = (slug, nameKey, descriptionKey, extra = {}) => ({
   synergy: extra.synergy ?? {},
   applications: extra.applications ?? [],
   requirements: extra.requirements ?? {},
+  powerCost: extra.powerCost ?? undefined,
+  signature: extra.signature ?? null,
+  mechanics: extra.mechanics ?? null,
   img: extra.img ?? "systems/pf2e/icons/actions/OneAction.webp"
 });
 
@@ -100,11 +115,12 @@ export const CORE_ABILITIES = [
   }),
   ability("terrifying-roar", "PF2E_CREATURE_FORGE.Ability.TerrifyingRoar.Name", "PF2E_CREATURE_FORGE.Ability.TerrifyingRoar.Description", {
     actionCost: 2, traits: ["auditory", "emotion", "fear", "mental"], tags: ["fear", "control", "area"],
+    mechanics: { area: { shape: "emanation", distanceFeet: 30 } },
     selection: { categories: ["animal", "beast", "dragon", "fiend"], minimumLevel: 3 },
     applications: [{ type: "effect", ref: `${MODULE_ID}.effect.frightened-1`, target: "failed-save-targets", timing: "failed-save" }], baseWeight: 65
   }),
   ability("tail-sweep", "PF2E_CREATURE_FORGE.Ability.TailSweep.Name", "PF2E_CREATURE_FORGE.Ability.TailSweep.Description", {
-    actionCost: 2, tags: ["area", "control", "strike"], selection: { categories: ["dragon", "beast"], minimumLevel: 3 }, baseWeight: 65
+    actionCost: 2, tags: ["area", "control", "strike"], mechanics: { area: { shape: "cone", distanceFeet: 15 } }, selection: { categories: ["dragon", "beast"], minimumLevel: 3 }, baseWeight: 65
   }),
   ability("draconic-majesty", "PF2E_CREATURE_FORGE.Ability.DraconicMajesty.Name", "PF2E_CREATURE_FORGE.Ability.DraconicMajesty.Description", {
     type: "passive", category: "defensive", tags: ["dragon", "fear", "presence"], selection: { categories: ["dragon"] }, baseWeight: 55
@@ -115,6 +131,7 @@ export const CORE_ABILITIES = [
   }),
   ability("terrifying-moan", "PF2E_CREATURE_FORGE.Ability.TerrifyingMoan.Name", "PF2E_CREATURE_FORGE.Ability.TerrifyingMoan.Description", {
     actionCost: 2, traits: ["auditory", "emotion", "fear", "mental"], tags: ["ghost", "fear", "area", "control"],
+    mechanics: { area: { shape: "emanation", distanceFeet: 30 } },
     selection: { categories: ["undead"], anySubtypes: ["ghost", "incorporeal"], minimumLevel: 3 },
     applications: [{ type: "effect", ref: `${MODULE_ID}.effect.frightened-1`, target: "failed-save-targets", timing: "failed-save" }], baseWeight: 100
   }),
@@ -130,10 +147,10 @@ export const CORE_ABILITIES = [
     applications: [{ type: "effect", ref: `${MODULE_ID}.effect.guarded`, target: "self", timing: "trigger" }], baseWeight: 75
   }),
   ability("elemental-burst", "PF2E_CREATURE_FORGE.Ability.ElementalBurst.Name", "PF2E_CREATURE_FORGE.Ability.ElementalBurst.Description", {
-    actionCost: 2, tags: ["elemental", "area", "energy"], selection: { categories: ["elemental"], minimumLevel: 1 }, baseWeight: 80
+    actionCost: 2, tags: ["elemental", "area", "energy"], mechanics: { area: { shape: "emanation", distanceFeet: 15 } }, selection: { categories: ["elemental"], minimumLevel: 1 }, baseWeight: 80
   }),
   ability("burning-wake", "PF2E_CREATURE_FORGE.Ability.BurningWake.Name", "PF2E_CREATURE_FORGE.Ability.BurningWake.Description", {
-    actionCost: 2, tags: ["fire", "movement", "area"], selection: { anySubtypes: ["fire"], minimumLevel: 2 }, baseWeight: 95
+    actionCost: 2, tags: ["fire", "movement", "area"], mechanics: { area: { shape: "line", distanceFeet: 30 } }, selection: { anySubtypes: ["fire"], minimumLevel: 2 }, baseWeight: 95
   }),
   ability("whirlwind-step", "PF2E_CREATURE_FORGE.Ability.WhirlwindStep.Name", "PF2E_CREATURE_FORGE.Ability.WhirlwindStep.Description", {
     actionCost: 1, category: "defensive", tags: ["air", "movement"], selection: { anySubtypes: ["air"] },
@@ -152,7 +169,7 @@ export const CORE_ABILITIES = [
     applications: [{ type: "effect", ref: `${MODULE_ID}.effect.weakened-will`, target: "failed-save-target", timing: "failed-save" }], baseWeight: 55
   }),
   ability("grasping-roots", "PF2E_CREATURE_FORGE.Ability.GraspingRoots.Name", "PF2E_CREATURE_FORGE.Ability.GraspingRoots.Description", {
-    actionCost: 2, tags: ["plant", "control", "area"], selection: { categories: ["plant", "fungus"], minimumLevel: 2 },
+    actionCost: 2, tags: ["plant", "control", "area"], mechanics: { area: { shape: "emanation", distanceFeet: 15 } }, selection: { categories: ["plant", "fungus"], minimumLevel: 2 },
     applications: [{ type: "effect", ref: `${MODULE_ID}.effect.hampered-10`, target: "failed-save-targets", timing: "failed-save" }], baseWeight: 85
   }),
   ability("spore-flash", "PF2E_CREATURE_FORGE.Ability.SporeFlash.Name", "PF2E_CREATURE_FORGE.Ability.SporeFlash.Description", {
@@ -164,7 +181,7 @@ export const CORE_ABILITIES = [
     applications: [{ type: "effect", ref: `${MODULE_ID}.effect.off-guard`, target: "target", timing: "on-hit" }], baseWeight: 85
   }),
   ability("swarming-assault", "PF2E_CREATURE_FORGE.Ability.SwarmingAssault.Name", "PF2E_CREATURE_FORGE.Ability.SwarmingAssault.Description", {
-    actionCost: 2, tags: ["swarm", "area", "movement"], selection: { anySubtypes: ["swarm"] }, baseWeight: 100
+    actionCost: 2, tags: ["swarm", "area", "movement"], mechanics: { area: { shape: "line", distanceFeet: 30 } }, selection: { anySubtypes: ["swarm"] }, baseWeight: 100
   }),
   ability("tactical-feint", "PF2E_CREATURE_FORGE.Ability.TacticalFeint.Name", "PF2E_CREATURE_FORGE.Ability.TacticalFeint.Description", {
     actionCost: 1, tags: ["humanoid", "tactical", "control"], selection: { categories: ["humanoid"], roles: ["soldier", "skillParagon", "skirmisher"] },
@@ -172,6 +189,75 @@ export const CORE_ABILITIES = [
   }),
   ability("commanding-shout", "PF2E_CREATURE_FORGE.Ability.CommandingShout.Name", "PF2E_CREATURE_FORGE.Ability.CommandingShout.Description", {
     actionCost: 1, category: "defensive", traits: ["auditory"], tags: ["humanoid", "leader", "support"], selection: { categories: ["humanoid"], roles: ["soldier"] }, baseWeight: 45
+  }),
+  ability("dragon-breath", "PF2E_CREATURE_FORGE.Ability.DragonBreath.Name", "PF2E_CREATURE_FORGE.Ability.DragonBreath.Description", {
+    actionCost: 2, powerCost: 3, traits: [], tags: ["dragon", "area", "energy", "signature"],
+    selection: { categories: ["dragon"] }, signature: { kind: "dragon-breath", priority: 100, budgetBonus: 3 }, baseWeight: 1000
+  }),
+  ability("wing-buffet", "PF2E_CREATURE_FORGE.Ability.WingBuffet.Name", "PF2E_CREATURE_FORGE.Ability.WingBuffet.Description", {
+    actionCost: 2, tags: ["dragon", "area", "control"], mechanics: { area: { shape: "cone", distanceFeet: 15 } }, selection: { categories: ["dragon"], minimumLevel: 3 },
+    applications: [{ type: "effect", ref: `${MODULE_ID}.effect.clumsy-1`, target: "failed-save-targets", timing: "failed-save" }], baseWeight: 80
+  }),
+  ability("life-drain", "PF2E_CREATURE_FORGE.Ability.LifeDrain.Name", "PF2E_CREATURE_FORGE.Ability.LifeDrain.Description", {
+    actionCost: 2, traits: ["void"], tags: ["undead", "void", "debuff"], selection: { categories: ["undead"], minimumLevel: 2 },
+    applications: [{ type: "effect", ref: `${MODULE_ID}.effect.enfeebled-1`, target: "target", timing: "on-hit" }], baseWeight: 75
+  }),
+  ability("deathless-recovery", "PF2E_CREATURE_FORGE.Ability.DeathlessRecovery.Name", "PF2E_CREATURE_FORGE.Ability.DeathlessRecovery.Description", {
+    type: "reaction", category: "defensive", tags: ["undead", "recovery", "reaction"], selection: { categories: ["undead"], minimumLevel: 4 }, baseWeight: 55
+  }),
+  ability("emergency-repair", "PF2E_CREATURE_FORGE.Ability.EmergencyRepair.Name", "PF2E_CREATURE_FORGE.Ability.EmergencyRepair.Description", {
+    actionCost: 2, category: "defensive", tags: ["construct", "repair", "healing"], selection: { categories: ["construct"] }, baseWeight: 70
+  }),
+  ability("unstable-discharge", "PF2E_CREATURE_FORGE.Ability.UnstableDischarge.Name", "PF2E_CREATURE_FORGE.Ability.UnstableDischarge.Description", {
+    actionCost: 2, tags: ["construct", "area", "energy"], mechanics: { area: { shape: "emanation", distanceFeet: 15 } }, selection: { categories: ["construct"], minimumLevel: 3 },
+    applications: [{ type: "effect", ref: `${MODULE_ID}.effect.dazzled`, target: "failed-save-targets", timing: "failed-save" }], baseWeight: 65
+  }),
+  ability("elemental-surge", "PF2E_CREATURE_FORGE.Ability.ElementalSurge.Name", "PF2E_CREATURE_FORGE.Ability.ElementalSurge.Description", {
+    actionCost: 2, tags: ["elemental", "energy", "power"], selection: { categories: ["elemental"] }, baseWeight: 80
+  }),
+  ability("living-hazard", "PF2E_CREATURE_FORGE.Ability.LivingHazard.Name", "PF2E_CREATURE_FORGE.Ability.LivingHazard.Description", {
+    type: "passive", category: "defensive", tags: ["elemental", "hazard", "area"], mechanics: { area: { shape: "emanation", distanceFeet: 5 } }, selection: { categories: ["elemental"], minimumLevel: 3 }, baseWeight: 60
+  }),
+  ability("entangling-tendrils", "PF2E_CREATURE_FORGE.Ability.EntanglingTendrils.Name", "PF2E_CREATURE_FORGE.Ability.EntanglingTendrils.Description", {
+    actionCost: 2, tags: ["plant", "fungus", "control", "reach"], selection: { categories: ["plant", "fungus"] },
+    applications: [{ type: "effect", ref: `${MODULE_ID}.effect.hampered-10`, target: "failed-save-targets", timing: "failed-save" }], baseWeight: 80
+  }),
+  ability("spore-bloom", "PF2E_CREATURE_FORGE.Ability.SporeBloom.Name", "PF2E_CREATURE_FORGE.Ability.SporeBloom.Description", {
+    actionCost: 2, traits: ["poison"], tags: ["fungus", "spore", "poison", "area"], mechanics: { area: { shape: "cone", distanceFeet: 15 } }, selection: { categories: ["fungus"] },
+    applications: [{ type: "effect", ref: `${MODULE_ID}.effect.sickened-1`, target: "failed-save-targets", timing: "failed-save" }], baseWeight: 90
+  }),
+  ability("adhesive-body", "PF2E_CREATURE_FORGE.Ability.AdhesiveBody.Name", "PF2E_CREATURE_FORGE.Ability.AdhesiveBody.Description", {
+    type: "passive", category: "defensive", tags: ["ooze", "adhesive", "control"], selection: { categories: ["ooze"] }, baseWeight: 75
+  }),
+  ability("corrosive-splash", "PF2E_CREATURE_FORGE.Ability.CorrosiveSplash.Name", "PF2E_CREATURE_FORGE.Ability.CorrosiveSplash.Description", {
+    actionCost: 2, traits: ["acid"], tags: ["ooze", "acid", "area"], mechanics: { area: { shape: "emanation", distanceFeet: 10 } }, selection: { categories: ["ooze"], minimumLevel: 2 },
+    applications: [{ type: "effect", ref: `${MODULE_ID}.effect.clumsy-1`, target: "failed-save-targets", timing: "failed-save" }], baseWeight: 65
+  }),
+  ability("unholy-rebuke", "PF2E_CREATURE_FORGE.Ability.UnholyRebuke.Name", "PF2E_CREATURE_FORGE.Ability.UnholyRebuke.Description", {
+    type: "reaction", traits: ["unholy"], tags: ["fiend", "unholy", "reaction", "debuff"], selection: { categories: ["fiend"], minimumLevel: 3 },
+    applications: [{ type: "effect", ref: `${MODULE_ID}.effect.frightened-1`, target: "target", timing: "trigger" }], baseWeight: 70
+  }),
+  ability("radiant-rebuke", "PF2E_CREATURE_FORGE.Ability.RadiantRebuke.Name", "PF2E_CREATURE_FORGE.Ability.RadiantRebuke.Description", {
+    type: "reaction", traits: ["holy"], tags: ["celestial", "holy", "reaction", "control"], selection: { categories: ["celestial"], minimumLevel: 3 },
+    applications: [{ type: "effect", ref: `${MODULE_ID}.effect.dazzled`, target: "target", timing: "trigger" }], baseWeight: 75
+  }),
+  ability("planar-correction", "PF2E_CREATURE_FORGE.Ability.PlanarCorrection.Name", "PF2E_CREATURE_FORGE.Ability.PlanarCorrection.Description", {
+    actionCost: 2, traits: ["mental"], tags: ["monitor", "control", "mental"], selection: { categories: ["monitor"], minimumLevel: 4 },
+    applications: [{ type: "effect", ref: `${MODULE_ID}.effect.stupefied-1`, target: "failed-save-target", timing: "failed-save" }], baseWeight: 85
+  }),
+  ability("psychic-pulse", "PF2E_CREATURE_FORGE.Ability.PsychicPulse.Name", "PF2E_CREATURE_FORGE.Ability.PsychicPulse.Description", {
+    actionCost: 2, traits: ["mental"], tags: ["aberration", "mental", "area", "control"], mechanics: { area: { shape: "emanation", distanceFeet: 30 } }, selection: { categories: ["aberration"] },
+    applications: [{ type: "effect", ref: `${MODULE_ID}.effect.stupefied-1`, target: "failed-save-targets", timing: "failed-save" }], baseWeight: 85
+  }),
+  ability("spatial-twitch", "PF2E_CREATURE_FORGE.Ability.SpatialTwitch.Name", "PF2E_CREATURE_FORGE.Ability.SpatialTwitch.Description", {
+    type: "reaction", category: "defensive", tags: ["aberration", "movement", "reaction"], selection: { categories: ["aberration"], minimumLevel: 3 }, baseWeight: 70
+  }),
+  ability("sweeping-blow", "PF2E_CREATURE_FORGE.Ability.SweepingBlow.Name", "PF2E_CREATURE_FORGE.Ability.SweepingBlow.Description", {
+    actionCost: 2, tags: ["giant", "area", "strike"], mechanics: { area: { shape: "cone", distanceFeet: 15 } }, selection: { categories: ["giant"] }, baseWeight: 90
+  }),
+  ability("hurl-debris", "PF2E_CREATURE_FORGE.Ability.HurlDebris.Name", "PF2E_CREATURE_FORGE.Ability.HurlDebris.Description", {
+    actionCost: 2, tags: ["giant", "ranged", "area", "control"], mechanics: { area: { shape: "burst", distanceFeet: 10 } }, selection: { categories: ["giant"], minimumLevel: 2 },
+    applications: [{ type: "effect", ref: `${MODULE_ID}.effect.clumsy-1`, target: "failed-save-targets", timing: "failed-save" }], baseWeight: 70
   }),
   ability("astral-displacement", "PF2E_CREATURE_FORGE.Ability.AstralDisplacement.Name", "PF2E_CREATURE_FORGE.Ability.AstralDisplacement.Description", {
     type: "reaction", category: "defensive", tags: ["astral", "ethereal", "movement", "reaction"], selection: { categories: ["astral", "ethereal"] }, baseWeight: 90

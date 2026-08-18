@@ -3,6 +3,7 @@ import { validateBlueprint } from "./validator.js";
 import { resolveAttackNameKey } from "./attack-localization.js";
 import { MODULE_VERSION } from "../constants.js";
 import { localize } from "../i18n.js";
+import { abilityAreaTemplateInline, abilityMechanicsLabel } from "../ability-presentation.js";
 
 function localizeAttackName(attack) {
   const nameKey = resolveAttackNameKey(attack);
@@ -93,6 +94,12 @@ export function buildAbilityDescription(ability, effectResources = new Map(), {
   runtimeLinks = {}, actorUuid = null, runtimeAvailable = false
 } = {}) {
   const description = localizeKey(ability?.descriptionKey, ability?.description ?? "");
+  const mechanics = abilityMechanicsLabel(ability);
+  const mechanicsNote = mechanics ? `<div class="pf2e-creature-forge-ability-mechanics"><strong>${localizeKey("PF2E_CREATURE_FORGE.Signature.Mechanics", "Mechanics")}:</strong> ${escapeAttribute(mechanics)}</div>` : "";
+  const areaTemplate = abilityAreaTemplateInline(ability);
+  const areaTemplateNote = areaTemplate
+    ? `<div class="pf2e-creature-forge-area-template"><strong>${localizeKey("PF2E_CREATURE_FORGE.Signature.AreaTemplate", "Area template")}:</strong> ${areaTemplate}</div>`
+    : "";
   const effectApplications = (ability?.applications ?? [])
     .map((application, applicationIndex) => ({ application, applicationIndex }))
     .filter(({ application }) => application.type === "effect" && application.ref);
@@ -115,7 +122,7 @@ export function buildAbilityDescription(ability, effectResources = new Map(), {
       effectNote = `<div class="pf2e-creature-forge-linked-effects"><strong>${localizeKey("PF2E_CREATURE_FORGE.Editor.LinkedEffects", "Linked effects")}:</strong><div>${lines.join("")}</div></div>`;
     }
   }
-  return `${description ? `<p>${description}</p>` : ""}${effectNote}`;
+  return `${description ? `<p>${description}</p>` : ""}${mechanicsNote}${areaTemplateNote}${effectNote}`;
 }
 
 function compileAbilityItem(ability, effectResources = new Map()) {
@@ -141,6 +148,8 @@ function compileAbilityItem(ability, effectResources = new Map()) {
         contentId: ability?.contentId,
         family: ability?.family ?? null,
         powerCost: Number(ability?.powerCost ?? 0),
+        signature: deepClone(ability?.signature ?? null),
+        mechanics: deepClone(ability?.mechanics ?? null),
         source: deepClone(ability?.source ?? {}),
         applications: deepClone(ability?.applications ?? [])
       }

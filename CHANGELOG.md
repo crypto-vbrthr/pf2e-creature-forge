@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.7.1 - Inline Area Templates
+
+- Added native PF2E `@Template[...]` inline template links to compiled creature abilities whenever explicit area geometry is available. Clicking the link places the matching measured template on the current scene.
+- Dragon Breath now always presents its generated cone/line as a clickable template using the same seeded shape and distance already stored in `ability.mechanics.area`.
+- Added explicit core area geometry for existing area abilities such as terrifying roar/moan, wing buffet, elemental burst, unstable discharge, spore bloom, psychic pulse, giant debris, and similar powers, so their descriptions can provide usable templates instead of area prose alone.
+- Supports PF2E burst, cone, emanation, and line templates plus optional line width. German inline labels use the existing metric presentation while PF2E receives canonical feet internally.
+- Added regression coverage that all static core abilities tagged `area` have template geometry and that compiled Dragon Breath descriptions contain a valid PF2E inline-template link.
+- Promoted API/module version to 0.7.1. Request schema remains v7, Blueprint/content schemas remain v10, and Embedded Creature Editor contract remains v12.
+- Expanded automated coverage to 159 passing tests.
+
+## 0.7.0 - Expanded Creature Abilities & Signature Powers
+
+- Added a first-class signature-power layer on top of the normal ability library. Signature definitions remain content-library entries but are resolved in a dedicated seeded phase before incidental Aura/Affliction spending.
+- Added elemental Dragon Breath as the first dynamic signature power. Fire, cold, electricity, acid, and poison affinities map directly; generic air/water/earth/metal/wood dragon affinities use Creature Forge fallback breath profiles. Dragons without a recognized affinity do not receive an arbitrary breath weapon.
+- Dragon Breath uses the GM Core limited-use area-damage progression from levels -1 through 24, a high creature-building DC, a basic Reflex save (Fortitude for poison), seeded cone/line shape where appropriate, and a descriptive 1d4-round recharge.
+- Added generated Effect Forge direct-damage resources for Dragon Breath. The current runtime applies full damage to selected failed-save targets; basic-save half/double adjudication remains explicit rather than pretending to automate the PF2E save workflow.
+- Added automatic signature budget allowance when the shared ability budget is set to Auto. Manual power budgets remain exact and receive no hidden bonus.
+- Signature abilities are retained during whole-ability rerolls and can be rerolled individually without losing their signature semantics; generated effect resources are rebuilt with them.
+- Expanded the core library with Dragon wing buffet, undead life drain/deathless recovery, construct emergency repair/unstable discharge, elemental surge/living hazard, plant/fungus tendrils and spore bloom, ooze adhesive/corrosive powers, planar/celestial/fiend reactions, aberrant psychic/spatial abilities, and giant sweeping/debris attacks.
+- Added clumsy, sickened, stupefied, and slowed core Effect Forge definitions for expanded ability content.
+- Added signature mechanics presentation to the Creature Editor and compiled PF2E action descriptions, plus public `api.abilities.signature` helpers.
+- Promoted API/module version to 0.7.0 and Blueprint/content schemas to v10. Request schema remains v7 and Embedded Creature Editor contract remains v12.
+- Expanded automated coverage to 156 passing tests.
+
 ## 0.6.5 - Deferred Loot Dialog & Sheet Layout Fix
 
 - Stopped injecting deferred-loot markup into the PF2e NPC ActorSheet form; this injection could become a new grid child and collapse the normal PF2e sheet layout.

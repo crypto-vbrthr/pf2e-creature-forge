@@ -2,7 +2,23 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.6.5** keeps deferred loot completely outside the PF2e NPC form: the GM-only **Beute / Loot** header control now opens a dedicated Foundry dialog. This preserves the PF2e 8.4 NPC sheet layout while retaining the strict deferred-loot materialization fixes from 0.6.4. Loot Forge and Item Forge remain the canonical generators when available.
+Version **0.7.1** adds native PF2E inline area templates to generated area abilities. Dragon Breath and the expanded core area powers now expose clickable cone, line, burst, or emanation links in their descriptions so the GM can place the matching template directly on the scene. The 0.7.0 signature-power and expanded-ability architecture remains unchanged.
+
+
+## What 0.7.1 adds
+
+- Native PF2E `@Template[...]` links for abilities with explicit area geometry.
+- Dragon Breath cone/line templates use the generated shape and distance automatically.
+- Static core area abilities now carry explicit cone, line, burst, or emanation geometry for scene placement.
+- A dedicated seeded **signature-power** selection phase that keeps iconic powers separate from ordinary weighted abilities while still using the same content-library architecture.
+- Dynamic **Dragon Breath** for dragons with fire, cold, electricity, acid, poison, or generic elemental affinities. Shape, damage type, save, DC, area, recharge metadata, and generated direct-damage effect are stored in the Blueprint.
+- GM Core limited-use area-damage scaling from level -1 through 24 for the breath weapon.
+- Auto power budgets gain a signature allowance only when a signature power is actually selected; manually configured budgets remain exact.
+- Expanded category content for dragons, undead, constructs, elementals, plants/fungi, oozes, fiends/celestials/monitors, aberrations, and giants.
+- Signature mechanics are visible in the embedded editor and compiled PF2E action description.
+- Public helpers under `api.abilities.signature` for breath profiles, limited-area scaling, and signature planning.
+- Request schema v7, Blueprint/content schemas v10, Embedded Creature Editor contract v12; API/module version 0.7.1.
+- 159 automated tests pass.
 
 
 ## What 0.6.5 fixes

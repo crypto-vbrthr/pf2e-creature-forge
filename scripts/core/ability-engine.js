@@ -79,7 +79,7 @@ function weightedCandidates(entries, context, selected, focus) {
   return entries.map((entry) => ({ value: entry, weight: scoreAbility(entry, context, selected, focus) }));
 }
 
-function materializeAbility(entry, index) {
+export function materializeAbility(entry, index) {
   return {
     id: `ability-${index + 1}`,
     contentId: entry.id,
@@ -87,6 +87,9 @@ function materializeAbility(entry, index) {
     nameKey: entry.nameKey ?? null,
     description: entry.description ?? "",
     descriptionKey: entry.descriptionKey ?? null,
+    signature: deepClone(entry.signature ?? null),
+    mechanics: deepClone(entry.mechanics ?? null),
+    generatedEffects: deepClone(entry.generatedEffects ?? []),
     type: entry.abilityType ?? entry.activation?.type ?? "action",
     actionCost: entry.actionCost ?? null,
     category: entry.category ?? "offensive",
@@ -105,7 +108,8 @@ function materializeAbility(entry, index) {
 }
 
 export function collectAbilityEffectResources(abilities, registry, existingResources = []) {
-  const existing = new Map((existingResources ?? []).map((resource) => [resource.id, deepClone(resource)]));
+  const generated = new Map((abilities ?? []).flatMap((ability) => ability.generatedEffects ?? []).filter(Boolean).map((resource) => [resource.id, deepClone(resource)]));
+  const existing = new Map([...(existingResources ?? []).map((resource) => [resource.id, deepClone(resource)]), ...generated.entries()]);
   const refs = new Set((abilities ?? []).flatMap((ability) => (ability.applications ?? [])
     .filter((application) => application.type === "effect" && application.ref)
     .map((application) => application.ref)));
@@ -155,14 +159,15 @@ function dependencyDiagnostics({ request, registry, level, roleId, category, sub
   });
 }
 
-export function generateAbilities({ request, registry, level, roleId, category, subtypes, random, preserve = [], excludeContentIds = [], budgetLimitOverride = null }) {
+export function generateAbilities({ request, registry, level, roleId, category, subtypes, random, preserve = [], excludeContentIds = [], budgetLimitOverride = null, excludeSignatureCandidates = true }) {
   if (request.abilities?.mode === "off") return { abilities: [], effects: [], diagnostics: [], budget: { limit: 0, spent: 0, remaining: 0, requestedCount: 0, generatedCount: 0 } };
   const count = normalizeCount(request, roleId);
   const budgetLimit = budgetLimitOverride == null ? resolveAbilityPowerBudget(request, roleId) : Math.max(0, Number(budgetLimitOverride) || 0);
   if (count === 0) return { abilities: [], effects: [], diagnostics: [], budget: { limit: budgetLimit, spent: 0, remaining: budgetLimit, requestedCount: 0, generatedCount: 0 } };
   const focus = request.abilities?.focus ?? [];
   const context = { level, role: roleId, category, subtypes };
-  const all = listAbilityCandidates({ request, registry, level, roleId, category, subtypes });
+  const all = listAbilityCandidates({ request, registry, level, roleId, category, subtypes })
+    .filter((entry) => !excludeSignatureCandidates || !entry.signature?.kind);
   const diagnostics = dependencyDiagnostics({ request, registry, level, roleId, category, subtypes });
   const selected = [];
   const excluded = new Set(excludeContentIds ?? []);

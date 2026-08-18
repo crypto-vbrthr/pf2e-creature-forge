@@ -303,3 +303,8 @@ Provider failures are diagnostic and channel-local. Locked channels retain both 
 ## Embedded editor
 
 `api.ui.creatureEditor.create()` returns the canonical Embedded Creature Editor (contract v12), which mounts into an arbitrary HTMLElement. The editor owns its scoped form state, validation display, internal scroll region, persistent bottom action footer, and its own Creature/Sources sub-tabs. The host owns the surrounding window, higher-level navigation, persistence policy, and lifecycle. The standalone Creature Forge ApplicationV2 is only one host of this surface, exactly as Encounter Forge can be later. Field lookup and event listeners are scoped to the embedded root so neighboring host controls cannot collide with Creature Forge field names.
+
+
+## Signature powers (0.7.0)
+
+Signature powers are ability-library content with additional `signature` metadata. Generation resolves them in a dedicated seeded phase after spellcasting planning and before optional Aura/Affliction spending. A selected signature ability is materialized into the ordinary `blueprint.abilities` array so compiler/runtime consumers do not need a parallel document type. Dynamic signature resources, such as Dragon Breath direct damage, travel with the ability as generated resources and are collected into `blueprint.resources.effects`. Auto budgets may add a signature-specific allowance; manual budgets never do.

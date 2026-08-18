@@ -261,3 +261,11 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - Keep PF2e NPC sheet DOM untouched by deferred-loot UI.
 - Open deferred salvage/hoard controls in a dedicated GM-only DialogV2 from the **Loot / Beute** header control.
 - Preserve 0.6.4 PF2e 8.4 Treasure-schema normalization and materialization fixes.
+
+
+## 0.7.0 - Expanded Creature Abilities & Signature Powers ✅
+
+- Expanded category-specific core ability content.
+- Added signature-power metadata/resolution with elemental Dragon Breath as the first dynamic implementation.
+- Added GM Core limited-use area-damage scaling, dynamic save/area/recharge mechanics, generated Effect Forge damage resources, signature rerolls, and auto-budget allowance.
+- Request schema v7; Blueprint/content schemas v10; Embedded Creature Editor contract v12.

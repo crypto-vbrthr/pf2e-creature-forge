@@ -1,5 +1,9 @@
-# Public API 0.6.5
+# Public API 0.7.1
 
+> **0.7.1 area-template presentation:** Compiled ability descriptions emit native PF2E `@Template[...]` links whenever `ability.mechanics.area` is present. No public schema change is required.
+>
+> **0.7.0 signature powers:** `api.abilities.signature` exposes dynamic signature planning and the Dragon Breath profile/scaling helpers. Dragon Breath is stored as a normal generated ability plus a generated Effect Forge direct-damage resource.
+>
 > **0.6.5 deferred-loot sheet-layout hardening:** the NPC sheet is no longer modified at render time. The GM-only Loot/Beute header control opens a dedicated Foundry DialogV2 containing deferred salvage/hoard status and materialization actions, so PF2e 8.4's legacy ActorSheet grid remains untouched. The public API remains `api.runtime.createDeferredLootActor(actorOrBlueprint, options)` / `api.loot.createLootActor(...)`.
 >
 > **0.6.0 loot integration:** Creature generation now carries a first-class loot plan. Loot Forge/Item Forge enrichment is asynchronous, while `api.createActor()` automatically resolves an unresolved loot plan before compiling the NPC. Carried loot and deferred salvage/hoard remain deliberately separate.
@@ -17,6 +21,19 @@ api.schemaVersion.request;
 api.schemaVersion.blueprint;
 api.schemaVersion.content;
 ```
+
+## Signature powers
+
+```js
+api.abilities.signature.limitedAreaDamageFormula(8); // "9d6"
+api.abilities.signature.resolveDragonBreathProfile(["fire"]);
+
+const plan = api.abilities.signature.plan({
+  identity: { level: 8, role: "brute", category: "dragon", subtypes: ["fire"] }
+}, { seed: "dragon-signature", force: true });
+```
+
+Signature content remains part of ability libraries. The first dynamic resolver is `dragon-breath`; external libraries can provide compatible signature definitions with `signature.kind: "dragon-breath"`.
 
 ## Generation
 
@@ -617,7 +634,7 @@ api.integrations.getLootApi();
 
 ```js
 api.ui.openCreatureForge();
-api.ui.creatureEditor.contractVersion; // 11
+api.ui.creatureEditor.contractVersion; // 12
 api.ui.creatureEditor.modes;           // ["create", "edit", "view"]
 api.ui.creatureEditor.layouts;         // ["full", "compact"]
 api.ui.creatureEditor.tabs;            // ["creature", "sources"]

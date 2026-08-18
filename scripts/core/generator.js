@@ -17,6 +17,7 @@ import { generateSpecialFeatures, rerollSpecialFeature } from "./special-feature
 import { assignAfflictionDeliveries } from "./affliction-delivery.js";
 import { generateSpellcasting, rerollSpellcasting, rerollSpellSlot } from "./spellcasting.js";
 import { createLootPlan, rerollLootPlan, rerollLootChannel } from "./loot.js";
+import { resolveSignaturePlan } from "./signature-powers.js";
 
 const SAVE_NAMES = Object.freeze(["fortitude", "reflex", "will"]);
 const ABILITY_NAMES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
@@ -262,11 +263,20 @@ export class CreatureGenerator {
     const movement = generateMovement(effectiveRequest, role, level, random.fork("statistics.movement"));
     const senses = generateSenses(effectiveRequest, level, random.fork("statistics.senses"));
     const attacks = generateAttacks(effectiveRequest, role, level, random.fork("combat.attacks"));
-    const totalSpecialBudget = resolveAbilityPowerBudget(effectiveRequest, request.identity.role);
-    // Spellcasting is a primary concept feature, especially for the spellcaster
-    // role. Resolve it before optional auras/afflictions so an incidental aura
-    // cannot consume the entire budget and silently turn a caster into a mundane
-    // creature. All three systems still spend from the same shared budget.
+    const signaturePlan = resolveSignaturePlan({
+      request: effectiveRequest,
+      registry: this.registry,
+      level,
+      roleId: request.identity.role,
+      category: request.identity.category,
+      subtypes: affinities.resolvedSubtypes,
+      random: random.fork("signature-powers")
+    });
+    const baseSpecialBudget = resolveAbilityPowerBudget(effectiveRequest, request.identity.role);
+    const totalSpecialBudget = baseSpecialBudget + Number(signaturePlan.bonus ?? 0);
+    // Spellcasting remains the primary concept feature. Iconic signature powers
+    // reserve their own automatic-budget allowance before incidental auras and
+    // afflictions are considered. Ordinary abilities receive what remains.
     const generatedSpellcasting = generateSpellcasting({
       request: effectiveRequest,
       registry: this.registry,
@@ -278,6 +288,10 @@ export class CreatureGenerator {
       random: random.fork("spellcasting"),
       availableBudget: totalSpecialBudget
     });
+    const signatureAbility = signaturePlan.ability && Number(signaturePlan.ability.powerCost ?? 0) <= Math.max(0, totalSpecialBudget - generatedSpellcasting.spent)
+      ? deepClone(signaturePlan.ability)
+      : null;
+    const signatureSpent = Number(signatureAbility?.powerCost ?? 0);
     const generatedSpecialFeatures = generateSpecialFeatures({
       request: effectiveRequest,
       registry: this.registry,
@@ -286,8 +300,9 @@ export class CreatureGenerator {
       category: request.identity.category,
       subtypes: affinities.resolvedSubtypes,
       random: random.fork("special-features"),
-      budgetLimit: Math.max(0, totalSpecialBudget - generatedSpellcasting.spent)
+      budgetLimit: Math.max(0, totalSpecialBudget - generatedSpellcasting.spent - signatureSpent)
     });
+    const preservedSignature = signatureAbility ? [{ index: 0, ability: signatureAbility }] : [];
     const generatedAbilities = generateAbilities({
       request: effectiveRequest,
       registry: this.registry,
@@ -296,7 +311,10 @@ export class CreatureGenerator {
       category: request.identity.category,
       subtypes: affinities.resolvedSubtypes,
       random: random.fork("abilities"),
-      budgetLimitOverride: Math.max(0, generatedSpecialFeatures.budget.remaining)
+      preserve: preservedSignature,
+      excludeContentIds: signatureAbility ? [signatureAbility.contentId] : [],
+      budgetLimitOverride: Math.max(0, signatureSpent + generatedSpecialFeatures.budget.remaining),
+      excludeSignatureCandidates: true
     });
 
     const blueprint = createEmptyBlueprint();
@@ -307,6 +325,12 @@ export class CreatureGenerator {
       variation: request.generation.variation,
       requestSnapshot: deepClone({ ...request, generation: { ...request.generation, seed } }),
       abilityBudget: deepClone(generatedAbilities.budget),
+      signatureBudget: {
+        baseLimit: baseSpecialBudget,
+        bonus: Number(signaturePlan.bonus ?? 0),
+        spent: signatureSpent,
+        generatedCount: signatureAbility ? 1 : 0
+      },
       specialFeatureBudget: {
         limit: totalSpecialBudget,
         spent: generatedAbilities.budget.spent + generatedSpecialFeatures.budget.spent + generatedSpellcasting.spent,
@@ -314,7 +338,8 @@ export class CreatureGenerator {
         abilitySpent: generatedAbilities.budget.spent,
         auraSpent: generatedSpecialFeatures.budget.auraSpent,
         afflictionSpent: generatedSpecialFeatures.budget.afflictionSpent,
-        spellcastingSpent: generatedSpellcasting.spent
+        spellcastingSpent: generatedSpellcasting.spent,
+        signatureSpent
       }
     };
     blueprint.identity = {
@@ -547,7 +572,7 @@ export class CreatureGenerator {
     if (scope === "abilities") {
       if (next.locks?.abilities) return next;
       const preserved = (next.abilities ?? [])
-        .map((ability, index) => ability?.locked ? { index, ability } : null)
+        .map((ability, index) => (ability?.locked || ability?.signature?.kind) ? { index, ability } : null)
         .filter(Boolean);
       const totalBudget = Number(next.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(next.metadata.requestSnapshot, next.identity.role));
       const spellcastingSpent = Number(next.combat?.spellcasting?.[0]?.powerCost ?? 0);
@@ -570,6 +595,8 @@ export class CreatureGenerator {
       ]);
       next.metadata.abilityBudget = deepClone(result.budget);
       assignAfflictionDeliveries(next);
+      const signatureSpent = next.abilities.filter((ability) => ability?.signature?.kind).reduce((sum, ability) => sum + Number(ability.powerCost ?? 0), 0);
+      next.metadata.signatureBudget = { ...(next.metadata.signatureBudget ?? {}), spent: signatureSpent, generatedCount: next.abilities.filter((ability) => ability?.signature?.kind).length };
       next.metadata.specialFeatureBudget = {
         ...(next.metadata.specialFeatureBudget ?? {}),
         spent: featureSpent + result.budget.spent,
@@ -577,7 +604,8 @@ export class CreatureGenerator {
         abilitySpent: result.budget.spent,
         auraSpent: Number(next.resources?.auras?.[0]?.powerCost ?? 0),
         afflictionSpent: Number(next.resources?.afflictions?.[0]?.powerCost ?? 0),
-        spellcastingSpent
+        spellcastingSpent,
+        signatureSpent
       };
       next.diagnostics = [...(result.diagnostics ?? []), ...validateBlueprint(next).warnings];
       return next;
@@ -600,11 +628,12 @@ export class CreatureGenerator {
       const afflictionSpent = Number(next.resources?.afflictions?.[0]?.powerCost ?? 0);
       const abilitySpent = Number(next.metadata?.abilityBudget?.spent ?? 0);
       const spellcastingSpent = Number(next.combat?.spellcasting?.[0]?.powerCost ?? 0);
+      const signatureSpent = next.abilities.filter((ability) => ability?.signature?.kind).reduce((sum, ability) => sum + Number(ability.powerCost ?? 0), 0);
       next.metadata.specialFeatureBudget = {
         limit: totalBudget,
         spent: auraSpent + afflictionSpent + abilitySpent + spellcastingSpent,
         remaining: Math.max(0, totalBudget - auraSpent - afflictionSpent - abilitySpent - spellcastingSpent),
-        abilitySpent, auraSpent, afflictionSpent, spellcastingSpent
+        abilitySpent, auraSpent, afflictionSpent, spellcastingSpent, signatureSpent
       };
       next.diagnostics = [...(result.diagnostics ?? []), ...validateBlueprint(next).warnings];
       return next;
@@ -615,6 +644,7 @@ export class CreatureGenerator {
       const totalBudget = Number(next.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(next.metadata.requestSnapshot, next.identity.role));
       const abilitySpent = Number(next.metadata?.abilityBudget?.spent ?? 0);
       const spellcastingSpent = Number(next.combat?.spellcasting?.[0]?.powerCost ?? 0);
+      const signatureSpent = next.abilities.filter((ability) => ability?.signature?.kind).reduce((sum, ability) => sum + Number(ability.powerCost ?? 0), 0);
       const result = generateSpecialFeatures({
         request: next.metadata.requestSnapshot,
         registry: this.registry,
@@ -639,7 +669,8 @@ export class CreatureGenerator {
         abilitySpent,
         auraSpent: result.budget.auraSpent,
         afflictionSpent: result.budget.afflictionSpent,
-        spellcastingSpent
+        spellcastingSpent,
+        signatureSpent
       };
       next.diagnostics = [...(result.diagnostics ?? []), ...validateBlueprint(next).warnings];
       return next;
@@ -647,6 +678,37 @@ export class CreatureGenerator {
 
     if (scope.startsWith("ability:")) {
       const targetId = scope.slice("ability:".length);
+      const targetAbility = (next.abilities ?? []).find((ability) => ability.id === targetId);
+      if (targetAbility?.signature?.kind && !targetAbility.locked) {
+        const plan = resolveSignaturePlan({
+          request: next.metadata.requestSnapshot,
+          registry: this.registry,
+          level: next.identity.level,
+          roleId: next.identity.role,
+          category: next.identity.category,
+          subtypes: next.identity.resolvedSubtypes ?? next.identity.subtypes ?? [],
+          random: random.fork(`signature-reroll:${targetId}`),
+          force: true
+        });
+        if (plan.ability) {
+          const index = next.abilities.findIndex((ability) => ability.id === targetId);
+          const replacement = deepClone(plan.ability);
+          replacement.id = targetId;
+          next.abilities[index] = replacement;
+          next.resources.effects = collectAbilityEffectResources(next.abilities, this.registry, next.resources?.effects ?? []);
+          const abilitySpent = next.abilities.reduce((sum, ability) => sum + Number(ability.powerCost ?? 0), 0);
+          const signatureSpent = next.abilities.filter((ability) => ability?.signature?.kind).reduce((sum, ability) => sum + Number(ability.powerCost ?? 0), 0);
+          const totalBudget = Number(next.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(next.metadata.requestSnapshot, next.identity.role));
+          const auraSpent = Number(next.resources?.auras?.[0]?.powerCost ?? 0);
+          const afflictionSpent = Number(next.resources?.afflictions?.[0]?.powerCost ?? 0);
+          const spellcastingSpent = Number(next.combat?.spellcasting?.[0]?.powerCost ?? 0);
+          next.metadata.abilityBudget = { ...(next.metadata.abilityBudget ?? {}), spent: abilitySpent, remaining: Math.max(0, Number(next.metadata?.abilityBudget?.limit ?? totalBudget) - abilitySpent) };
+          next.metadata.signatureBudget = { ...(next.metadata.signatureBudget ?? {}), spent: signatureSpent, generatedCount: next.abilities.filter((ability) => ability?.signature?.kind).length };
+          next.metadata.specialFeatureBudget = { ...(next.metadata.specialFeatureBudget ?? {}), spent: abilitySpent + auraSpent + afflictionSpent + spellcastingSpent, remaining: Math.max(0, totalBudget - abilitySpent - auraSpent - afflictionSpent - spellcastingSpent), abilitySpent, auraSpent, afflictionSpent, spellcastingSpent, signatureSpent };
+          next.diagnostics = validateBlueprint(next).warnings;
+          return next;
+        }
+      }
       const result = rerollAbilitySlot({
         request: next.metadata.requestSnapshot,
         registry: this.registry,
@@ -662,11 +724,13 @@ export class CreatureGenerator {
       const auraSpent = Number(next.resources?.auras?.[0]?.powerCost ?? 0);
       const afflictionSpent = Number(next.resources?.afflictions?.[0]?.powerCost ?? 0);
       const spellcastingSpent = Number(next.combat?.spellcasting?.[0]?.powerCost ?? 0);
+      const signatureSpent = next.abilities.filter((ability) => ability?.signature?.kind).reduce((sum, ability) => sum + Number(ability.powerCost ?? 0), 0);
+      next.metadata.signatureBudget = { ...(next.metadata.signatureBudget ?? {}), spent: signatureSpent, generatedCount: next.abilities.filter((ability) => ability?.signature?.kind).length };
       next.metadata.specialFeatureBudget = {
         limit: totalBudget,
         spent: result.budget.spent + auraSpent + afflictionSpent + spellcastingSpent,
         remaining: Math.max(0, totalBudget - result.budget.spent - auraSpent - afflictionSpent - spellcastingSpent),
-        abilitySpent: result.budget.spent, auraSpent, afflictionSpent, spellcastingSpent
+        abilitySpent: result.budget.spent, auraSpent, afflictionSpent, spellcastingSpent, signatureSpent
       };
       next.diagnostics = [...(result.diagnostics ?? []), ...validateBlueprint(next).warnings];
       return next;
@@ -683,7 +747,8 @@ export class CreatureGenerator {
       const auraSpent = Number(next.resources?.auras?.[0]?.powerCost ?? 0);
       const afflictionSpent = Number(next.resources?.afflictions?.[0]?.powerCost ?? 0);
       const spellcastingSpent = Number(result.spent ?? 0);
-      next.metadata.specialFeatureBudget = { limit: totalBudget, spent: abilitySpent + auraSpent + afflictionSpent + spellcastingSpent, remaining: Math.max(0, totalBudget - abilitySpent - auraSpent - afflictionSpent - spellcastingSpent), abilitySpent, auraSpent, afflictionSpent, spellcastingSpent };
+      const signatureSpent = next.abilities.filter((ability) => ability?.signature?.kind).reduce((sum, ability) => sum + Number(ability.powerCost ?? 0), 0);
+      next.metadata.specialFeatureBudget = { limit: totalBudget, spent: abilitySpent + auraSpent + afflictionSpent + spellcastingSpent, remaining: Math.max(0, totalBudget - abilitySpent - auraSpent - afflictionSpent - spellcastingSpent), abilitySpent, auraSpent, afflictionSpent, spellcastingSpent, signatureSpent };
       next.diagnostics = [...(result.diagnostics ?? []), ...validateBlueprint(next).warnings];
       return next;
     }

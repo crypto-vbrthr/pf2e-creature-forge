@@ -230,7 +230,7 @@ test("creating deferred loot from an NPC records the created Loot Actor per mate
 test("public createActor enriches an unresolved loot plan before runtime materialization", async () => {
   const previousGame = globalThis.game;
   const previousActor = globalThis.Actor;
-  const creatureModule = { id: MODULE_ID, active: true, version: "0.6.5", api: null };
+  const creatureModule = { id: MODULE_ID, active: true, version: "0.7.0", api: null };
   let lootCalls = 0;
   const lootModule = {
     id: "pf2e-loot-forge", active: true, version: "test",

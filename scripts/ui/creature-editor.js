@@ -4,6 +4,7 @@ import { deepClone } from "../core/clone.js";
 import { CreatureEditorSession } from "./editor-session.js";
 import { resolveAttackNameKey } from "../core/attack-localization.js";
 import { localize } from "../i18n.js";
+import { abilityMechanicsLabel } from "../ability-presentation.js";
 import { localizeAuraResourceDefinition, localizeAfflictionResourceDefinition } from "../special-feature-localization.js";
 
 const ABILITIES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
@@ -873,13 +874,16 @@ export class EmbeddedCreatureEditor {
       const sourceLabel = contentSourceLabel(ability.source);
       const source = sourceLabel ? `<small class="cf-ability-source">${escapeHtml(sourceLabel)}</small>` : "";
       const power = Number(ability.powerCost ?? 0) > 0 ? `<small class="cf-ability-power">${escapeHtml(localize("PF2E_CREATURE_FORGE.Ability.Power", "Power"))} ${Number(ability.powerCost)}</small>` : "";
-      return `<article class="cf-ability-card${ability.locked ? " locked" : ""}" data-ability-id="${escapeHtml(ability.id)}">
-        <header><div><strong>${escapeHtml(abilityNameLabel(ability))}</strong><small>${escapeHtml(abilityTypeLabel(ability))} · ${escapeHtml(localize(`PF2E_CREATURE_FORGE.AbilityCategory.${ability.category}`, ability.category ?? ""))}</small>${source}${power}</div>
+      const signature = ability.signature?.kind ? `<small class="cf-ability-signature"><i class="fa-solid fa-star"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Signature.Badge", "Signature"))}</small>` : "";
+      const mechanics = abilityMechanicsLabel(ability);
+      return `<article class="cf-ability-card${ability.locked ? " locked" : ""}${ability.signature?.kind ? " signature" : ""}" data-ability-id="${escapeHtml(ability.id)}">
+        <header><div><strong>${escapeHtml(abilityNameLabel(ability))}</strong><small>${escapeHtml(abilityTypeLabel(ability))} · ${escapeHtml(localize(`PF2E_CREATURE_FORGE.AbilityCategory.${ability.category}`, ability.category ?? ""))}</small>${source}${power}${signature}</div>
         <div class="cf-ability-controls">
           ${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-ability-lock" title="${escapeHtml(localize(ability.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", ability.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${ability.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}
           ${this.capabilities.generation && this.mode !== "view" && !ability.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-ability" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbility", "Reroll ability"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
         </div></header>
         <p>${escapeHtml(abilityDescriptionLabel(ability))}</p>
+        ${mechanics ? `<p class="cf-ability-mechanics"><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Signature.Mechanics", "Mechanics"))}:</strong> ${escapeHtml(mechanics)}</p>` : ""}
         ${ability.traits?.length ? `<div class="cf-ability-tags">${ability.traits.map((trait) => `<span>${escapeHtml(traitLabel(trait))}</span>`).join("")}</div>` : ""}
         ${effectButtons ? `<div class="cf-ability-effects">${effectButtons}</div>` : ""}
       </article>`;

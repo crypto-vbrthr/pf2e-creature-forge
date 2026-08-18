@@ -191,7 +191,8 @@ export function createEmptyBlueprint() {
       requestSnapshot: null,
       rerollHistory: [],
       abilityBudget: { limit: 0, spent: 0, remaining: 0, requestedCount: 0, generatedCount: 0 },
-      specialFeatureBudget: { limit: 0, spent: 0, remaining: 0, abilitySpent: 0, auraSpent: 0, afflictionSpent: 0, spellcastingSpent: 0 }
+      signatureBudget: { baseLimit: 0, bonus: 0, spent: 0, generatedCount: 0 },
+      specialFeatureBudget: { limit: 0, spent: 0, remaining: 0, abilitySpent: 0, auraSpent: 0, afflictionSpent: 0, spellcastingSpent: 0, signatureSpent: 0 }
     },
     identity: {
       name: "Creature",

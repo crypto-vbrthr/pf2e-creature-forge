@@ -797,3 +797,21 @@
   .cf-deferred-loot-dialog-row { align-items: flex-start; flex-direction: column; }
   .cf-deferred-loot-dialog-row > span { text-align: left; }
 }
+
+/* 0.7.0 signature-power presentation */
+.cf-editor .cf-ability-card.signature {
+  border-width: 2px;
+}
+.cf-editor .cf-ability-signature {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  width: fit-content;
+  font-weight: 700;
+}
+.cf-editor .cf-ability-mechanics {
+  padding: .3rem .45rem;
+  border: 1px solid var(--color-border-light-tertiary, #555);
+  border-radius: 5px;
+  background: rgba(0,0,0,.05);
+}
