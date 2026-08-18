@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.5 - Deferred Loot Dialog & Sheet Layout Fix
+
+- Stopped injecting deferred-loot markup into the PF2e NPC ActorSheet form; this injection could become a new grid child and collapse the normal PF2e sheet layout.
+- Changed the GM-only **Loot / Beute** header control to open a dedicated non-modal Foundry `DialogV2`.
+- Moved deferred salvage/hoard status plus create/recreate/open actions into that dialog.
+- Removed all deferred-loot actor-sheet render hooks; Creature Forge now touches only the sheet header controls.
+- Kept the PF2e 8.4 Treasure normalization and direct Foundry/PF2e materialization hardening from 0.6.4 unchanged.
+- Added a regression test asserting that deferred-loot UI never registers actor-sheet render-DOM hooks.
+- Promoted API/module version to 0.6.5; request schema remains v7, Blueprint/content schemas remain v9, and Embedded Creature Editor contract remains v12.
+
 ## 0.6.4 - Deferred Loot PF2e 8.4 Compatibility Fix
 
 - Fixed missing **Beute/Loot** header button on PF2e 8.4 NPC sheets by registering the legacy ApplicationV1 `getApplicationHeaderButtons` / `getActorSheetHeaderButtons` and render hook chain alongside Foundry v14 generic hooks.

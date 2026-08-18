@@ -587,5 +587,9 @@
   "PF2E_CREATURE_FORGE.Loot.Ui.ActorMissing": "The previously created Loot Actor no longer exists.",
   "PF2E_CREATURE_FORGE.Loot.Ui.Created": "Created {name}.",
   "PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed": "Deferred loot could not be created.",
-  "PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl": "Loot"
+  "PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl": "Loot",
+  "PF2E_CREATURE_FORGE.Loot.Ui.Prepared": "prepared",
+  "PF2E_CREATURE_FORGE.Loot.Ui.Materialized": "Loot Actor created",
+  "PF2E_CREATURE_FORGE.Loot.Ui.Close": "Close",
+  "PF2E_CREATURE_FORGE.Loot.Ui.DialogUnavailable": "The loot window could not be opened."
 }

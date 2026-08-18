@@ -2,15 +2,19 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.6.4** fixes PF2e 8.4 deferred-loot persistence and the missing Loot/Beute sheet entry on the legacy PF2e NPC sheet. Loot Forge and Item Forge remain the canonical generators when available.
+Version **0.6.5** keeps deferred loot completely outside the PF2e NPC form: the GM-only **Beute / Loot** header control now opens a dedicated Foundry dialog. This preserves the PF2e 8.4 NPC sheet layout while retaining the strict deferred-loot materialization fixes from 0.6.4. Loot Forge and Item Forge remain the canonical generators when available.
 
 
-## What 0.6.4 fixes
+## What 0.6.5 fixes
+
+- Deferred loot controls no longer inject markup into the PF2e NPC sheet form.
+- The **Beute / Loot** header control opens a standalone non-modal DialogV2 with salvage/hoard status and create/open actions.
+- PF2e NPC sheet tabs, grid columns, scrolling, and normal actor content remain entirely owned by PF2e.
 
 - Deferred treasure is normalized to PF2e 8.4's strict `TreasureSystemData` before persistence, including legacy `stackGroup` removal and integer coin prices.
 - PF2e 8.4 NPC sheets are still ApplicationV1; the deferred-loot UI now registers the legacy ActorSheet header/render hooks in addition to Foundry v14 generic hooks, so the explicit **Beute/Loot** button actually appears.
 - Deferred loot persistence uses Foundry/PF2e directly instead of Loot Forge 0.3.x's legacy item writer, while Loot Forge remains the content generator.
-- Request schema v7, Blueprint/content schemas v9, Embedded Creature Editor contract v12; API/module version 0.6.4.
+- Request schema v7, Blueprint/content schemas v9, Embedded Creature Editor contract v12; API/module version 0.6.5.
 - 146 automated tests pass.
 
 ## What 0.6.2 refines

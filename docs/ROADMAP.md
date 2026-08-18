@@ -255,3 +255,9 @@
 ## 0.6.4 - Deferred Loot PF2e 8.4 Compatibility Fix ✅
 
 PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and reliable ApplicationV1 NPC-sheet Beute/Loot entry.
+
+## 0.6.5 - Deferred Loot Dialog & Sheet Layout Fix ✅
+
+- Keep PF2e NPC sheet DOM untouched by deferred-loot UI.
+- Open deferred salvage/hoard controls in a dedicated GM-only DialogV2 from the **Loot / Beute** header control.
+- Preserve 0.6.4 PF2e 8.4 Treasure-schema normalization and materialization fixes.

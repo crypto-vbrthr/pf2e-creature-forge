@@ -591,7 +591,11 @@ const CATALOGS = Object.freeze({
     "PF2E_CREATURE_FORGE.Loot.Ui.ActorMissing": "Der zuvor erzeugte Beute-Actor existiert nicht mehr.",
     "PF2E_CREATURE_FORGE.Loot.Ui.Created": "{name} wurde erzeugt.",
     "PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed": "Die zurückgestellte Beute konnte nicht erzeugt werden.",
-    "PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl": "Beute"
+    "PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl": "Beute",
+    "PF2E_CREATURE_FORGE.Loot.Ui.Prepared": "vorbereitet",
+    "PF2E_CREATURE_FORGE.Loot.Ui.Materialized": "Beute-Actor erzeugt",
+    "PF2E_CREATURE_FORGE.Loot.Ui.Close": "Schließen",
+    "PF2E_CREATURE_FORGE.Loot.Ui.DialogUnavailable": "Das Beutefenster konnte nicht geöffnet werden."
   },
   "en": {
     "PF2E_CREATURE_FORGE.WindowTitle": "PF2E Creature Forge",
@@ -1182,7 +1186,11 @@ const CATALOGS = Object.freeze({
     "PF2E_CREATURE_FORGE.Loot.Ui.ActorMissing": "The previously created Loot Actor no longer exists.",
     "PF2E_CREATURE_FORGE.Loot.Ui.Created": "Created {name}.",
     "PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed": "Deferred loot could not be created.",
-    "PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl": "Loot"
+    "PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl": "Loot",
+    "PF2E_CREATURE_FORGE.Loot.Ui.Prepared": "prepared",
+    "PF2E_CREATURE_FORGE.Loot.Ui.Materialized": "Loot Actor created",
+    "PF2E_CREATURE_FORGE.Loot.Ui.Close": "Close",
+    "PF2E_CREATURE_FORGE.Loot.Ui.DialogUnavailable": "The loot window could not be opened."
   }
 });
 function configuredLanguage() {

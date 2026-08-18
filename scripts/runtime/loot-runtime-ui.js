@@ -11,12 +11,6 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-function rootElement(html) {
-  if (html instanceof HTMLElement) return html;
-  if (html?.[0] instanceof HTMLElement) return html[0];
-  return null;
-}
-
 function actorFromApplication(application) {
   const candidate = application?.actor ?? application?.document ?? application?.object ?? null;
   if (!candidate || candidate.documentName !== "Actor" && candidate.constructor?.metadata?.name !== "Actor") return null;
@@ -33,51 +27,54 @@ function numberLabel(value) {
   return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/\.00$/, "");
 }
 
-function detailLabel(channel, data) {
+function detailLabel(data) {
   const countKey = data.itemCount === 1 ? "PF2E_CREATURE_FORGE.Loot.Ui.ItemSingular" : "PF2E_CREATURE_FORGE.Loot.Ui.ItemPlural";
   const countFallback = data.itemCount === 1 ? "item" : "items";
   return `${data.itemCount} ${localize(countKey, countFallback)} · ${numberLabel(data.valueGp)} ${localize("PF2E_CREATURE_FORGE.Loot.Ui.CurrencyGp", "gp")}`;
 }
 
-function button({ action, channel, icon, label, disabled = false }) {
-  return `<button type="button" data-cf-deferred-action="${escapeHtml(action)}" data-cf-deferred-channel="${escapeHtml(channel)}" ${disabled ? "disabled" : ""}><i class="fa-solid ${escapeHtml(icon)}"></i> ${escapeHtml(label)}</button>`;
-}
-
-function buildPanel(actor) {
+function hasDeferredLoot(actor) {
   const blueprint = actor?.flags?.[MODULE_ID]?.blueprint;
   const summary = summarizeDeferredLoot(blueprint);
-  if (!summary.salvage.available && !summary.hoard.available) return null;
+  return Boolean(summary.salvage.available || summary.hoard.available);
+}
 
+function buildDialogContent(actor) {
+  const blueprint = actor?.flags?.[MODULE_ID]?.blueprint;
+  const summary = summarizeDeferredLoot(blueprint);
   const materialized = actor?.flags?.[MODULE_ID]?.loot?.materialized ?? {};
   const salvageActor = actorByRecord(materialized.salvage);
   const hoardActor = actorByRecord(materialized.hoard);
-  const sameActor = salvageActor && hoardActor && salvageActor.id === hoardActor.id ? salvageActor : null;
-
   const rows = [];
+
   if (summary.salvage.available) {
-    const actions = salvageActor
-      ? button({ action: "open", channel: "salvage", icon: "fa-box-open", label: localize("PF2E_CREATURE_FORGE.Loot.Ui.OpenSalvage", "Open salvage") })
-      : button({ action: "create", channel: "salvage", icon: "fa-hammer", label: materialized.salvage ? localize("PF2E_CREATURE_FORGE.Loot.Ui.RecreateSalvage", "Recreate salvage") : localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateSalvage", "Create salvage") });
-    rows.push(`<div class="cf-deferred-loot-row" data-cf-deferred-row="salvage"><div><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Channel.salvage", "Body salvage"))}</strong><small>${escapeHtml(detailLabel("salvage", summary.salvage))}${materialized.salvage && !salvageActor ? ` · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Ui.MissingActor", "previous Loot Actor missing"))}` : ""}</small></div><div class="cf-deferred-loot-actions">${actions}</div></div>`);
+    const state = salvageActor
+      ? localize("PF2E_CREATURE_FORGE.Loot.Ui.Materialized", "Loot Actor created")
+      : materialized.salvage
+        ? localize("PF2E_CREATURE_FORGE.Loot.Ui.MissingActor", "previous Loot Actor missing")
+        : localize("PF2E_CREATURE_FORGE.Loot.Ui.Prepared", "prepared");
+    rows.push(`<div class="cf-deferred-loot-dialog-row">
+      <div><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Channel.salvage", "Body salvage"))}</strong><small>${escapeHtml(detailLabel(summary.salvage))}</small></div>
+      <span>${escapeHtml(state)}</span>
+    </div>`);
   }
+
   if (summary.hoard.available) {
-    const actions = hoardActor
-      ? button({ action: "open", channel: "hoard", icon: "fa-box-open", label: localize("PF2E_CREATURE_FORGE.Loot.Ui.OpenHoard", "Open hoard") })
-      : button({ action: "create", channel: "hoard", icon: "fa-coins", label: materialized.hoard ? localize("PF2E_CREATURE_FORGE.Loot.Ui.RecreateHoard", "Recreate hoard") : localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateHoard", "Create hoard") });
-    rows.push(`<div class="cf-deferred-loot-row" data-cf-deferred-row="hoard"><div><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Channel.hoard", "Hoard / environment"))}</strong><small>${escapeHtml(detailLabel("hoard", summary.hoard))}${materialized.hoard && !hoardActor ? ` · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Ui.MissingActor", "previous Loot Actor missing"))}` : ""}</small></div><div class="cf-deferred-loot-actions">${actions}</div></div>`);
+    const state = hoardActor
+      ? localize("PF2E_CREATURE_FORGE.Loot.Ui.Materialized", "Loot Actor created")
+      : materialized.hoard
+        ? localize("PF2E_CREATURE_FORGE.Loot.Ui.MissingActor", "previous Loot Actor missing")
+        : localize("PF2E_CREATURE_FORGE.Loot.Ui.Prepared", "prepared");
+    rows.push(`<div class="cf-deferred-loot-dialog-row">
+      <div><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Channel.hoard", "Hoard / environment"))}</strong><small>${escapeHtml(detailLabel(summary.hoard))}</small></div>
+      <span>${escapeHtml(state)}</span>
+    </div>`);
   }
 
-  let footer = "";
-  if (sameActor) {
-    footer = `<div class="cf-deferred-loot-footer">${button({ action: "open", channel: "both", icon: "fa-box-open", label: localize("PF2E_CREATURE_FORGE.Loot.Ui.OpenCombined", "Open loot") })}</div>`;
-  } else if (summary.salvage.available && summary.hoard.available && !salvageActor && !hoardActor && !materialized.salvage && !materialized.hoard) {
-    footer = `<div class="cf-deferred-loot-footer">${button({ action: "create", channel: "both", icon: "fa-boxes-stacked", label: localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined", "Create loot") })}</div>`;
-  }
-
-  return `<section class="cf-deferred-loot-panel" data-cf-deferred-loot-panel>
-    <header><div><i class="fa-solid fa-box-open"></i><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Ui.Title", "Creature Forge loot"))}</strong></div><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Ui.Hint", "Deferred loot is prepared but is not carried by this NPC."))}</small></header>
-    <div class="cf-deferred-loot-rows">${rows.join("")}</div>${footer}
-  </section>`;
+  return `<div class="cf-deferred-loot-dialog-content">
+    <p>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Ui.Hint", "Deferred loot is prepared but is not carried by this NPC."))}</p>
+    <div class="cf-deferred-loot-dialog-rows">${rows.join("")}</div>
+  </div>`;
 }
 
 async function openActor(actor) {
@@ -91,98 +88,137 @@ async function openActor(actor) {
   }
 }
 
-function hasDeferredLoot(actor) {
-  const blueprint = actor?.flags?.[MODULE_ID]?.blueprint;
-  const summary = summarizeDeferredLoot(blueprint);
-  return Boolean(summary.salvage.available || summary.hoard.available);
+async function createLoot(actor, channel, createDeferredLootActor) {
+  try {
+    const includeSalvage = channel === "salvage" || channel === "both";
+    const includeHoard = channel === "hoard" || channel === "both";
+    const created = await createDeferredLootActor(actor, { includeSalvage, includeHoard });
+    globalThis.ui?.notifications?.info?.(format(
+      "PF2E_CREATURE_FORGE.Loot.Ui.Created",
+      { name: created?.name ?? "" },
+      `Created ${created?.name ?? "loot"}.`
+    ));
+    await openActor(created);
+    return created;
+  } catch (error) {
+    console.error(`${MODULE_ID} | Deferred loot creation failed.`, error);
+    const detail = error?.message ? ` (${error.message})` : "";
+    globalThis.ui?.notifications?.error?.(`${localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed", "Deferred loot could not be created.")}${detail}`);
+    return null;
+  }
 }
 
-function scrollToLootPanel(application) {
-  const element = application?.element instanceof HTMLElement
-    ? application.element
-    : rootElement(application?.element);
-  const panel = element?.querySelector?.("[data-cf-deferred-loot-panel]");
-  if (!panel) return false;
-  panel.scrollIntoView?.({ behavior: "smooth", block: "start" });
-  panel.classList.add("cf-deferred-loot-highlight");
-  globalThis.setTimeout?.(() => panel.classList.remove("cf-deferred-loot-highlight"), 1200);
-  return true;
+async function openRecordedLoot(actor, channel) {
+  const materialized = actor?.flags?.[MODULE_ID]?.loot?.materialized ?? {};
+  const record = channel === "both" ? (materialized.salvage ?? materialized.hoard) : materialized[channel];
+  const lootActor = actorByRecord(record);
+  if (lootActor) return openActor(lootActor);
+  globalThis.ui?.notifications?.warn?.(localize(
+    "PF2E_CREATURE_FORGE.Loot.Ui.ActorMissing",
+    "The previously created Loot Actor no longer exists."
+  ));
+  return false;
+}
+
+function dialogButtons(actor, createDeferredLootActor) {
+  const blueprint = actor?.flags?.[MODULE_ID]?.blueprint;
+  const summary = summarizeDeferredLoot(blueprint);
+  const materialized = actor?.flags?.[MODULE_ID]?.loot?.materialized ?? {};
+  const salvageActor = actorByRecord(materialized.salvage);
+  const hoardActor = actorByRecord(materialized.hoard);
+  const buttons = [];
+
+  if (summary.salvage.available) {
+    buttons.push(salvageActor ? {
+      action: "open-salvage",
+      label: localize("PF2E_CREATURE_FORGE.Loot.Ui.OpenSalvage", "Open salvage"),
+      icon: "fa-solid fa-box-open",
+      callback: () => openRecordedLoot(actor, "salvage")
+    } : {
+      action: "create-salvage",
+      label: materialized.salvage
+        ? localize("PF2E_CREATURE_FORGE.Loot.Ui.RecreateSalvage", "Recreate salvage")
+        : localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateSalvage", "Create salvage"),
+      icon: "fa-solid fa-hammer",
+      callback: () => createLoot(actor, "salvage", createDeferredLootActor)
+    });
+  }
+
+  if (summary.hoard.available) {
+    buttons.push(hoardActor ? {
+      action: "open-hoard",
+      label: localize("PF2E_CREATURE_FORGE.Loot.Ui.OpenHoard", "Open hoard"),
+      icon: "fa-solid fa-box-open",
+      callback: () => openRecordedLoot(actor, "hoard")
+    } : {
+      action: "create-hoard",
+      label: materialized.hoard
+        ? localize("PF2E_CREATURE_FORGE.Loot.Ui.RecreateHoard", "Recreate hoard")
+        : localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateHoard", "Create hoard"),
+      icon: "fa-solid fa-coins",
+      callback: () => createLoot(actor, "hoard", createDeferredLootActor)
+    });
+  }
+
+  if (summary.salvage.available && summary.hoard.available && !salvageActor && !hoardActor && !materialized.salvage && !materialized.hoard) {
+    buttons.push({
+      action: "create-both",
+      label: localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateCombined", "Create loot"),
+      icon: "fa-solid fa-boxes-stacked",
+      callback: () => createLoot(actor, "both", createDeferredLootActor)
+    });
+  }
+
+  buttons.push({
+    action: "close",
+    label: localize("PF2E_CREATURE_FORGE.Loot.Ui.Close", "Close"),
+    icon: "fa-solid fa-xmark"
+  });
+
+  return buttons;
+}
+
+function openLootDialog(actor, createDeferredLootActor) {
+  const DialogV2 = globalThis.foundry?.applications?.api?.DialogV2;
+  if (!DialogV2) {
+    console.error(`${MODULE_ID} | Foundry DialogV2 is unavailable; deferred-loot dialog cannot be opened.`);
+    globalThis.ui?.notifications?.error?.(localize(
+      "PF2E_CREATURE_FORGE.Loot.Ui.DialogUnavailable",
+      "The loot window could not be opened."
+    ));
+    return null;
+  }
+
+  const dialog = new DialogV2({
+    id: `${MODULE_ID}-deferred-loot-${actor.id}`,
+    classes: ["pf2e-creature-forge", "cf-deferred-loot-dialog"],
+    window: {
+      title: localize("PF2E_CREATURE_FORGE.Loot.Ui.Title", "Creature Forge loot"),
+      icon: "fa-solid fa-box-open",
+      resizable: false
+    },
+    position: { width: 560 },
+    modal: false,
+    content: buildDialogContent(actor),
+    buttons: dialogButtons(actor, createDeferredLootActor)
+  });
+  dialog.render({ force: true });
+  return dialog;
 }
 
 export function initializeLootRuntimeUi({ createDeferredLootActor } = {}) {
   if (!globalThis.Hooks?.on || typeof createDeferredLootActor !== "function") return;
-  const busy = new Set();
 
-  const render = (application, html) => {
+  // Deferred loot deliberately lives in its own Foundry dialog. Injecting a
+  // section into PF2e 8.4's legacy NPC form changes that form's grid children
+  // and can destroy the sheet layout. The actor sheet therefore only receives
+  // a header control; its DOM/content is never modified by Creature Forge.
+  const openForApplication = (application) => {
     const actor = actorFromApplication(application);
-    if (!actor || actor.type !== "npc" || !globalThis.game?.user?.isGM) return;
-    const blueprint = actor?.flags?.[MODULE_ID]?.blueprint;
-    if (!blueprint?.loot) return;
-    const root = rootElement(html);
-    if (!root || root.querySelector?.("[data-cf-deferred-loot-panel]")) return;
-    const markup = buildPanel(actor);
-    if (!markup) return;
-
-    const form = root.matches?.("form") ? root : root.querySelector?.("form");
-    const host = form ?? root;
-    host.insertAdjacentHTML?.("afterbegin", markup);
-    const panel = host.querySelector?.("[data-cf-deferred-loot-panel]");
-    if (!(panel instanceof HTMLElement)) return;
-
-    panel.addEventListener("click", async (event) => {
-      const target = event.target?.closest?.("[data-cf-deferred-action]");
-      if (!(target instanceof HTMLElement)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const action = target.dataset.cfDeferredAction;
-      const channel = target.dataset.cfDeferredChannel;
-      const key = `${actor.id}:${channel}`;
-      if (busy.has(key)) return;
-
-      const materialized = actor?.flags?.[MODULE_ID]?.loot?.materialized ?? {};
-      if (action === "open") {
-        const record = channel === "both" ? (materialized.salvage ?? materialized.hoard) : materialized[channel];
-        const lootActor = actorByRecord(record);
-        if (lootActor) await openActor(lootActor);
-        else globalThis.ui?.notifications?.warn?.(localize("PF2E_CREATURE_FORGE.Loot.Ui.ActorMissing", "The previously created Loot Actor no longer exists."));
-        return;
-      }
-
-      if (action !== "create") return;
-      busy.add(key);
-      target.setAttribute("disabled", "");
-      let created = null;
-      try {
-        const includeSalvage = channel === "salvage" || channel === "both";
-        const includeHoard = channel === "hoard" || channel === "both";
-        created = await createDeferredLootActor(actor, { includeSalvage, includeHoard });
-      } catch (error) {
-        console.error(`${MODULE_ID} | Deferred loot creation failed.`, error);
-        const detail = error?.message ? ` (${error.message})` : "";
-        globalThis.ui?.notifications?.error?.(`${localize("PF2E_CREATURE_FORGE.Loot.Ui.CreateFailed", "Deferred loot could not be created.")}${detail}`);
-        target.removeAttribute("disabled");
-        busy.delete(key);
-        return;
-      }
-
-      globalThis.ui?.notifications?.info?.(format("PF2E_CREATURE_FORGE.Loot.Ui.Created", { name: created?.name ?? "" }, `Created ${created?.name ?? "loot"}.`));
-      // Opening the new sheet or refreshing the source sheet is convenience
-      // work only. A failure here must never be reported as failed creation.
-      await openActor(created);
-      try {
-        await application?.render?.({ force: false });
-      } catch (error) {
-        console.warn(`${MODULE_ID} | Loot Actor was created but the source sheet could not be refreshed.`, error);
-      } finally {
-        busy.delete(key);
-      }
-    });
+    if (!actor || actor.type !== "npc" || !globalThis.game?.user?.isGM || !hasDeferredLoot(actor)) return null;
+    return openLootDialog(actor, createDeferredLootActor);
   };
 
-  // Add an explicit "Loot / Beute" header control. PF2e 8.4's NPC sheet is
-  // still an ApplicationV1 ActorSheet on Foundry v14, so the legacy class-name
-  // hooks are the primary path. ApplicationV2 remains supported for future or
-  // alternate sheets.
   Hooks.on("getHeaderControlsApplicationV2", (application, controls) => {
     const actor = actorFromApplication(application);
     if (!actor || actor.type !== "npc" || !globalThis.game?.user?.isGM || !hasDeferredLoot(actor)) return;
@@ -192,11 +228,7 @@ export function initializeLootRuntimeUi({ createDeferredLootActor } = {}) {
       label: localize("PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl", "Loot"),
       icon: "fa-solid fa-box-open",
       visible: true,
-      onClick: () => {
-        if (scrollToLootPanel(application)) return;
-        application?.render?.({ force: true });
-        globalThis.setTimeout?.(() => scrollToLootPanel(application), 0);
-      }
+      onClick: () => openForApplication(application)
     });
   });
 
@@ -208,27 +240,14 @@ export function initializeLootRuntimeUi({ createDeferredLootActor } = {}) {
       label: localize("PF2E_CREATURE_FORGE.Loot.Ui.HeaderControl", "Loot"),
       class: "pf2e-creature-forge-loot",
       icon: "fas fa-box-open",
-      onclick: () => {
-        if (scrollToLootPanel(application)) return;
-        application?.render?.(true);
-        globalThis.setTimeout?.(() => scrollToLootPanel(application), 0);
-      }
+      onclick: () => openForApplication(application)
     });
   };
 
-  // Foundry v14 documents the generic V1 hook as getApplicationV1HeaderButtons,
-  // while legacy ApplicationV1 itself still fires class-name hooks such as
-  // getApplicationHeaderButtons/getActorSheetHeaderButtons. Register all three
-  // and deduplicate by our CSS class so PF2e's V1 NPC sheet cannot miss it.
+  // PF2e 8.4's NPC sheet is still ApplicationV1 on Foundry v14, while other
+  // sheets may use ApplicationV2. Register header hooks only. No render hook is
+  // needed because Creature Forge no longer mutates the actor-sheet markup.
   Hooks.on("getApplicationV1HeaderButtons", addV1HeaderButton);
   Hooks.on("getApplicationHeaderButtons", addV1HeaderButton);
   Hooks.on("getActorSheetHeaderButtons", addV1HeaderButton);
-
-  // Likewise support both the v14 generic render hook names and the legacy
-  // class-name hooks fired by PF2e's ApplicationV1 NPC sheet. buildPanel() is
-  // idempotent, so duplicate inheritance-chain hook calls are harmless.
-  Hooks.on("renderApplicationV2", render);
-  Hooks.on("renderApplicationV1", render);
-  Hooks.on("renderApplication", render);
-  Hooks.on("renderActorSheet", render);
 }
