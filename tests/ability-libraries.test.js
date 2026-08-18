@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { ContentRegistry } from "../scripts/core/registry.js";
 import { registerCoreContent } from "../scripts/core/core-content.js";
 import { CreatureGenerator } from "../scripts/core/generator.js";
-import { estimateAbilityPower, listAbilityCandidates } from "../scripts/core/ability-engine.js";
+import { estimateAbilityPower, generateAbilities, listAbilityCandidates } from "../scripts/core/ability-engine.js";
 import { compileActorSource } from "../scripts/core/compiler.js";
+import { SeededRandom } from "../scripts/core/rng.js";
 
 function setup() {
   const registry = new ContentRegistry();
@@ -159,6 +160,69 @@ test("single-slot reroll reserves power for preserved later abilities", () => {
   const rerolled = generator.reroll(blueprint, { scope: "ability:ability-1", seed: "reroll-reserve-next" });
   assert.ok(rerolled.metadata.abilityBudget.spent <= 4);
   assert.equal(rerolled.abilities[1].powerCost, laterCost);
+});
+
+
+test("single-slot reroll excludes future preserved content and families", () => {
+  const { registry } = setup();
+  registry.registerAbilityLibrary({
+    id: "future-preserve.library",
+    moduleId: "future-preserve",
+    defaultEnabled: false,
+    abilities: [
+      { id: "future-preserve.same", family: "shared", selection: { categories: ["humanoid"] }, powerCost: 1, baseWeight: 1000000 },
+      { id: "future-preserve.alt-family", family: "shared", selection: { categories: ["humanoid"] }, powerCost: 1, baseWeight: 900000 },
+      { id: "future-preserve.other", family: "other", selection: { categories: ["humanoid"] }, powerCost: 1, baseWeight: 1 }
+    ]
+  });
+  const request = {
+    identity: { level: 5, role: "custom", category: "humanoid" },
+    sources: { abilities: ["future-preserve.library"] },
+    abilities: { mode: "auto", count: 2, powerBudget: 2, focus: [] }
+  };
+  const preserved = {
+    id: "ability-2", contentId: "future-preserve.same", family: "shared", uniquePerCreature: true, powerCost: 1, locked: true
+  };
+  const result = generateAbilities({
+    request, registry, level: 5, roleId: "custom", category: "humanoid", subtypes: [],
+    random: new SeededRandom("future-preserve"), preserve: [{ index: 1, ability: preserved }], budgetLimitOverride: 2
+  });
+  assert.deepEqual(result.abilities.map((ability) => ability.contentId), ["future-preserve.other", "future-preserve.same"]);
+});
+
+test("single-slot reroll reserves shared power already spent by spellcasting", () => {
+  const { registry, generator } = setup();
+  registry.registerAbilityLibrary({
+    id: "spell-budget.library",
+    moduleId: "spell-budget",
+    defaultEnabled: false,
+    abilities: [
+      { id: "spell-budget.cheap-a", family: "cheap-a", selection: { categories: ["humanoid"] }, powerCost: 1, baseWeight: 10 },
+      { id: "spell-budget.cheap-b", family: "cheap-b", selection: { categories: ["humanoid"] }, powerCost: 2, baseWeight: 10 },
+      { id: "spell-budget.expensive", family: "expensive", selection: { categories: ["humanoid"] }, powerCost: 3, baseWeight: 1000000 }
+    ]
+  });
+  const blueprint = generator.generate({
+    identity: { level: 5, role: "custom", category: "humanoid" },
+    sources: { abilities: ["spell-budget.library"] },
+    abilities: { mode: "auto", count: 2, powerBudget: 6 },
+    spellcasting: { mode: "none" },
+    specialFeatures: { auras: { mode: "none" }, afflictions: { mode: "none" } },
+    generation: { seed: "spell-budget-start" }
+  });
+  blueprint.combat.spellcasting = [{ id: "spellcasting-1", powerCost: 3, spells: [] }];
+  blueprint.metadata.specialFeatureBudget = {
+    ...(blueprint.metadata.specialFeatureBudget ?? {}),
+    limit: 6, spellcastingSpent: 3, auraSpent: 0, afflictionSpent: 0
+  };
+
+  for (let index = 0; index < 24; index += 1) {
+    const rerolled = generator.reroll(blueprint, { scope: "ability:ability-1", seed: `spell-budget-reroll:${index}` });
+    const abilitySpent = rerolled.abilities.reduce((sum, ability) => sum + Number(ability.powerCost ?? 0), 0);
+    assert.ok(abilitySpent + 3 <= 6, `reroll ${index} exceeded shared budget: ${abilitySpent} + 3 > 6`);
+    assert.equal(new Set(rerolled.abilities.map((ability) => ability.contentId)).size, rerolled.abilities.length);
+    assert.equal(rerolled.diagnostics.some((entry) => entry.code === "SPECIAL_POWER_BUDGET_EXCEEDED"), false);
+  }
 });
 
 test("compiled ability flags retain library provenance and power cost", () => {

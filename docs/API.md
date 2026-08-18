@@ -1,5 +1,7 @@
-# Public API 0.7.3
+# Public API 0.7.4
 
+> **0.7.4 full-review hardening:** single-slot ability rerolls now reserve spellcasting power and future locked/preserved ability identities/families, preventing shared-budget overruns and duplicate ability selection. Public schemas remain unchanged.
+>
 > **0.7.3 runtime hardening:** `flags.pf2e-creature-forge.runtimeStatus` uses schema v2 and reports `ready`, `degraded`, `failed`, or `skipped` for each subsystem. Per-resource warnings are consolidated at Actor level. Effect refreshes preserve hosted Affliction delivery blocks, and `area` target mode resolves all selected targets.
 
 

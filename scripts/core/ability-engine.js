@@ -184,19 +184,31 @@ export function generateAbilities({ request, registry, level, roleId, category, 
       spent += copy.powerCost;
       continue;
     }
-    const usedFamilies = new Set(selected.filter((ability) => ability.uniquePerCreature !== false).map((ability) => ability.family));
-    const usedContent = new Set(selected.map((ability) => ability.contentId));
+    const usedFamilies = new Set(selected
+      .filter((ability) => ability.uniquePerCreature !== false)
+      .map((ability) => ability.family ?? ability.contentId)
+      .filter(Boolean));
+    const usedContent = new Set(selected.map((ability) => ability.contentId).filter(Boolean));
+    const futurePreserved = [...preservedByIndex.entries()]
+      .filter(([slot]) => slot > index)
+      .map(([, ability]) => ability)
+      .filter(Boolean);
+    const futureContent = new Set(futurePreserved.map((ability) => ability.contentId).filter(Boolean));
+    const futureFamilies = new Set(futurePreserved
+      .filter((ability) => ability.uniquePerCreature !== false)
+      .map((ability) => ability.family ?? ability.contentId)
+      .filter(Boolean));
     const reservedFuture = [...preservedCosts.entries()]
       .filter(([slot]) => slot > index)
       .reduce((sum, [, cost]) => sum + cost, 0);
     const remaining = Math.max(0, budgetLimit - spent - reservedFuture);
-    let candidates = all.filter((entry) => {
+    const candidates = all.filter((entry) => {
       if (excluded.has(entry.id)) return false;
-      if (usedContent.has(entry.id)) return false;
-      if ((entry.uniquePerCreature ?? true) && usedFamilies.has(entry.family ?? entry.slug ?? entry.id)) return false;
+      if (usedContent.has(entry.id) || futureContent.has(entry.id)) return false;
+      const family = entry.family ?? entry.slug ?? entry.id;
+      if ((entry.uniquePerCreature ?? true) && (usedFamilies.has(family) || futureFamilies.has(family))) return false;
       return estimateAbilityPower(entry) <= remaining;
     });
-    if (!candidates.length) candidates = all.filter((entry) => !usedContent.has(entry.id) && estimateAbilityPower(entry) <= remaining);
     if (!candidates.length) break;
     const picked = random.fork(`ability:${index}`).weightedPick(weightedCandidates(candidates, context, selected, focus));
     const materialized = materializeAbility(picked, index);
@@ -250,7 +262,9 @@ export function rerollAbilitySlot({ request, registry, blueprint, targetId, rand
 
   const previous = abilities[index];
   const preserved = abilities.map((ability, slot) => slot === index ? null : { index: slot, ability }).filter(Boolean);
-  const specialSpent = Number(blueprint.metadata?.specialFeatureBudget?.auraSpent ?? 0) + Number(blueprint.metadata?.specialFeatureBudget?.afflictionSpent ?? 0);
+  const specialSpent = Number(blueprint.metadata?.specialFeatureBudget?.auraSpent ?? 0)
+    + Number(blueprint.metadata?.specialFeatureBudget?.afflictionSpent ?? 0)
+    + Number(blueprint.metadata?.specialFeatureBudget?.spellcastingSpent ?? blueprint.combat?.spellcasting?.[0]?.powerCost ?? 0);
   const totalBudget = Number(blueprint.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(request, blueprint.identity.role));
   const result = generateAbilities({
     request,

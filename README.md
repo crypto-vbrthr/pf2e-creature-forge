@@ -2,10 +2,20 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.7.3** is the ability/signature runtime hardening pass. It keeps the 0.7.2 signature-power expansion while tightening cross-runtime refresh behavior, area targeting/validation, and consolidated runtime diagnostics.
+Version **0.7.4** is the full Creature Forge review and reroll-hardening pass. It preserves the 0.7.x content expansion while closing two shared-budget/locked-slot edge cases found by the cross-module audit.
 
 Signature powers remain seeded, budget-aware content-library entries rather than hard-coded creature exceptions. Area-based signatures such as Dragon Breath, Phoenix Rebirth, and Elemental Retaliation expose clickable PF2E templates in their descriptions.
 
+
+
+## What 0.7.4 hardens
+
+- Single-ability rerolls now reserve spellcasting power as part of the shared creature power budget, matching whole-section rerolls and initial generation.
+- Future preserved/locked abilities now reserve both content IDs and unique families, so rerolling an earlier slot cannot duplicate a later locked ability.
+- Removed the permissive ability fallback that could silently bypass exclusion and unique-family constraints when the strict candidate set was empty.
+- Reviewed the current optional Forge integration surfaces against Affliction Forge 0.1.63, Aura Forge 1.0.0-rc.3, Critical/Effect Forge 1.0.1-rc.4, Item Forge 0.0.37-rc.1, and Loot Forge 0.3.5. No API drift requiring a Creature Forge adapter change was found.
+- Request schema remains v7, Blueprint/content schemas remain v10, Embedded Creature Editor contract remains v12; API/module version 0.7.4.
+- 171 automated tests pass. The full review additionally generated all 3,744 level/role/category combinations for levels -1 through 24 with zero invalid Blueprints, then ran 3,994 representative scoped rerolls and 269 signature-slot rerolls with zero invalid Blueprints, shared-budget overruns, or duplicate unique families.
 
 
 ## What 0.7.3 hardens

@@ -79,7 +79,7 @@ test("runtime status reports degraded when a subsystem completes with per-resour
   const previousGame = globalThis.game;
   const previousActor = globalThis.Actor;
   const previousFolder = globalThis.Folder;
-  const moduleRecord = { id: "pf2e-creature-forge", version: "0.7.3", active: true, api: null };
+  const moduleRecord = { id: "pf2e-creature-forge", version: "0.7.4", active: true, api: null };
   const effectModule = {
     id: "pf2e-critical-forge",
     active: true,

@@ -287,3 +287,12 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - Promote nested runtime warnings to consolidated Actor runtime status with `degraded` state.
 - Correct release/download metadata and stale editor-contract documentation.
 - Permanent test suite: 169 passing tests. One-off review audit: 1,008 core level/role/category generations plus 63 signature-interaction rerolls, all structurally valid.
+
+
+## 0.7.4 - Full Review & Reroll Hardening ✅
+
+- Full level/role/category generation audit and representative scoped reroll stress pass.
+- Shared spellcasting/ability budget hardened for single-slot rerolls.
+- Future locked/preserved ability identities and unique families are now reserved during earlier-slot rerolls.
+- Current Affliction/Aura/Effect/Item/Loot Forge public integration surfaces rechecked against the supplied module builds.
+- Permanent suite: 171 passing tests.

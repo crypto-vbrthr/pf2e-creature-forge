@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.4 – Full Review & Reroll Hardening
+
+- Completed the cross-cutting Creature Forge review across generation, validation, compiler output, runtime materialization, embedded editor/API contracts, localization, loot handling, and optional Forge-module integration boundaries.
+- Fixed single-ability rerolls ignoring power already spent by spellcasting. A rerolled ability could therefore push an otherwise legal creature above its shared special-feature budget.
+- Fixed earlier ability slots being allowed to select the same content or unique family as a later preserved/locked ability. Future preserved slots now reserve identity/family constraints as well as power.
+- Removed the permissive fallback candidate pass that could bypass exclusion and unique-family constraints when a strict ability candidate set was empty. Generation now stops cleanly and reports budget/candidate exhaustion instead of creating an illegal combination.
+- Added two permanent regression tests for the reroll failures. The release suite now passes 171/171 tests.
+- Full-range audit: 3,744 balanced core generations covering every level -1..24, all 8 roles, and all 18 core creature categories produced zero invalid Blueprints and zero validator warnings.
+- Interaction audit: 1,008 representative creatures were subjected to 3,994 ability/attack/defense rerolls; a separate signature audit ran 90 signature concepts and 269 single-slot rerolls. Both audits produced zero invalid Blueprints, shared-budget overruns, or duplicate unique families.
+- Verified the current integration surface against Affliction Forge 0.1.63, Aura Forge 1.0.0-rc.3, Critical/Effect Forge 1.0.1-rc.4, Item Forge 0.0.37-rc.1, and Loot Forge 0.3.5. No adapter/API changes were required.
+- No schema bump: Request v7, Blueprint/content v10, Embedded Creature Editor contract v12, runtime-status schema v2.
+
 ## 0.7.3 – Ability & Signature Runtime Review / Hardening
 
 - Reviewed normal abilities, dynamic signature powers, Effect Forge resources, inline area templates, hosted Afflictions, spellcasting, and loot runtime boundaries together rather than as isolated subsystems.
