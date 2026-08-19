@@ -11,6 +11,10 @@ export const DEFAULT_REQUEST = Object.freeze({
     subtypes: [],
     size: "med"
   },
+  mythic: {
+    enabled: false,
+    role: "auto"
+  },
   attributes: {
     str: "role",
     dex: "role",
@@ -120,6 +124,9 @@ export function createGenerationRequest(input = {}) {
   request.schemaVersion = REQUEST_SCHEMA_VERSION;
   request.identity.subtypes = [...new Set((request.identity.subtypes ?? []).map((value) => String(value).trim()).filter(Boolean))];
   request.generation.seed = String(request.generation.seed ?? "").trim();
+  request.mythic ??= { enabled: false, role: "auto" };
+  request.mythic.enabled = request.mythic?.enabled === true;
+  request.mythic.role = ["auto", "ambusher", "brute", "caster", "striker"].includes(request.mythic?.role) ? request.mythic.role : "auto";
   for (const key of ["categories", "subtypes", "abilities", "auras", "afflictions", "effects", "spells", "loot"]) {
     request.sources[key] = [...new Set((request.sources?.[key] ?? []).map((value) => String(value).trim()).filter(Boolean))];
   }
@@ -203,6 +210,9 @@ export function createEmptyBlueprint() {
       resolvedSubtypes: [],
       traits: ["humanoid"],
       size: "med"
+    },
+    mythic: {
+      enabled: false, role: null, points: { value: 0, max: 0 }, resilience: [], resistance: 0, immunity: null, defenses: false, skillSlugs: [], actions: []
     },
     statistics: {
       abilities: {

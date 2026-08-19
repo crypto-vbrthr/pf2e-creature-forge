@@ -296,3 +296,12 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - Future locked/preserved ability identities and unique families are now reserved during earlier-slot rerolls.
 - Current Affliction/Aura/Effect/Item/Loot Forge public integration surfaces rechecked against the supplied module builds.
 - Permanent suite: 171 passing tests.
+
+
+## 0.8.0 - Mythic Creatures ✅
+
+- War of Immortals mythic monster adjustment progression.
+- Mythic Ambusher/Laurer, Brute/Schläger, Caster/Zauberwirker, and Striker/Plänkler templates.
+- Mythic editor controls, automatic role mapping, 3-point PF2E mythic resource, and compiled mythic action items.
+- Request schema v8, Blueprint schema v11, Embedded Creature Editor contract v13.
+- Permanent suite: 177 passing tests.

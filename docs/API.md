@@ -1,5 +1,7 @@
-# Public API 0.7.4
+# Public API 0.8.0
 
+> **0.8.0 Mythic Creatures:** Request schema v8 adds `mythic.enabled` and `mythic.role`; Blueprint schema v11 stores the resolved mythic progression/template. `api.mythic.roles` and `api.mythic.resolveRole(request)` expose the role mapping. Compiled NPCs receive the PF2E `mythic` trait and a 3-point Mythic Point resource.
+>
 > **0.7.4 full-review hardening:** single-slot ability rerolls now reserve spellcasting power and future locked/preserved ability identities/families, preventing shared-budget overruns and duplicate ability selection. Public schemas remain unchanged.
 >
 > **0.7.3 runtime hardening:** `flags.pf2e-creature-forge.runtimeStatus` uses schema v2 and reports `ready`, `degraded`, `failed`, or `skipped` for each subsystem. Per-resource warnings are consolidated at Actor level. Effect refreshes preserve hosted Affliction delivery blocks, and `area` target mode resolves all selected targets.
@@ -39,6 +41,21 @@ const plan = api.abilities.signature.plan({
 ```
 
 Signature content remains part of ability libraries. The first dynamic resolver is `dragon-breath`; external libraries can provide compatible signature definitions with `signature.kind: "dragon-breath"`.
+
+## Mythic creatures
+
+```js
+const request = api.createRequest({
+  identity: { level: 12, role: "sniper", category: "aberration" },
+  mythic: { enabled: true, role: "ambusher" }
+});
+
+api.mythic.roles; // auto, ambusher, brute, caster, striker
+api.mythic.resolveRole(request); // "ambusher"
+const blueprint = api.generate(request);
+```
+
+`role: "auto"` maps existing Creature Forge roles to a suitable War of Immortals mythic role template. The resolved Blueprint exposes `blueprint.mythic` with its role, Mythic Point pool, resilience saves, conditional resistance/immunity/defenses, selected mythic skills, and generated mythic actions.
 
 ## Generation
 

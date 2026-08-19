@@ -376,6 +376,48 @@ function compileOtherSpeeds(speed = {}) {
     .map((entry) => ({ type: String(entry.type), value: Number(entry.value) }));
 }
 
+function compileMythicItem(entry) {
+  const type = entry?.type === "reaction" ? "reaction" : entry?.type === "free" ? "free" : entry?.type === "action" ? "action" : "passive";
+  const baseDescription = localizeKey(entry?.descriptionKey, entry?.description ?? "");
+  let name = localizeKey(entry?.nameKey, entry?.name ?? "Mythic Ability");
+  let detail = "";
+  if (entry?.id === "mythic-resistance" && Number(entry?.parameters?.value) > 0) {
+    name += ` ${Number(entry.parameters.value)}`;
+    detail = ` <strong>${Number(entry.parameters.value)}</strong>`;
+  }
+  if (entry?.id === "mythic-resilience" && entry?.parameters?.saves?.length) {
+    const saves = entry.parameters.saves.map((save) => localizeKey(`PF2E_CREATURE_FORGE.Mythic.Save.${save}`, save)).join(", ");
+    name += ` (${saves})`;
+    detail = ` <strong>${saves}</strong>`;
+  }
+  if (entry?.id === "mythic-skill" && entry?.parameters?.skills?.length) {
+    const skills = entry.parameters.skills.map((skill) => localizeKey(`PF2E_CREATURE_FORGE.Skill.${skill}`, skill)).join(" / ");
+    name += ` (${skills})`;
+    detail = ` <strong>${skills}</strong>`;
+  }
+  if (entry?.id === "mythic-immunity" && entry?.parameters?.immunity) {
+    const immunity = localizeKey(`PF2E_CREATURE_FORGE.Mythic.Immunity.${entry.parameters.immunity}`, entry.parameters.immunity);
+    name += ` (${immunity})`;
+    detail = ` <strong>${immunity}</strong>`;
+  }
+  return {
+    name,
+    type: "action",
+    img: "icons/magic/symbols/runes-carved-stone-purple.webp",
+    system: {
+      actionType: { value: type },
+      actions: { value: type === "action" ? Number(entry?.actionCost ?? 1) : null },
+      category: "interaction",
+      description: { value: `<p>${baseDescription}${detail}</p>` },
+      publication: { title: "Pathfinder War of Immortals", authors: "", license: "ORC", remaster: true },
+      rules: [],
+      slug: null,
+      traits: { value: [...new Set(["mythic", ...(entry?.traits ?? [])])], rarity: "common" }
+    },
+    flags: { "pf2e-creature-forge": { mythicAbilityId: entry?.id, mythicPointCost: Number(entry?.pointCost ?? 0), mythicParameters: deepClone(entry?.parameters ?? {}) } }
+  };
+}
+
 export function compileActorSource(blueprint, options = {}) {
   const validation = validateBlueprint(blueprint);
   if (!validation.valid) {
@@ -394,6 +436,7 @@ export function compileActorSource(blueprint, options = {}) {
   const abilityItems = (blueprint.abilities ?? []).map((ability) => compileAbilityItem(ability, effectResources));
   const afflictionItems = (blueprint.resources?.afflictions ?? []).map(compileAfflictionItem);
   const spellcastingItems = (blueprint.combat?.spellcasting ?? []).map(compileSpellcastingEntry);
+  const mythicItems = (blueprint.mythic?.actions ?? []).map(compileMythicItem);
   const skills = compileSkills(blueprint.statistics?.skills ?? {});
   const senses = compileSenses(blueprint.statistics?.senses ?? []);
   const otherSpeeds = compileOtherSpeeds(blueprint.statistics?.speed ?? {});
@@ -441,9 +484,9 @@ export function compileActorSource(blueprint, options = {}) {
         reflex: { value: Number(blueprint.statistics.saves.reflex.value), saveDetail: "" },
         will: { value: Number(blueprint.statistics.saves.will.value), saveDetail: "" }
       },
-      resources: { focus: { value: 0, max: 0 } }
+      resources: { focus: { value: 0, max: 0 }, ...(blueprint.mythic?.enabled ? { mythicPoints: { value: Number(blueprint.mythic?.points?.value ?? 3), max: 3 } } : {}) }
     },
-    items: [...attackItems, ...abilityItems, ...afflictionItems, ...spellcastingItems],
+    items: [...attackItems, ...abilityItems, ...afflictionItems, ...spellcastingItems, ...mythicItems],
     flags: {
       "pf2e-creature-forge": {
         blueprintSchemaVersion: blueprint.schemaVersion,
@@ -463,6 +506,7 @@ export function compileActorSource(blueprint, options = {}) {
       effects: deepClone(blueprint.resources?.effects ?? []),
       auras: deepClone(blueprint.resources?.auras ?? []),
       afflictions: deepClone(blueprint.resources?.afflictions ?? []),
+      mythic: deepClone(blueprint.mythic ?? { enabled: false }),
       loot: deepClone(blueprint.loot ?? { policy: "auto" })
     },
     validation

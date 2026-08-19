@@ -24,6 +24,12 @@ function roleOptions(current) {
   return ROLE_IDS.map((role) => option(role, localize(`PF2E_CREATURE_FORGE.Role.${role}`, role), current)).join("");
 }
 
+function mythicRoleOptions(current) {
+  return ["auto", "ambusher", "brute", "caster", "striker"]
+    .map((role) => option(role, localize(`PF2E_CREATURE_FORGE.Mythic.Role.${role}`, role), current))
+    .join("");
+}
+
 function sizeOptions(current) {
   return SIZES.map((size) => option(size, localize(`PF2E_CREATURE_FORGE.Size.${size}`, size), current)).join("");
 }
@@ -169,7 +175,7 @@ function triStateOptions(current) {
 }
 
 export class EmbeddedCreatureEditor {
-  static CONTRACT_VERSION = 12;
+  static CONTRACT_VERSION = 13;
 
   constructor({ api, session = null, request = {}, blueprint = null, mode = "create", layout = "full", activeTab = "creature", capabilities = {}, onChange = null, onGenerate = null } = {}) {
     if (!api) throw new Error("EmbeddedCreatureEditor requires the Creature Forge API.");
@@ -316,6 +322,8 @@ export class EmbeddedCreatureEditor {
     request.identity.level = number(get("level")?.value);
     request.identity.role = get("role")?.value ?? "custom";
     request.identity.category = get("category")?.value ?? "humanoid";
+    request.mythic.enabled = Boolean(get("mythicEnabled")?.checked);
+    request.mythic.role = get("mythicRole")?.value ?? "auto";
     request.identity.subtypes = [...(get("subtypes")?.selectedOptions ?? [])].map((entry) => entry.value).filter(Boolean);
     if (get("categorySources")) request.sources.categories = [...get("categorySources").selectedOptions].map((entry) => entry.value).filter(Boolean);
     if (get("subtypeSources")) request.sources.subtypes = [...get("subtypeSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
@@ -622,7 +630,7 @@ export class EmbeddedCreatureEditor {
         }
         return;
       }
-      if (event.type === "change" && target.matches?.('select[name="category"]')) this.#render();
+      if (event.type === "change" && target.matches?.('select[name="category"], input[name="mythicEnabled"]')) this.#render();
       await this.#emitChange("request-change");
     }
   }
@@ -996,6 +1004,8 @@ export class EmbeddedCreatureEditor {
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Category", "Category"))}</span><select name="category" ${disabled}>${categories.map((entry) => option(entry.value, entry.label, request.identity.category)).join("")}</select></label>
               <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Subtypes", "Subtypes"))}</span><select name="subtypes" multiple size="7" ${disabled}>${subtypeOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SubtypeHint", "Select one or more subtypes. Category-specific entries are marked."))}</small></label>
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Size", "Size"))}</span><select name="size" ${disabled}>${sizeOptions(request.identity.size)}</select></label>
+              <label class="cf-checkbox-label cf-toggle-field cf-mythic-toggle"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Mythic.Enabled", "Mythic creature"))}</span><input name="mythicEnabled" type="checkbox" ${request.mythic?.enabled ? "checked" : ""} ${disabled}></label>
+              <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Mythic.Role.Label", "Mythic role"))}</span><select name="mythicRole" ${disabled} ${request.mythic?.enabled ? "" : "disabled"}>${mythicRoleOptions(request.mythic?.role ?? "auto")}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Mythic.Role.Hint", "Automatic maps the normal creature role to a mythic role template."))}</small></label>
             </div>
 
             <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Attributes", "Attributes"))}</h3>
@@ -1110,6 +1120,12 @@ export class EmbeddedCreatureEditor {
               <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Reflex", "Reflex"))}</dt><dd>${signed(blueprint?.statistics?.saves?.reflex?.value)}</dd></div>
               <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Will", "Will"))}</dt><dd>${signed(blueprint?.statistics?.saves?.will?.value)}</dd></div>
             </dl>
+
+            ${blueprint?.mythic?.enabled ? `<section class="cf-mythic-preview">
+              <div class="cf-heading-row"><h4><i class="fa-solid fa-star"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Mythic.Title", "Mythic"))}</h4><span class="cf-budget-badge">${escapeHtml(localize("PF2E_CREATURE_FORGE.Mythic.Points", "Mythic Points"))} ${Number(blueprint.mythic?.points?.value ?? 3)}/${Number(blueprint.mythic?.points?.max ?? 3)}</span></div>
+              <p><strong>${escapeHtml(localize(`PF2E_CREATURE_FORGE.Mythic.Role.${blueprint.mythic.role}`, blueprint.mythic.role))}</strong>${blueprint.mythic?.resilience?.length ? ` · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Mythic.Resilience", "Mythic Resilience"))}: ${escapeHtml(blueprint.mythic.resilience.map((save) => localize(`PF2E_CREATURE_FORGE.Mythic.Save.${save}`, save)).join(", "))}` : ""}${Number(blueprint.mythic?.resistance ?? 0) > 0 ? ` · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Mythic.Resistance", "Mythic Resistance"))} ${Number(blueprint.mythic.resistance)}` : ""}</p>
+              <div class="cf-spell-tags">${(blueprint.mythic?.actions ?? []).map((entry) => `<span title="${escapeHtml(localize(entry.descriptionKey, entry.description ?? ""))}">${escapeHtml(localize(entry.nameKey, entry.name ?? entry.id))}</span>`).join("")}</div>
+            </section>` : ""}
 
             <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.DefensiveAffinities", "Immunities, Resistances & Weaknesses"))}</h4>${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAffinities", "Reroll defensive affinities"))}" data-cf-action="reroll-affinities"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
             <div class="cf-affinity-preview">

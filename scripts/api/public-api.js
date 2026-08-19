@@ -26,6 +26,7 @@ import { CreatureLootIntegration } from "../integration/loot-integration.js";
 import { CreatureLootRuntime } from "../runtime/loot-runtime.js";
 import { createLootPlan, lootChannelChance } from "../core/loot.js";
 import { limitedAreaDamageFormula, resolveDragonBreathProfile, resolveElementalSignatureProfile, resolveSignaturePlan } from "../core/signature-powers.js";
+import { MYTHIC_ROLE_IDS, resolveMythicRole } from "../core/mythic.js";
 
 let apiInstance = null;
 
@@ -208,6 +209,11 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       createSeed: createRandomSeed,
       create: createRandom,
       SeededRandom
+    },
+
+    mythic: {
+      roles: [...MYTHIC_ROLE_IDS],
+      resolveRole: (request = {}) => resolveMythicRole(createGenerationRequest(request))
     },
 
     abilities: {

@@ -18,6 +18,7 @@ import { assignAfflictionDeliveries } from "./affliction-delivery.js";
 import { generateSpellcasting, rerollSpellcasting, rerollSpellSlot } from "./spellcasting.js";
 import { createLootPlan, rerollLootPlan, rerollLootChannel } from "./loot.js";
 import { resolveSignaturePlan } from "./signature-powers.js";
+import { applyMythicOverlay, prepareMythicRequest, refreshMythicDerivedAdjustments } from "./mythic.js";
 
 const SAVE_NAMES = Object.freeze(["fortitude", "reflex", "will"]);
 const ABILITY_NAMES = Object.freeze(["str", "dex", "con", "int", "wis", "cha"]);
@@ -253,6 +254,7 @@ export class CreatureGenerator {
     });
     const effectiveRequest = deepClone(request);
     effectiveRequest.identity.subtypes = [...affinities.resolvedSubtypes];
+    const resolvedMythicRole = prepareMythicRequest(effectiveRequest);
     const hpBaseValue = random.fork("statistics.hp").int(hpRange.min, hpRange.max);
     const hpValue = Math.max(1, hpBaseValue + Number(affinities.hpAdjustment?.value ?? 0));
     const primaryTrait = resolveTrait(this.registry, "category", request.identity.category, request);
@@ -386,6 +388,7 @@ export class CreatureGenerator {
     blueprint.resources.auras = deepClone(generatedSpecialFeatures.auras);
     blueprint.resources.afflictions = deepClone(generatedSpecialFeatures.afflictions);
     assignAfflictionDeliveries(blueprint);
+    applyMythicOverlay(blueprint, effectiveRequest);
     blueprint.loot = createLootPlan({ request: effectiveRequest, blueprint, random: random.fork("loot") });
     blueprint.provenance = [
       {
@@ -412,6 +415,12 @@ export class CreatureGenerator {
         section: "Building Creatures / Immunities, Weaknesses, Resistances and Category Abilities",
         note: "Defensive affinities are derived from category and subtype definitions. Narrow resistances and weaknesses use the level table; broad resistances and weaknesses can adjust HP."
       },
+      ...(request.mythic?.enabled ? [{
+        kind: "rules",
+        source: "Pathfinder War of Immortals",
+        section: "Mythic Monster Templates (pp. 168–169)",
+        note: `Applied mythic monster adjustments and the ${resolvedMythicRole} mythic role template.`
+      }] : []),
       {
         kind: "engine",
         source: "PF2E Creature Forge",
@@ -738,10 +747,13 @@ export class CreatureGenerator {
 
     if (scope === "spellcasting" || scope === "combat.spellcasting") {
       if (next.locks?.spellcasting) return next;
+      const spellRequest = deepClone(next.metadata.requestSnapshot);
+      prepareMythicRequest(spellRequest);
       const result = rerollSpellcasting({
-        request: next.metadata.requestSnapshot, registry: this.registry, spellSources: this.spellSources, blueprint: next, random: random.fork("spellcasting")
+        request: spellRequest, registry: this.registry, spellSources: this.spellSources, blueprint: next, random: random.fork("spellcasting")
       });
       next.combat.spellcasting = result.spellcasting;
+      refreshMythicDerivedAdjustments(next);
       const totalBudget = Number(next.metadata?.specialFeatureBudget?.limit ?? resolveAbilityPowerBudget(next.metadata.requestSnapshot, next.identity.role));
       const abilitySpent = Number(next.metadata?.abilityBudget?.spent ?? 0);
       const auraSpent = Number(next.resources?.auras?.[0]?.powerCost ?? 0);
@@ -757,6 +769,7 @@ export class CreatureGenerator {
       const targetId = scope.slice("spell:".length);
       const result = rerollSpellSlot({ request: next.metadata.requestSnapshot, registry: this.registry, spellSources: this.spellSources, blueprint: next, targetId, random: random.fork(`spell-slot:${targetId}`) });
       next.combat.spellcasting = result.spellcasting;
+      refreshMythicDerivedAdjustments(next);
       const spellcastingSpent = Number(result.spent ?? 0);
       next.metadata.specialFeatureBudget = { ...(next.metadata.specialFeatureBudget ?? {}), spellcastingSpent, spent: Number(next.metadata?.abilityBudget?.spent ?? 0) + Number(next.resources?.auras?.[0]?.powerCost ?? 0) + Number(next.resources?.afflictions?.[0]?.powerCost ?? 0) + spellcastingSpent };
       next.metadata.specialFeatureBudget.remaining = Math.max(0, Number(next.metadata.specialFeatureBudget.limit ?? 0) - Number(next.metadata.specialFeatureBudget.spent ?? 0));

@@ -471,13 +471,15 @@
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  border: 1px solid rgba(157, 117, 47, 0.7);
+  border: 1px solid color-mix(in srgb, #d4a44f 78%, var(--color-border-light-primary, #888));
   border-radius: 999px;
-  background: rgba(92, 48, 15, 0.12);
-  padding: 0.12rem 0.45rem;
-  font-size: 0.72rem;
+  background: color-mix(in srgb, #d4a44f 16%, transparent);
+  padding: 0.14rem 0.48rem;
+  font-size: 0.74rem;
+  font-weight: 600;
   line-height: 1.2;
-  color: var(--cf-accent, #6f321b);
+  color: color-mix(in srgb, var(--color-text-primary, #f2f0e8) 84%, #e0b75f 16%);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .28);
 }
 
 .cf-ability-power {
@@ -715,12 +717,33 @@
 /* 0.6.0 loot, equipment and signature item integration */
 .cf-editor .cf-loot-settings { margin-top: .45rem; }
 .cf-editor .cf-checkbox-label {
-  display: inline-flex;
+  display: flex;
+  flex-direction: row;
   align-items: center;
   gap: .42rem;
   min-height: 2rem;
 }
-.cf-editor .cf-checkbox-label input[type="checkbox"] { margin: 0; }
+.cf-editor .cf-checkbox-label input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+}
+.cf-editor .cf-toggle-field {
+  min-height: var(--form-field-height, 2.25rem);
+  justify-content: space-between;
+  padding: .34rem .55rem;
+  border: 1px solid var(--color-border-light-tertiary, #555);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--color-bg-option, #181818) 88%, transparent);
+}
+.cf-editor .cf-toggle-field > span {
+  opacity: .88;
+  font-weight: 600;
+}
+.cf-editor .cf-mythic-toggle {
+  border-color: color-mix(in srgb, #d4a44f 42%, var(--color-border-light-tertiary, #555));
+  background: linear-gradient(90deg, color-mix(in srgb, #d4a44f 8%, transparent), transparent 72%);
+}
 .cf-editor .cf-loot-list { display: grid; gap: .4rem; margin-top: .55rem; }
 .cf-editor .cf-loot-channel {
   display: flex;

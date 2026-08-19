@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.8.2 - Runtime Smoke Test Hardening
+
+- Fixed the runtime smoke-test fixture still advertising module version 0.8.0 after the 0.8.1 UI release.
+- The smoke test now imports `MODULE_VERSION` instead of duplicating a hard-coded manifest version, so future patch-version bumps do not falsely trigger the mixed-installation guard.
+- No runtime or schema behavior changed.
+
+## 0.8.1 - Mythic UI Polish
+
+- Increased contrast for compact power/budget badges such as ability power, ability budgets, and Mythic Points.
+- Reworked the Mythic Creature checkbox into a distinct toggle field so it no longer visually reads as part of the Size control.
+- Hardened checkbox layout so checkbox controls keep their intrinsic width in the two-column editor grid.
+
+## 0.8.0 – Mythic Creatures
+
+- Added first-class mythic creature generation from *War of Immortals / Krieg der Unsterblichen* pp. 168–169.
+- Added Request `mythic.enabled` and `mythic.role` (`auto | ambusher | brute | caster | striker`) plus a derived Blueprint mythic block.
+- Added the general mythic monster level progression: Mythic Resilience/Resistance, Mythic Power actions, Undying Myth, Reroll/Mythic Defenses, and Mythic Immunity.
+- Added all four mythic role templates with their statistic adjustments and restrictions: Ambusher/Laurer, Brute/Schläger, Caster/Zauberwirker, Striker/Plänkler.
+- Added automatic normal-role → mythic-role mapping and explicit editor override.
+- Mythic Casters force spellcasting during generation and receive the required high/extreme spellcasting values and extreme tradition skill.
+- Compiled PF2E NPCs receive the `mythic` trait, a 3/3 Mythic Point resource, and PF2E Action items for generated mythic powers/passives.
+- Added DE/EN localization for mythic UI and generated mechanics.
+- Added `api.mythic.roles` and `api.mythic.resolveRole(request)`.
+- Request schema v8, Blueprint schema v11, content schema v10, Embedded Creature Editor contract v13.
+- Permanent suite passes 177/177 tests.
+
 ## 0.7.4 – Full Review & Reroll Hardening
 
 - Completed the cross-cutting Creature Forge review across generation, validation, compiler output, runtime materialization, embedded editor/API contracts, localization, loot handling, and optional Forge-module integration boundaries.

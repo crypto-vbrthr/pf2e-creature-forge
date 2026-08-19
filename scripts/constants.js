@@ -1,8 +1,8 @@
 export const MODULE_ID = "pf2e-creature-forge";
-export const MODULE_VERSION = "0.7.4";
-export const API_VERSION = "0.7.4";
-export const REQUEST_SCHEMA_VERSION = 7;
-export const BLUEPRINT_SCHEMA_VERSION = 10;
+export const MODULE_VERSION = "0.8.2";
+export const API_VERSION = "0.8.0";
+export const REQUEST_SCHEMA_VERSION = 8;
+export const BLUEPRINT_SCHEMA_VERSION = 11;
 export const CONTENT_SCHEMA_VERSION = 10;
 
 export const CORE_ABILITY_LIBRARY_ID = `${MODULE_ID}.ability-library.core`;

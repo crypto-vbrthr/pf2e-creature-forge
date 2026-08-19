@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { MODULE_VERSION } from "../scripts/constants.js";
 
 test("module init/ready smoke test exposes API and fires hooks", async () => {
   const once = new Map();
   const calls = [];
-  const moduleRecord = { id: "pf2e-creature-forge", version: "0.7.4", active: true, api: null };
+  const moduleRecord = { id: "pf2e-creature-forge", version: MODULE_VERSION, active: true, api: null };
   globalThis.HTMLElement = class HTMLElement {};
   globalThis.document = { querySelector: () => null };
   globalThis.foundry = {

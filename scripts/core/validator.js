@@ -31,6 +31,8 @@ export function validateGenerationRequest(request, { registry } = {}) {
   if (!ROLE_IDS.includes(request?.identity?.role)) {
     issues.push(issue("error", "UNKNOWN_ROLE", "identity.role", `Unknown role '${request?.identity?.role}'.`));
   }
+  if (request?.mythic?.enabled !== true && request?.mythic?.enabled !== false) issues.push(issue("error", "INVALID_MYTHIC_ENABLED", "mythic.enabled", "Mythic enabled must be a boolean."));
+  if (!["auto", "ambusher", "brute", "caster", "striker"].includes(request?.mythic?.role)) issues.push(issue("error", "INVALID_MYTHIC_ROLE", "mythic.role", `Unknown mythic role '${request?.mythic?.role}'.`));
   if (!SIZES.includes(request?.identity?.size)) {
     issues.push(issue("error", "UNKNOWN_SIZE", "identity.size", `Unknown size '${request?.identity?.size}'.`));
   }
@@ -202,6 +204,11 @@ export function validateBlueprint(blueprint) {
   const blueprintLevel = Number(blueprint?.identity?.level);
   if (!Number.isInteger(blueprintLevel) || blueprintLevel < -1 || blueprintLevel > 24) {
     issues.push(issue("error", "BLUEPRINT_LEVEL_OUT_OF_RANGE", "identity.level", "CreatureBlueprint level must be an integer from -1 to 24."));
+  }
+  if (blueprint?.mythic?.enabled) {
+    if (!["ambusher", "brute", "caster", "striker"].includes(blueprint?.mythic?.role)) issues.push(issue("error", "INVALID_BLUEPRINT_MYTHIC_ROLE", "mythic.role", "Enabled mythic blueprints require a valid mythic role."));
+    if (!(blueprint?.identity?.traits ?? []).includes("mythic")) issues.push(issue("error", "MYTHIC_TRAIT_REQUIRED", "identity.traits", "Mythic blueprints require the mythic trait."));
+    if (Number(blueprint?.mythic?.points?.max ?? 0) !== 3) issues.push(issue("warning", "MYTHIC_POINT_POOL", "mythic.points", "Mythic NPCs normally use a pool of 3 Mythic Points."));
   }
   if (!SIZES.includes(blueprint?.identity?.size)) {
     issues.push(issue("error", "INVALID_BLUEPRINT_SIZE", "identity.size", `CreatureBlueprint has unsupported size '${blueprint?.identity?.size}'.`));

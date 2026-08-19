@@ -2,11 +2,20 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.7.4** is the full Creature Forge review and reroll-hardening pass. It preserves the 0.7.x content expansion while closing two shared-budget/locked-slot edge cases found by the cross-module audit.
+Version **0.8.1** keeps the **Mythic Creatures** feature set from 0.8.0 and adds a small editor readability/layout polish. Version 0.8.0 added first-class **Mythic Creatures** based on the mythic monster adjustments and four mythic role templates in *Pathfinder War of Immortals / Krieg der Unsterblichen*. The generator can now create ordinary PF2E creatures or elevate them into Mythic Ambushers, Brutes, Casters, or Strikers.
 
-Signature powers remain seeded, budget-aware content-library entries rather than hard-coded creature exceptions. Area-based signatures such as Dragon Breath, Phoenix Rebirth, and Elemental Retaliation expose clickable PF2E templates in their descriptions.
+The embedded editor exposes a **Mythic creature** checkbox and an automatic/explicit mythic-role selector. Generated NPCs receive the `mythic` trait, a 3-point Mythic Point resource, role-adjusted statistics, level-gated mythic powers, and dedicated PF2E Action items for mythic mechanics.
 
+## What 0.8.0 adds
 
+- War of Immortals mythic monster progression at levels 1, 4, 7, 10, 13, 17, 20, and 23+.
+- Four role templates: **Mythic Ambusher, Mythic Brute, Mythic Caster, Mythic Striker** with their official statistic adjustments, restrictions, and signature mythic abilities.
+- Automatic mapping from existing Creature Forge roles, with explicit override in the editor/API.
+- Mythic Caster forces spellcasting in the effective generation pass and applies high/extreme spell DC/attack plus extreme tradition skill.
+- Compiled NPCs carry the `mythic` trait and `system.resources.mythicPoints` 3/3 resource.
+- Mythic powers/role abilities compile to PF2E Action items with Creature Forge provenance and mythic point-cost metadata.
+- Request schema v8, Blueprint schema v11, content schema v10, Embedded Creature Editor contract v13; API/module version 0.8.0.
+- 177 automated tests pass. A full 1,872-case mythic level/category/role audit produced zero invalid Blueprints or role-template restriction violations.
 
 ## What 0.7.4 hardens
 
