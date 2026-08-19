@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.0-rc.1 – Release Candidate & Final Integration Review
+
+- Promoted the reviewed 0.8.x feature set to the first 0.9 release candidate without changing Request/Blueprint/Content/editor/runtime-status schemas.
+- Fixed release metadata drift: the prior 0.8.2 manifest still referenced the 0.8.1 release asset. Release metadata is now version-aligned and guarded by a permanent regression test.
+- Fixed Embedded Creature Editor reopening from a persisted Blueprint: when no explicit request is supplied, the session now rehydrates controls from `blueprint.metadata.requestSnapshot` and safely normalizes older request snapshots to the current schema.
+- Hardened optional Forge integration diagnostics. Status now reports capability completeness and missing surfaces instead of treating every exposed `module.api` object as fully usable.
+- Rechecked the current supplied Affliction Forge 0.1.63, Aura Forge 1.0.0-rc.3, Critical/Effect Forge 1.0.1-rc.4, Item Forge 0.0.37-rc.1, and Loot Forge 0.3.5 public surfaces against Creature Forge adapters.
+- Refined the generic extreme-skill validator so a legal Mythic role-mandated extreme skill does not create a false `MANY_EXTREME_SKILLS` warning; multiple ordinary extreme skills are still warned.
+- Added release-metadata, persisted-session migration, integration-capability, and Mythic validator regression coverage.
+- Permanent suite: 183/183 tests passing. Representative RC audit: 1,008 normal generations, 504 Mythic generations, 504 compilations, and 1,728 scoped rerolls with zero invalid Blueprints and zero validator warnings.
+
 ## 0.8.2 - Runtime Smoke Test Hardening
 
 - Fixed the runtime smoke-test fixture still advertising module version 0.8.0 after the 0.8.1 UI release.

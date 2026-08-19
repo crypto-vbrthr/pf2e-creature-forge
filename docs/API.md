@@ -1,5 +1,7 @@
-# Public API 0.8.0
+# Public API 0.9.0-rc.1
 
+> **0.9.0-rc.1 release-candidate hardening:** public data contracts remain Request v8, Blueprint v11, Content v10, Embedded Creature Editor v13, and runtime-status v2. An embedded editor opened with a persisted Blueprint but no explicit request now rehydrates from `blueprint.metadata.requestSnapshot` and normalizes older snapshots. Optional integration status retains `ready` for API exposure and adds `complete` plus `missingCapabilities` for capability-safe diagnostics.
+>
 > **0.8.0 Mythic Creatures:** Request schema v8 adds `mythic.enabled` and `mythic.role`; Blueprint schema v11 stores the resolved mythic progression/template. `api.mythic.roles` and `api.mythic.resolveRole(request)` expose the role mapping. Compiled NPCs receive the PF2E `mythic` trait and a 3-point Mythic Point resource.
 >
 > **0.7.4 full-review hardening:** single-slot ability rerolls now reserve spellcasting power and future locked/preserved ability identities/families, preventing shared-budget overruns and duplicate ability selection. Public schemas remain unchanged.

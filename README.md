@@ -2,9 +2,19 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **0.8.1** keeps the **Mythic Creatures** feature set from 0.8.0 and adds a small editor readability/layout polish. Version 0.8.0 added first-class **Mythic Creatures** based on the mythic monster adjustments and four mythic role templates in *Pathfinder War of Immortals / Krieg der Unsterblichen*. The generator can now create ordinary PF2E creatures or elevate them into Mythic Ambushers, Brutes, Casters, or Strikers.
+Version **0.9.0-rc.1** is the release-candidate integration hardening pass. It keeps the **Mythic Creatures** feature set from 0.8.x while freezing the candidate API/schema surface, rechecking optional Forge integrations, hardening persisted-blueprint editor rehydration, and adding release-metadata guards. Version 0.8.0 added first-class **Mythic Creatures** based on the mythic monster adjustments and four mythic role templates in *Pathfinder War of Immortals / Krieg der Unsterblichen*. The generator can now create ordinary PF2E creatures or elevate them into Mythic Ambushers, Brutes, Casters, or Strikers.
 
 The embedded editor exposes a **Mythic creature** checkbox and an automatic/explicit mythic-role selector. Generated NPCs receive the `mythic` trait, a 3-point Mythic Point resource, role-adjusted statistics, level-gated mythic powers, and dedicated PF2E Action items for mythic mechanics.
+
+## What 0.9.0-rc.1 hardens
+
+- Freezes the release-candidate surface at Request schema v8, Blueprint schema v11, content schema v10, Embedded Creature Editor contract v13, and runtime-status schema v2.
+- Rehydrates an embedded editor opened with a persisted Blueprint from its stored request snapshot, including safe normalization of older pre-Mythic request snapshots.
+- Distinguishes an exposed optional Forge API from a complete compatible capability surface in integration diagnostics.
+- Verifies the supplied Affliction Forge 0.1.63, Aura Forge 1.0.0-rc.3, Critical/Effect Forge 1.0.1-rc.4, Item Forge 0.0.37-rc.1, and Loot Forge 0.3.5 integration contracts.
+- Guards module/package/API/download release metadata against version drift.
+- Avoids false extreme-skill warnings when the second extreme skill is explicitly granted by a Mythic role template.
+- 183 automated tests pass. A representative RC audit covered 1,008 normal generations, 504 Mythic generations, 504 compilations, and 1,728 scoped rerolls with zero invalid Blueprints and zero validator warnings.
 
 ## What 0.8.0 adds
 
@@ -14,8 +24,8 @@ The embedded editor exposes a **Mythic creature** checkbox and an automatic/expl
 - Mythic Caster forces spellcasting in the effective generation pass and applies high/extreme spell DC/attack plus extreme tradition skill.
 - Compiled NPCs carry the `mythic` trait and `system.resources.mythicPoints` 3/3 resource.
 - Mythic powers/role abilities compile to PF2E Action items with Creature Forge provenance and mythic point-cost metadata.
-- Request schema v8, Blueprint schema v11, content schema v10, Embedded Creature Editor contract v13; API/module version 0.8.0.
-- 177 automated tests pass. A full 1,872-case mythic level/category/role audit produced zero invalid Blueprints or role-template restriction violations.
+- Request schema v8, Blueprint schema v11, content schema v10, Embedded Creature Editor contract v13; introduced in API/module version 0.8.0.
+- The 0.8.0 release passed 177 automated tests. A full 1,872-case mythic level/category/role audit produced zero invalid Blueprints or role-template restriction violations.
 
 ## What 0.7.4 hardens
 

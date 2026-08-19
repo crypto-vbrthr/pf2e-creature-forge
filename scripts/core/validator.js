@@ -455,8 +455,12 @@ export function validateBlueprint(blueprint) {
   const skills = Object.values(blueprint?.statistics?.skills ?? {});
   const highSkills = skills.filter((entry) => entry?.rank === "high").length;
   const extremeSkills = skills.filter((entry) => entry?.rank === "extreme").length;
+  const nonMythicExtremeSkills = skills.filter((entry) => entry?.rank === "extreme" && entry?.mythicAdjusted !== true).length;
   if (highSkills > 3) issues.push(issue("warning", "MANY_HIGH_SKILLS", "statistics.skills", "Most creatures should not have more than three high skills."));
-  if (extremeSkills > 1) issues.push(issue("warning", "MANY_EXTREME_SKILLS", "statistics.skills", "Most creatures should have at most one extreme skill."));
+  // War of Immortals role templates explicitly elevate a signature skill to
+  // extreme. That can legally coexist with the creature road map's existing
+  // extreme skill, so only warn when more than one non-mythic extreme remains.
+  if (extremeSkills > 1 && nonMythicExtremeSkills > 1) issues.push(issue("warning", "MANY_EXTREME_SKILLS", "statistics.skills", "Most creatures should have at most one extreme skill before mythic role adjustments."));
   for (const skill of skills) {
     if (!SKILL_SLUGS.includes(skill?.slug) || !RANKS.SKILL.includes(skill?.rank) || !Number.isFinite(Number(skill?.value))) {
       issues.push(issue("error", "INVALID_SKILL", "statistics.skills", `Skill '${skill?.slug ?? "unknown"}' has invalid data.`));

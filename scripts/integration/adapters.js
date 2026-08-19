@@ -34,12 +34,15 @@ export class ForgeIntegrationHub {
         createDefinition: (api) => typeof api.definitions?.create === "function",
         validateDefinition: (api) => typeof api.definitions?.validate === "function",
         assignDefinition: (api) => typeof api.instances?.assignDefinition === "function",
+        reconcileActor: (api) => typeof api.instances?.reconcileActor === "function",
         editor: (api) => typeof api.ui?.auraEditor?.create === "function"
       }),
       affliction: integrationStatus(IDS.affliction, {
         createDefinition: (api) => typeof api.definitions?.create === "function",
         validateDefinition: (api) => typeof api.definitions?.validate === "function",
         applyDefinition: (api) => typeof api.engine?.applyDefinition === "function",
+        applyTemplate: (api) => typeof api.engine?.applyTemplate === "function",
+        reconcileActor: (api) => typeof api.instances?.reconcileActor === "function",
         buildTemplateSource: (api) => typeof api.documents?.buildTemplateSource === "function",
         createReference: (api) => typeof api.references?.create === "function",
         addReference: (api) => typeof api.references?.add === "function",
@@ -52,7 +55,7 @@ export class ForgeIntegrationHub {
         editor: (api) => typeof api.ui?.afflictionEditor?.create === "function"
       }),
       item: integrationStatus(IDS.item, {
-        api: (api) => Boolean(api)
+        generate: (api) => typeof api.generate === "function"
       }),
       loot: integrationStatus(IDS.loot, {
         embeddedEditor: (api) => typeof api.createEmbeddedEditor === "function",

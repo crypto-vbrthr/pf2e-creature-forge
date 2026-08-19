@@ -6,6 +6,7 @@ import { CreatureGenerator } from "../scripts/core/generator.js";
 import { compileActorSource } from "../scripts/core/compiler.js";
 import { applyMythicOverlay } from "../scripts/core/mythic.js";
 import { createEmptyBlueprint } from "../scripts/core/schemas.js";
+import { validateBlueprint } from "../scripts/core/validator.js";
 
 function makeGenerator() {
   const registry = new ContentRegistry();
@@ -99,4 +100,14 @@ test("automatic mythic role maps ordinary creature roles deterministically", () 
   assert.equal(generator.generate({ identity: { level: 4, role: "soldier", category: "humanoid" }, mythic: { enabled: true, role: "auto" }, generation: { seed: "map-soldier" } }).mythic.role, "brute");
   assert.equal(generator.generate({ identity: { level: 4, role: "sniper", category: "humanoid" }, mythic: { enabled: true, role: "auto" }, generation: { seed: "map-sniper" } }).mythic.role, "ambusher");
   assert.equal(generator.generate({ identity: { level: 4, role: "skirmisher", category: "humanoid" }, mythic: { enabled: true, role: "auto" }, generation: { seed: "map-skirmisher" } }).mythic.role, "striker");
+});
+
+test("mythic role-mandated extreme skills do not trigger the ordinary extreme-skill warning", () => {
+  const blueprint = makeGenerator().generate({
+    identity: { level: 10, role: "skillParagon", category: "humanoid" },
+    mythic: { enabled: true, role: "ambusher" },
+    generation: { seed: "mythic-extreme-validator" }
+  });
+  const validation = validateBlueprint(blueprint);
+  assert.equal(validation.warnings.some((entry) => entry.code === "MANY_EXTREME_SKILLS"), false);
 });

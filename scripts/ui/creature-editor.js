@@ -824,7 +824,7 @@ export class EmbeddedCreatureEditor {
     }).join("");
     const integrationStatus = this.api.integrations.getStatus();
     const statusRows = Object.entries(integrationStatus).map(([key, status]) => {
-      const state = status.ready ? "ready" : status.active ? "partial" : "missing";
+      const state = status.complete ? "ready" : status.active ? "partial" : "missing";
       return `<li class="cf-integration ${state}"><span>${escapeHtml(localize(`PF2E_CREATURE_FORGE.Integration.${key}`, key))}</span><strong>${escapeHtml(status.version || "—")}</strong></li>`;
     }).join("");
     const diagnostics = [...(validation.request.issues ?? []), ...(validation.blueprint.issues ?? [])];

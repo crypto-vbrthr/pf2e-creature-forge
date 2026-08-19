@@ -2,12 +2,18 @@ import { deepClone, deepMerge } from "../core/clone.js";
 import { createGenerationRequest } from "../core/schemas.js";
 
 export class CreatureEditorSession {
-  constructor({ api, request = {}, blueprint = null, mode = "create" } = {}) {
+  constructor({ api, request = null, blueprint = null, mode = "create" } = {}) {
     if (!api) throw new Error("CreatureEditorSession requires the Creature Forge API.");
     this.api = api;
     this.mode = mode;
-    this.request = createGenerationRequest(request);
     this.blueprint = blueprint ? deepClone(blueprint) : null;
+    // Embedded hosts commonly reopen a persisted Creature Forge blueprint
+    // without also passing its original request. Rehydrate the editor request
+    // from blueprint provenance so controls, source selections, and rerolls
+    // reflect the creature that is actually being edited. createGenerationRequest
+    // also normalizes older request snapshots onto the current request schema.
+    const initialRequest = request ?? this.blueprint?.metadata?.requestSnapshot ?? {};
+    this.request = createGenerationRequest(initialRequest);
     this.initial = this.snapshot();
     this.dirty = false;
   }

@@ -305,3 +305,13 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - Mythic editor controls, automatic role mapping, 3-point PF2E mythic resource, and compiled mythic action items.
 - Request schema v8, Blueprint schema v11, Embedded Creature Editor contract v13.
 - Permanent suite: 177 passing tests.
+
+## 0.9.0-rc.1 - Release Candidate & Final Integration Review ✅
+
+- Release metadata alignment plus permanent version/download regression guard.
+- Persisted Blueprint/editor request rehydration with legacy request-snapshot normalization.
+- Capability-complete diagnostics for optional Affliction/Aura/Effect/Item/Loot Forge integrations and recheck against the supplied current module builds.
+- Mythic-aware extreme-skill validator refinement.
+- No schema bump: Request v8, Blueprint v11, Content v10, Embedded Creature Editor v13, runtime-status v2.
+- Permanent suite: 183 passing tests. Representative audit: 1,008 normal generations + 504 Mythic generations + 504 compilations + 1,728 scoped rerolls, zero invalid Blueprints and zero warnings.
+
