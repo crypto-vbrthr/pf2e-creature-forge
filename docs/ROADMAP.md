@@ -247,7 +247,7 @@
 - Host-controlled source profiles.
 - Draft/commit workflows.
 
-## 1.0
+## 1.0 ✅
 
 - Release hardening, migration policy, API stability commitment, and complete documentation.
 
@@ -315,3 +315,11 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - No schema bump: Request v8, Blueprint v11, Content v10, Embedded Creature Editor v13, runtime-status v2.
 - Permanent suite: 183 passing tests. Representative audit: 1,008 normal generations + 504 Mythic generations + 504 compilations + 1,728 scoped rerolls, zero invalid Blueprints and zero warnings.
 
+
+
+## 1.0.0 - Stable Release ✅
+
+- Promote 0.9.0-rc.1 after successful real Foundry/PF2e smoke testing.
+- Freeze the first stable API/data-contract baseline at Request v8, Blueprint v11, Content v10, Embedded Creature Editor v13, and runtime-status v2.
+- Align release metadata and packaging to v1.0.0 with no functional drift from the reviewed RC.
+- Permanent suite: 183 passing tests. Final RC integration audit remained clean across generation, Mythic generation, compilation, and scoped rerolls.

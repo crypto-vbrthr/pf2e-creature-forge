@@ -1,6 +1,6 @@
 export const MODULE_ID = "pf2e-creature-forge";
-export const MODULE_VERSION = "0.9.0-rc.1";
-export const API_VERSION = "0.9.0-rc.1";
+export const MODULE_VERSION = "1.0.0";
+export const API_VERSION = "1.0.0";
 export const REQUEST_SCHEMA_VERSION = 8;
 export const BLUEPRINT_SCHEMA_VERSION = 11;
 export const CONTENT_SCHEMA_VERSION = 10;

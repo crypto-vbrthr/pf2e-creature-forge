@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0 – Stable Release
+
+- Promoted the tested 0.9.0-rc.1 release candidate to the first stable Creature Forge release after the real Foundry/PF2e smoke test completed successfully.
+- No feature, schema, runtime, or integration-contract changes from the reviewed RC.
+- Stable public contracts: Request schema v8, Blueprint schema v11, Content schema v10, Embedded Creature Editor contract v13, runtime-status schema v2.
+- Release metadata, module/package/API version, GitHub release tag, and download asset are aligned to 1.0.0.
+- Optional Affliction Forge, Aura Forge, Critical/Effect Forge, Item Forge, and Loot Forge integrations retain capability-safe diagnostics and graceful degradation.
+- Permanent suite remains 183/183 passing tests; the final RC audit covered 1,008 normal generations, 504 Mythic generations, 504 compilations, and 1,728 scoped rerolls with zero invalid Blueprints and zero validator warnings.
+
 ## 0.9.0-rc.1 – Release Candidate & Final Integration Review
 
 - Promoted the reviewed 0.8.x feature set to the first 0.9 release candidate without changing Request/Blueprint/Content/editor/runtime-status schemas.
