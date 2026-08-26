@@ -11,9 +11,9 @@ const AURA_DEFAULT_NAMES = Object.freeze({
 });
 
 const EFFECT_NAME_KEYS = Object.freeze({
-  Frightened: "PF2E_CREATURE_FORGE.Effect.Frightened1",
-  Hampered: "PF2E_CREATURE_FORGE.Effect.Hampered10",
-  "Off-Guard": "PF2E_CREATURE_FORGE.Effect.OffGuard"
+  Frightened: "PF2E_CREATURE_FORGE.Effect.Frightened1.Name",
+  Hampered: "PF2E_CREATURE_FORGE.Effect.Hampered10.Name",
+  "Off-Guard": "PF2E_CREATURE_FORGE.Effect.OffGuard.Name"
 });
 
 const AFFLICTION_STAGE_DESCRIPTION_KEYS = Object.freeze({

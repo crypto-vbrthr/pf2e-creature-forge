@@ -51,3 +51,19 @@ test("embedded fallback catalog contains every shipped localization key", () => 
     assert.deepEqual(missing, [], `${lang} has keys missing from scripts/i18n.js`);
   }
 });
+
+test("shipped localization files contain no dotted-key parent/child collisions", () => {
+  for (const lang of ["de", "en"]) {
+    const catalog = JSON.parse(readFileSync(new URL(`../lang/${lang}.json`, import.meta.url), "utf8"));
+    const keys = new Set(Object.keys(catalog));
+    const collisions = [];
+    for (const key of keys) {
+      const parts = key.split(".");
+      for (let index = 1; index < parts.length; index += 1) {
+        const parent = parts.slice(0, index).join(".");
+        if (keys.has(parent)) collisions.push(`${parent} -> ${key}`);
+      }
+    }
+    assert.deepEqual(collisions, [], `${lang} contains localization key collisions that Foundry cannot expand`);
+  }
+});

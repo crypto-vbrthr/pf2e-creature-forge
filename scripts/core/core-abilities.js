@@ -30,43 +30,43 @@ const effect = (slug, nameKey, definition, extra = {}) => ({
 });
 
 export const CORE_EFFECTS = [
-  effect("frightened-1", "PF2E_CREATURE_FORGE.Effect.Frightened1", {
+  effect("frightened-1", "PF2E_CREATURE_FORGE.Effect.Frightened1.Name", {
     components: [{ type: "condition", slug: "frightened", value: 1 }]
   }, { name: "Frightened", img: "icons/svg/terror.svg", tags: ["fear", "mental"] }),
-  effect("hampered-10", "PF2E_CREATURE_FORGE.Effect.Hampered10", {
+  effect("hampered-10", "PF2E_CREATURE_FORGE.Effect.Hampered10.Name", {
     components: [{ type: "movement", movementType: "land", value: -10, modifierType: "status" }]
   }, { name: "Hampered", img: "icons/svg/wingfoot.svg", tags: ["movement", "control"] }),
-  effect("off-guard", "PF2E_CREATURE_FORGE.Effect.OffGuard", {
+  effect("off-guard", "PF2E_CREATURE_FORGE.Effect.OffGuard.Name", {
     components: [{ type: "condition", slug: "off-guard" }]
   }, { name: "Off-Guard", img: "icons/svg/daze.svg", tags: ["control"] }),
-  effect("dazzled", "PF2E_CREATURE_FORGE.Effect.Dazzled", {
+  effect("dazzled", "PF2E_CREATURE_FORGE.Effect.Dazzled.Name", {
     components: [{ type: "condition", slug: "dazzled" }]
   }, { name: "Dazzled", img: "icons/svg/light.svg", tags: ["vision", "control"] }),
-  effect("enfeebled-1", "PF2E_CREATURE_FORGE.Effect.Enfeebled1", {
+  effect("enfeebled-1", "PF2E_CREATURE_FORGE.Effect.Enfeebled1.Name", {
     components: [{ type: "condition", slug: "enfeebled", value: 1 }]
   }, { name: "Enfeebled", img: "icons/svg/degen.svg", tags: ["debuff"] }),
-  effect("quickened-step", "PF2E_CREATURE_FORGE.Effect.QuickenedStep", {
+  effect("quickened-step", "PF2E_CREATURE_FORGE.Effect.QuickenedStep.Name", {
     components: [{ type: "movement", movementType: "land", value: 10, modifierType: "status" }]
   }, { name: "Quickened Step", img: "icons/svg/wingfoot.svg", tags: ["movement", "self-buff"] }),
-  effect("guarded", "PF2E_CREATURE_FORGE.Effect.Guarded", {
+  effect("guarded", "PF2E_CREATURE_FORGE.Effect.Guarded.Name", {
     components: [{ type: "modifier", selector: "ac", value: 1, modifierType: "circumstance" }]
   }, { name: "Guarded", img: "icons/svg/shield.svg", tags: ["defense", "self-buff"] }),
-  effect("weakened-will", "PF2E_CREATURE_FORGE.Effect.WeakenedWill", {
+  effect("weakened-will", "PF2E_CREATURE_FORGE.Effect.WeakenedWill.Name", {
     components: [{ type: "modifier", selector: "will", value: -1, modifierType: "status" }]
   }, { name: "Weakened Will", img: "icons/svg/terror.svg", tags: ["mental", "debuff"] }),
-  effect("clumsy-1", "PF2E_CREATURE_FORGE.Effect.Clumsy1", {
+  effect("clumsy-1", "PF2E_CREATURE_FORGE.Effect.Clumsy1.Name", {
     components: [{ type: "condition", slug: "clumsy", value: 1 }]
   }, { name: "Clumsy", img: "icons/svg/falling.svg", tags: ["control", "debuff"] }),
-  effect("sickened-1", "PF2E_CREATURE_FORGE.Effect.Sickened1", {
+  effect("sickened-1", "PF2E_CREATURE_FORGE.Effect.Sickened1.Name", {
     components: [{ type: "condition", slug: "sickened", value: 1 }]
   }, { name: "Sickened", img: "icons/svg/poison.svg", tags: ["debuff"] }),
-  effect("stupefied-1", "PF2E_CREATURE_FORGE.Effect.Stupefied1", {
+  effect("stupefied-1", "PF2E_CREATURE_FORGE.Effect.Stupefied1.Name", {
     components: [{ type: "condition", slug: "stupefied", value: 1 }]
   }, { name: "Stupefied", img: "icons/svg/daze.svg", tags: ["mental", "debuff"] }),
-  effect("slowed-1", "PF2E_CREATURE_FORGE.Effect.Slowed1", {
+  effect("slowed-1", "PF2E_CREATURE_FORGE.Effect.Slowed1.Name", {
     components: [{ type: "condition", slug: "slowed", value: 1 }]
   }, { name: "Slowed", img: "icons/svg/clockwork.svg", tags: ["control", "debuff"] }),
-  effect("drained-1", "PF2E_CREATURE_FORGE.Effect.Drained1", {
+  effect("drained-1", "PF2E_CREATURE_FORGE.Effect.Drained1.Name", {
     components: [{ type: "condition", slug: "drained", value: 1 }]
   }, { name: "Drained", img: "icons/svg/blood.svg", tags: ["void", "debuff"], duration: { value: -1, unit: "unlimited", expiry: null } })
 ];

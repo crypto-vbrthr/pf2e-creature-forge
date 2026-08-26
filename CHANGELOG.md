@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 – Localization Startup Hotfix
+
+- Fixed Foundry VTT localization loading failures caused by dotted localization keys that were both string values and parents of `.Description` keys.
+- Renamed shipped effect and mythic display-name keys to `.Name` siblings while retaining legacy embedded fallback aliases for persisted 1.0.0 blueprints.
+- Added a regression test that rejects localization parent/child key collisions in both German and English catalogs.
+
 ## 1.0.0 – Stable Release
 
 - Promoted the tested 0.9.0-rc.1 release candidate to the first stable Creature Forge release after the real Foundry/PF2e smoke test completed successfully.

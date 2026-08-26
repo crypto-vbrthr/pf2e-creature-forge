@@ -15,7 +15,7 @@ function makeBlueprint(target = "target") {
         id: "test.effect.frightened",
         contentId: "test.effect.frightened",
         name: "Frightened",
-        nameKey: "PF2E_CREATURE_FORGE.Effect.Frightened1",
+        nameKey: "PF2E_CREATURE_FORGE.Effect.Frightened1.Name",
         descriptionKey: "PF2E_CREATURE_FORGE.Effect.Frightened1.Description",
         definition: { id: "test.effect.frightened", name: "Frightened", description: "", schemaVersion: 2, components: [] }
       }]
@@ -67,7 +67,7 @@ test("runtime materializes linked Effect Forge resources and rewrites ability de
   globalThis.game = {
     i18n: {
       localize: (key) => ({
-        "PF2E_CREATURE_FORGE.Effect.Frightened1": "Verängstigt",
+        "PF2E_CREATURE_FORGE.Effect.Frightened1.Name": "Verängstigt",
         "PF2E_CREATURE_FORGE.Effect.Frightened1.Description": "Verängstigt 1 senkt Würfe und SG um 1.",
         "PF2E_CREATURE_FORGE.Runtime.Timing.FailedSave": "Bei misslungenem Rettungswurf",
         "PF2E_CREATURE_FORGE.Action.ApplyEffect": "Effekt anwenden"
@@ -123,7 +123,7 @@ test("manual runtime applies a linked effect to selected targets and honors self
     user: { targets: new Set([targetToken]) },
     i18n: {
       localize: (key) => ({
-        "PF2E_CREATURE_FORGE.Effect.Frightened1": "Verängstigt",
+        "PF2E_CREATURE_FORGE.Effect.Frightened1.Name": "Verängstigt",
         "PF2E_CREATURE_FORGE.Effect.Frightened1.Description": "Verängstigt 1 senkt Würfe und SG um 1.",
         "PF2E_CREATURE_FORGE.Runtime.EffectSource": "Quelle"
       }[key] ?? key)
@@ -186,7 +186,7 @@ test("runtime uses embedded German catalog for effect explanation and ability so
   try {
     const blueprint = makeBlueprint("self");
     blueprint.abilities[0].nameKey = "PF2E_CREATURE_FORGE.Ability.MenacingDisplay.Name";
-    blueprint.resources.effects[0].nameKey = "PF2E_CREATURE_FORGE.Effect.Frightened1";
+    blueprint.resources.effects[0].nameKey = "PF2E_CREATURE_FORGE.Effect.Frightened1.Name";
     blueprint.resources.effects[0].descriptionKey = "PF2E_CREATURE_FORGE.Effect.Frightened1.Description";
     const actor = makeActor(blueprint);
     await runtime.apply({ actor, abilityId: "ability-1", effectRef: "test.effect.frightened" });

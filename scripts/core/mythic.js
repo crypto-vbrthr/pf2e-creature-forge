@@ -87,13 +87,13 @@ function roleAdjustments(blueprint, role) {
       if (save) resilience.add(save);
     }
     actions.push(action("mythic-ambush-excellence", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.AmbushExcellence",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.AmbushExcellence.Name",
       name: "Ambush Excellence",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.AmbushExcellence.Description",
       description: "Uses the extreme skill value for Stealth.",
     }));
     actions.push(action("mythic-hazard-immunity", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.HazardImmunity",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.HazardImmunity.Name",
       name: "Hazard Immunity",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.HazardImmunity.Description",
       description: "Does not trigger reactions of hazards in its own lair and ignores damaging area effects created by those hazards."
@@ -106,19 +106,19 @@ function roleAdjustments(blueprint, role) {
       if (save) resilience.add(save);
     }
     actions.push(action("mythic-brutish-athleticism", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.BrutishAthleticism",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.BrutishAthleticism.Name",
       name: "Brutish Athleticism",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.BrutishAthleticism.Description",
       description: "Uses the extreme skill value for Athletics."
     }));
     actions.push(action("mythic-ferocity", {
-      type: "reaction", nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Ferocity", name: "Mythic Ferocity",
+      type: "reaction", nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Ferocity.Name", name: "Mythic Ferocity",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Ferocity.Description",
       description: "Cost 1 Mythic Point. Trigger: reduced to 0 HP. Remain conscious at half maximum HP and increase wounded by 1; unavailable at wounded 3.",
       pointCost: 1
     }));
     actions.push(action("mythic-titanic-might", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.TitanicMight", name: "Titanic Might",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.TitanicMight.Name", name: "Titanic Might",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.TitanicMight.Description",
       description: "Ignores size limitations for actions such as Grapple and Trip."
     }));
@@ -141,18 +141,18 @@ function roleAdjustments(blueprint, role) {
       if (second) resilience.add(second);
     }
     actions.push(action("mythic-devastating-magic", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.DevastatingMagic", name: "Devastating Magic",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.DevastatingMagic.Name", name: "Devastating Magic",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.DevastatingMagic.Description",
       description: "Uses the high spell DC and spell attack modifier for its level, or extreme values from level 11 onward."
     }));
     actions.push(action("mythic-knowledge", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.MythicKnowledge", name: "Mythic Knowledge",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.MythicKnowledge.Name", name: "Mythic Knowledge",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.MythicKnowledge.Description",
       description: "Uses the extreme skill value for the skill associated with its magical tradition."
     }));
     actions.push(action("mythic-recharge-spell", {
       type: "action", actionCost: 1, traits: ["concentrate"], pointCost: 1,
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.RechargeSpell", name: "Recharge Spell",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.RechargeSpell.Name", name: "Recharge Spell",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Power.RechargeSpell.Description",
       description: "Cost 1 Mythic Point. Regain one expended spell or another limited use of a spell."
     }));
@@ -165,18 +165,18 @@ function roleAdjustments(blueprint, role) {
       if (save) resilience.add(save);
     }
     actions.push(action("mythic-deadly-striker", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.DeadlyStriker", name: "Deadly Striker",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.DeadlyStriker.Name", name: "Deadly Striker",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.DeadlyStriker.Description",
       description: "After moving at least 10 feet with Stride, Burrow, Climb, or Fly, the next Strike deals 1d6 additional precision damage."
     }));
     actions.push(action("mythic-mobility", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Mobility", name: "Mythic Mobility",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Mobility.Name", name: "Mythic Mobility",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Mobility.Description",
       description: "Uses the extreme skill value for Acrobatics."
     }));
     actions.push(action("mythic-unimpeded", {
       type: "action", actionCost: 1, pointCost: 1,
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.Unimpeded", name: "Unimpeded",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.Unimpeded.Name", name: "Unimpeded",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Power.Unimpeded.Description",
       description: "Cost 1 Mythic Point. End one effect imposing a circumstance penalty to Speed. Escape automatically succeeds against immobilized, grabbed, or restrained."
     }));
@@ -193,7 +193,7 @@ function basePowerActions(blueprint, role) {
     if (role === "caster") {
       actions.push(action("mythic-remove-condition", {
         type: "action", actionCost: 1, traits: ["concentrate"], pointCost: 1,
-        nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.RemoveCondition", name: "Remove a Condition",
+        nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.RemoveCondition.Name", name: "Remove a Condition",
         descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Power.RemoveCondition.Description",
         description: "Cost 1 Mythic Point. End one condition currently affecting the creature."
       }));
@@ -203,7 +203,7 @@ function basePowerActions(blueprint, role) {
       if (level >= 12) skills.push(chooseSecondMythicSkill(blueprint, primary));
       actions.push(action("mythic-skill", {
         type: "free", pointCost: 1,
-        nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.MythicSkill", name: "Mythic Skill",
+        nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.MythicSkill.Name", name: "Mythic Skill",
         descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Power.MythicSkill.Description",
         description: `Cost 1 Mythic Point. The next ${skills.map((slug) => slug).join(" or ")} check gains +4 and uses mythic proficiency.`,
         parameters: { skills: [...skills] }
@@ -213,14 +213,14 @@ function basePowerActions(blueprint, role) {
   if (level >= 10 && role !== "caster") {
     actions.push(action("mythic-recharge", {
       type: "action", actionCost: 1, traits: ["concentrate"], pointCost: 1,
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.Recharge", name: "Recharge",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.Recharge.Name", name: "Recharge",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Power.Recharge.Description",
       description: "Cost 1 Mythic Point. Gain another use of a spell or ability that normally has limited uses."
     }));
   }
   if (level >= 17) {
     actions.push(action("mythic-undying-myth", {
-      type: "free", nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.UndyingMyth", name: "Undying Myth",
+      type: "free", nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.UndyingMyth.Name", name: "Undying Myth",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Power.UndyingMyth.Description",
       description: "Cost all remaining Mythic Points. Trigger: the creature would die while it has at least 1 Mythic Point. It remains conscious and regains 50% of its maximum HP."
     }));
@@ -228,7 +228,7 @@ function basePowerActions(blueprint, role) {
   if (level >= 20 && role !== "brute") {
     actions.push(action("mythic-reroll", {
       type: "free", traits: ["fortune"], pointCost: 1,
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.Reroll", name: "Reroll",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Power.Reroll.Name", name: "Reroll",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Power.Reroll.Description",
       description: "Cost 1 Mythic Point. Trigger: the creature fails a check. Reroll the check and use the new result."
     }));
@@ -253,7 +253,7 @@ export function applyMythicOverlay(blueprint, request = {}) {
 
   if (roleState.resilience.length) {
     roleState.actions.push(action("mythic-resilience", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Resilience", name: "Mythic Resilience",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Resilience.Name", name: "Mythic Resilience",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Resilience.Description",
       description: `Treat ${roleState.resilience.join(", ")} saves as one degree of success better than rolled.`,
       parameters: { saves: [...roleState.resilience] }
@@ -261,7 +261,7 @@ export function applyMythicOverlay(blueprint, request = {}) {
   }
   if (roleState.resistance > 0) {
     roleState.actions.push(action("mythic-resistance", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Resistance", name: "Mythic Resistance",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Resistance.Name", name: "Mythic Resistance",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Resistance.Description",
       description: `Resistance ${roleState.resistance} to Strikes made by non-mythic creatures; mythic weapons bypass this resistance.`,
       parameters: { value: roleState.resistance }
@@ -269,14 +269,14 @@ export function applyMythicOverlay(blueprint, request = {}) {
   }
   if (defenses) {
     roleState.actions.push(action("mythic-defenses", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Defenses", name: "Mythic Defenses",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Defenses.Name", name: "Mythic Defenses",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Defenses.Description",
       description: "Whenever an attacker rolls a critical hit, it must reroll the attack roll and use the new result."
     }));
   }
   if (immunity) {
     roleState.actions.push(action("mythic-immunity", {
-      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Immunity", name: "Mythic Immunity",
+      nameKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Immunity.Name", name: "Mythic Immunity",
       descriptionKey: "PF2E_CREATURE_FORGE.Mythic.Ability.Immunity.Description",
       description: immunity === "spells" ? "Immune to harmful spells cast by non-mythic creatures." : "Immune to Strikes with non-mythic weapons and unarmed Strikes from non-mythic characters.",
       parameters: { immunity }
