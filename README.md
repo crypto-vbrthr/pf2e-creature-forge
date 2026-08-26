@@ -6,6 +6,16 @@ Version **1.0.0** is the first stable release of Creature Forge. It promotes the
 
 The embedded editor exposes a **Mythic creature** checkbox and an automatic/explicit mythic-role selector. Generated NPCs receive the `mythic` trait, a 3-point Mythic Point resource, role-adjusted statistics, level-gated mythic powers, and dedicated PF2E Action items for mythic mechanics.
 
+
+## Part of the Forge Suite
+
+**Creature Forge** is part of the **Forge Suite**, a growing collection of Foundry VTT modules and add-ons built for the busy Game Master. The suite is designed to reduce preparation and bookkeeping, make common GM tasks easier, and add useful tools that help make running and playing campaigns smoother and more enjoyable.
+
+An overview of the Forge Suite, its modules, add-ons, and shared documentation is available here:
+
+**Forge Suite:** https://github.com/crypto-vbrthr/pf2e-forge-suite
+
+
 ## What 1.0.0 guarantees
 
 - Commits the stable 1.0 API/data surface to Request schema v8, Blueprint schema v11, content schema v10, Embedded Creature Editor contract v13, and runtime-status schema v2.
