@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { ContentRegistry } from "../scripts/core/registry.js";
 import { registerCoreContent } from "../scripts/core/core-content.js";
 import { CreatureGenerator } from "../scripts/core/generator.js";
-import { listAbilityCandidates } from "../scripts/core/ability-engine.js";
-import { compileActorSource } from "../scripts/core/compiler.js";
+import { listAbilityCandidates, materializeAbility } from "../scripts/core/ability-engine.js";
+import { buildAbilityDescription, compileActorSource } from "../scripts/core/compiler.js";
 import { validateBlueprint } from "../scripts/core/validator.js";
 
 function setup() {
@@ -167,9 +167,46 @@ test("compiler localizes core ability name and description from embedded German 
     const source = compileActorSource(blueprint).actorSource;
     const item = source.items.find((entry) => entry.type === "action");
     assert.equal(item.name, "Drohgebärde");
-    assert.match(item.system.description.value, /Die Kreatur bedroht einen Gegner/);
+    assert.match(item.system.description.value, /Die Kreatur bedroht eine Kreatur/);
     assert.match(item.system.description.value, /Bei misslungenem Rettungswurf/);
   } finally {
     globalThis.game = previousGame;
   }
+});
+
+
+test("core Pounce and Pack Hunter expose complete rules text and interactive support", () => {
+  const { registry } = setup();
+  const pounceEntry = registry.get("ability", "pf2e-creature-forge.ability.pounce");
+  const packEntry = registry.get("ability", "pf2e-creature-forge.ability.pack-hunter");
+  assert.equal(pounceEntry.actionCost, 1);
+  assert.equal(pounceEntry.powerCost, 3);
+  assert.ok(pounceEntry.interactions.some((entry) => entry.kind === "action" && entry.slug === "stride"));
+
+  const previousGame = globalThis.game;
+  globalThis.game = { i18n: { lang: "de", localize: (key) => key } };
+  try {
+    const pounce = { ...pounceEntry, id: "ability-1", contentId: pounceEntry.id, type: "action" };
+    const pack = { ...packEntry, id: "ability-2", contentId: packEntry.id, type: "passive" };
+    const pounceHtml = buildAbilityDescription(pounce);
+    const packHtml = buildAbilityDescription(pack);
+    assert.match(pounceHtml, /Laufen/);
+    assert.match(pounceHtml, /Nahkampfangriff/);
+    assert.match(pounceHtml, /Verborgen/);
+    assert.match(packHtml, /1W4 zusätzlichen Schaden/);
+    assert.match(packHtml, /mindestens zwei Verbündeten/);
+  } finally {
+    globalThis.game = previousGame;
+  }
+});
+
+test("core save abilities resolve ranked DCs into mechanics and chat interactions", () => {
+  const { registry } = setup();
+  const entry = registry.get("ability", "pf2e-creature-forge.ability.terrifying-roar");
+  const ability = materializeAbility(entry, 0, { level: 8 });
+  assert.equal(ability.contentId, "pf2e-creature-forge.ability.terrifying-roar");
+  assert.equal(ability.mechanics.save.type, "will");
+  assert.ok(Number(ability.mechanics.save.dc) > 0);
+  assert.equal(ability.interactions[0].kind, "check");
+  assert.equal(ability.interactions[0].dc, ability.mechanics.save.dc);
 });

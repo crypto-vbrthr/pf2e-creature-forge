@@ -91,6 +91,16 @@ function materializeInteractions(entries = [], level = 0) {
   });
 }
 
+function materializeMechanics(mechanics, level = 0) {
+  const copy = deepClone(mechanics ?? null);
+  if (!copy) return null;
+  if (copy.save && copy.save.dc == null && copy.save.dcRank) {
+    copy.save.dc = resolveRankValue(SPELL_DC_TABLE, level, copy.save.dcRank);
+    copy.save.dcSource = { mode: "creature-rank", rank: copy.save.dcRank, level };
+  }
+  return copy;
+}
+
 export function materializeAbility(entry, index, { level = 0 } = {}) {
   return {
     id: `ability-${index + 1}`,
@@ -100,7 +110,7 @@ export function materializeAbility(entry, index, { level = 0 } = {}) {
     description: entry.description ?? "",
     descriptionKey: entry.descriptionKey ?? null,
     signature: deepClone(entry.signature ?? null),
-    mechanics: deepClone(entry.mechanics ?? null),
+    mechanics: materializeMechanics(entry.mechanics, level),
     generatedEffects: deepClone(entry.generatedEffects ?? []),
     type: entry.abilityType ?? entry.activation?.type ?? "action",
     actionCost: entry.actionCost ?? null,

@@ -208,6 +208,11 @@ function materializeDragonBreath(entry, { level, subtypes, random }) {
     area: { shape, distanceFeet: breathDistanceFeet(level, shape) },
     recharge: { type: "rounds", formula: "1d4" }
   };
+  materialized.interactions = [{
+    kind: "check", statistic: profile.save, dc, basic: true, mode: "chat",
+    labelKey: `PF2E_CREATURE_FORGE.Interaction.${profile.save}.Label`,
+    requestLabelKey: `PF2E_CREATURE_FORGE.Interaction.${profile.save}.Request`
+  }];
   materialized.traits = [...new Set([...(materialized.traits ?? []), ...(profile.trait ? [profile.trait] : [])])];
   materialized.tags = [...new Set([...(materialized.tags ?? []), profile.affinity, profile.damageType, "signature"] )];
   materialized.generatedEffects = [effect];
@@ -287,6 +292,11 @@ function materializePhoenixRebirth(entry, { level }) {
     save: { type: "reflex", dc, basic: true },
     area: { shape: "burst", distanceFeet }
   };
+  materialized.interactions = [{
+    kind: "check", statistic: "reflex", dc, basic: true, mode: "chat",
+    labelKey: "PF2E_CREATURE_FORGE.Interaction.reflex.Label",
+    requestLabelKey: "PF2E_CREATURE_FORGE.Interaction.reflex.Request"
+  }];
   materialized.generatedEffects = [generated.resource];
   materialized.applications = [{ type: "effect", ref: generated.resource.id, target: "failed-save-targets", timing: "rebirth" }];
   materialized.traits = [...new Set([...(materialized.traits ?? []), "fire"] )];
@@ -311,6 +321,11 @@ function materializeElementalRetaliation(entry, { level, subtypes }) {
     save: { type: profile.save, dc, basic: true },
     area: { shape: "emanation", distanceFeet: level >= 12 ? 15 : 10 }
   };
+  materialized.interactions = [{
+    kind: "check", statistic: profile.save, dc, basic: true, mode: "chat",
+    labelKey: `PF2E_CREATURE_FORGE.Interaction.${profile.save}.Label`,
+    requestLabelKey: `PF2E_CREATURE_FORGE.Interaction.${profile.save}.Request`
+  }];
   materialized.generatedEffects = [generated.resource];
   materialized.applications = [{ type: "effect", ref: generated.resource.id, target: "failed-save-targets", timing: "trigger" }];
   materialized.traits = [...new Set([...(materialized.traits ?? []), ...(profile.trait ? [profile.trait] : [])])];

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0-dev.2 - Core Ability Rules Text Review
+- Reworked all 50 shipped Core ability descriptions in German and English into explicit PF2e-style rules text with clear triggers, requirements, ranges, durations, saves, movement, and outcomes where applicable.
+- Defined Core **Pounce / Anspringen** as a 1-action movement-plus-Strike activity, including hidden-state handling and alternate movement modes, and exposed Stride as an interactive PF2e action.
+- Defined Core **Pack Hunter / Rudeljäger** mechanically: Strikes deal 1d4 additional damage when the target is within melee reach of at least two of the creature's allies.
+- Added level-resolved save mechanics and GM chat interactions to save-based Core abilities so their generated descriptions expose the actual creature DC instead of only prose.
+- Added interactive action links to movement, Feint, and similar Core abilities and extended interactive save support to dynamic signature powers.
+- Added regression coverage for complete Pounce/Pack Hunter rules text and ranked-DC materialization.
+
 ## 1.1.0-dev.1 - Interactive Ability Actions
 - Added declarative ability `interactions` for native PF2e inline checks, action macros, damage rolls, and GM-only utility rolls.
 - Added ranked creature DC materialization for interaction checks (`dcRank` using the GM Core creature spell-DC bands).

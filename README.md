@@ -2,9 +2,9 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **1.0.1** is a startup hotfix on top of the stable Creature Forge 1.0.0 baseline. It fixes Foundry localization key collisions without changing the frozen Request/Blueprint/Content/editor/runtime-status contracts. The stable release includes first-class **Mythic Creatures** based on the mythic monster adjustments and four mythic role templates in *Pathfinder War of Immortals / Krieg der Unsterblichen*. The generator can create ordinary PF2E creatures or elevate them into Mythic Ambushers, Brutes, Casters, or Strikers.
+Version **1.1.0-dev.2** continues the interactive-ability development line. In addition to declarative inline rolls and chat actions, this build completes a full rules-text review of the shipped Core ability library: all 50 Core abilities now state their actual PF2e mechanics instead of relying on short flavor summaries. Generated actions such as **Pounce** and **Pack Hunter** therefore tell the GM exactly when and how they work, while save-based abilities expose level-resolved DCs and interactive chat controls.
 
-The embedded editor exposes a **Mythic creature** checkbox and an automatic/explicit mythic-role selector. Generated NPCs receive the `mythic` trait, a 3-point Mythic Point resource, role-adjusted statistics, level-gated mythic powers, and dedicated PF2E Action items for mythic mechanics.
+The 1.0 stable baseline remains fully represented, including first-class **Mythic Creatures** based on *Pathfinder War of Immortals / Krieg der Unsterblichen*, the four mythic role templates, optional Forge Suite integrations, rerolls, spellcasting, special features, loot, and the embeddable editor.
 
 
 ## Part of the Forge Suite
@@ -29,15 +29,14 @@ Suggestions and feature requests are equally welcome. Even small ideas can lead 
 **Open an issue here:** https://github.com/crypto-vbrthr/pf2e-creature-forge/issues
 
 
-## What 1.0.1 guarantees
+## What 1.1.0-dev.2 adds
 
-- Commits the stable 1.0 API/data surface to Request schema v8, Blueprint schema v11, content schema v10, Embedded Creature Editor contract v13, and runtime-status schema v2.
-- Rehydrates an embedded editor opened with a persisted Blueprint from its stored request snapshot, including safe normalization of older pre-Mythic request snapshots.
-- Distinguishes an exposed optional Forge API from a complete compatible capability surface in integration diagnostics.
-- Verifies the supplied Affliction Forge 0.1.63, Aura Forge 1.0.0-rc.3, Critical/Effect Forge 1.0.1-rc.4, Item Forge 0.0.37-rc.1, and Loot Forge 0.3.5 integration contracts.
-- Guards module/package/API/download release metadata against version drift.
-- Avoids false extreme-skill warnings when the second extreme skill is explicitly granted by a Mythic role template.
-- 184 automated tests pass, including a regression check for Foundry localization parent/child key collisions. The final integration audit covered 1,008 normal generations, 504 Mythic generations, 504 compilations, and 1,728 scoped rerolls with zero invalid Blueprints and zero validator warnings; the same reviewed feature set passed the real Foundry smoke test before promotion to 1.0.0.
+- All 50 Core ability descriptions have explicit German and English PF2e-style rules text.
+- Core abilities with saving throws materialize their ranked creature DC into both structured mechanics and interactive GM chat controls.
+- Core movement/skill actions expose native PF2e inline actions where appropriate.
+- **Pounce / Anspringen** is a clear 1-action movement-plus-Strike activity with hidden-state handling; **Pack Hunter / Rudeljäger** has a concrete 1d4 damage condition.
+- Dynamic signature powers with saving throws participate in the same interactive system.
+- Public data contracts remain Request schema v8, Blueprint schema v12, Content schema v11, Embedded Creature Editor contract v13, runtime-status schema v2.
 
 ## What 0.8.0 adds
 
