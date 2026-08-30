@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 - Stable Interactive Ability Release
+- Promoted the successfully Foundry-smoke-tested 1.1.0-rc.1 candidate to stable with no gameplay, schema, runtime, or integration changes.
+- Ships declarative Interactive Ability Actions and the completed PF2e-style rules-text review for all 50 Core abilities in German and English.
+- Stable public contracts: Request v8, Blueprint v12, Content v11, Embedded Creature Editor v13, runtime-status v2.
+- Retains compatibility with persisted 1.0.x Blueprint v11 creatures and the reviewed Predator Tactics 0.1.0 integration.
+- Release metadata, module/package/API version, GitHub tag, and download asset are aligned to 1.1.0.
+- Permanent suite remains 192/192 passing tests; the reviewed RC audits remain the release baseline.
+
 ## 1.1.0-rc.1 - Interactive Ability Release Candidate
 - Promoted the tested 1.1.0-dev.2 feature set to the first 1.1 release candidate with no gameplay-rule changes after the Foundry usability pass.
 - Completed the RC review of Interactive Ability Actions, all 50 Core ability rules texts, Predator Tactics 0.1.0 compatibility, DE/EN localization, 1.0.x persisted Blueprint compatibility, and release packaging.

@@ -333,3 +333,10 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - Corrected public API contract documentation and added documentation/version drift regression coverage.
 - Permanent suite: 192 passing tests; representative Core+Predator and legacy-persistence audits clean.
 
+## 1.1.0 - Stable Interactive Ability Release ✅
+
+- Promote the successfully Foundry-smoke-tested 1.1.0-rc.1 candidate without functional drift.
+- Stable Interactive Ability Actions and complete PF2e-style rules text for all 50 shipped Core abilities.
+- Stable public contracts: Request v8, Blueprint v12, Content v11, Embedded Creature Editor v13, runtime-status v2.
+- Preserve 1.0.x Blueprint v11 compatibility and the reviewed Predator Tactics 0.1.0 integration.
+- Permanent suite: 192 passing tests; RC generation, integration, localization, and legacy-persistence audits remain clean.
