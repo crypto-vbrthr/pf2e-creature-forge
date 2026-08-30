@@ -1,9 +1,9 @@
 export const MODULE_ID = "pf2e-creature-forge";
-export const MODULE_VERSION = "1.0.1";
-export const API_VERSION = "1.0.1";
+export const MODULE_VERSION = "1.1.0-dev.1";
+export const API_VERSION = "1.1.0-dev.1";
 export const REQUEST_SCHEMA_VERSION = 8;
-export const BLUEPRINT_SCHEMA_VERSION = 11;
-export const CONTENT_SCHEMA_VERSION = 10;
+export const BLUEPRINT_SCHEMA_VERSION = 12;
+export const CONTENT_SCHEMA_VERSION = 11;
 
 export const CORE_ABILITY_LIBRARY_ID = `${MODULE_ID}.ability-library.core`;
 export const CORE_AURA_LIBRARY_ID = `${MODULE_ID}.aura-library.core`;

@@ -3,7 +3,7 @@ import { validateBlueprint } from "./validator.js";
 import { resolveAttackNameKey } from "./attack-localization.js";
 import { MODULE_VERSION } from "../constants.js";
 import { localize } from "../i18n.js";
-import { abilityAreaTemplateInline, abilityMechanicsLabel } from "../ability-presentation.js";
+import { abilityAreaTemplateInline, abilityInteractionInline, abilityMechanicsLabel } from "../ability-presentation.js";
 
 function localizeAttackName(attack) {
   const nameKey = resolveAttackNameKey(attack);
@@ -62,6 +62,30 @@ function escapeAttribute(value) {
     .replaceAll(">", "&gt;");
 }
 
+
+function interactionRuntimeBlock(ability, { actorUuid = null, interactionRuntimeAvailable = false, renderForChat = false, includeShareButton = true } = {}) {
+  const interactions = ability?.interactions ?? [];
+  const rows = interactions.map((interaction, interactionIndex) => {
+    const inline = abilityInteractionInline(interaction);
+    if (!inline) return null;
+    const mode = renderForChat ? "inline" : String(interaction?.mode ?? "inline");
+    if (mode === "chat" && interactionRuntimeAvailable && actorUuid) {
+      const label = localizeKey(interaction?.requestLabelKey ?? interaction?.labelKey, interaction?.requestLabel ?? interaction?.label ?? localizeKey("PF2E_CREATURE_FORGE.Action.SendInteractionToChat", "Send to chat"));
+      return `<button type="button" class="pf2e-creature-forge-chat-interaction" data-cf-actor-uuid="${escapeAttribute(actorUuid)}" data-cf-ability-id="${escapeAttribute(ability?.id)}" data-cf-interaction-index="${interactionIndex}" title="${escapeAttribute(label)}" aria-label="${escapeAttribute(label)}"><i class="fa-solid fa-comment-dots"></i><span>${escapeAttribute(label)}</span></button>`;
+    }
+    return `<span class="pf2e-creature-forge-inline-interaction">${inline}</span>`;
+  }).filter(Boolean);
+
+  const shareLabel = localizeKey("PF2E_CREATURE_FORGE.Action.SendAbilityToChat", "Send ability to chat");
+  const share = !renderForChat && includeShareButton && ability?.shareToChat !== false && interactionRuntimeAvailable && actorUuid
+    ? `<button type="button" class="pf2e-creature-forge-share-ability" data-cf-actor-uuid="${escapeAttribute(actorUuid)}" data-cf-ability-id="${escapeAttribute(ability?.id)}" title="${escapeAttribute(shareLabel)}" aria-label="${escapeAttribute(shareLabel)}"><i class="fa-solid fa-message"></i><span>${escapeAttribute(shareLabel)}</span></button>`
+    : "";
+
+  if (!rows.length && !share) return "";
+  const label = localizeKey("PF2E_CREATURE_FORGE.Editor.InteractiveActions", "Interactive actions");
+  return `<div class="pf2e-creature-forge-interactions"><strong>${escapeAttribute(label)}:</strong><div class="pf2e-creature-forge-interaction-controls">${rows.join("")}${share}</div></div>`;
+}
+
 function effectTimingLabel(timing) {
   const keyByTiming = {
     "after-use": "PF2E_CREATURE_FORGE.Runtime.Timing.AfterUse",
@@ -93,7 +117,7 @@ function effectRuntimeLine({ ability, application, applicationIndex, resource, r
 }
 
 export function buildAbilityDescription(ability, effectResources = new Map(), {
-  runtimeLinks = {}, actorUuid = null, runtimeAvailable = false
+  runtimeLinks = {}, actorUuid = null, runtimeAvailable = false, interactionRuntimeAvailable = false, renderForChat = false, includeShareButton = true
 } = {}) {
   const description = localizeKey(ability?.descriptionKey, ability?.description ?? "");
   const mechanics = abilityMechanicsLabel(ability);
@@ -124,7 +148,8 @@ export function buildAbilityDescription(ability, effectResources = new Map(), {
       effectNote = `<div class="pf2e-creature-forge-linked-effects"><strong>${localizeKey("PF2E_CREATURE_FORGE.Editor.LinkedEffects", "Linked effects")}:</strong><div>${lines.join("")}</div></div>`;
     }
   }
-  return `${description ? `<p>${description}</p>` : ""}${mechanicsNote}${areaTemplateNote}${effectNote}`;
+  const interactionNote = interactionRuntimeBlock(ability, { actorUuid, interactionRuntimeAvailable, renderForChat, includeShareButton });
+  return `${description ? `<p>${description}</p>` : ""}${mechanicsNote}${areaTemplateNote}${effectNote}${interactionNote}`;
 }
 
 function compileAbilityItem(ability, effectResources = new Map()) {
@@ -153,7 +178,9 @@ function compileAbilityItem(ability, effectResources = new Map()) {
         signature: deepClone(ability?.signature ?? null),
         mechanics: deepClone(ability?.mechanics ?? null),
         source: deepClone(ability?.source ?? {}),
-        applications: deepClone(ability?.applications ?? [])
+        applications: deepClone(ability?.applications ?? []),
+        interactions: deepClone(ability?.interactions ?? []),
+        shareToChat: ability?.shareToChat !== false
       }
     }
   };

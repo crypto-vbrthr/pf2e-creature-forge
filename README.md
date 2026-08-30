@@ -445,3 +445,8 @@ api.integrations.getStatus();
 0.6.2 owns the core numeric statistics, category/subtype defensive affinities, source-filtered discovery, skill/movement/sense generation, localized strikes, weighted ability selection, Effect Forge composition/editing/runtime, optional Aura/Affliction selection and verified delivery, thematic PF2E spellcasting, plus concept-sensitive loot orchestration across Loot Forge and Item Forge. Automatic combat-workflow trigger execution, focus-spell generation, advanced hand-curated spell packages, embedded Loot Forge hand-editing, and strong weapon-to-strike binding remain later milestones.
 
 See `docs/ROADMAP.md`.
+
+### Interactive ability actions (1.1.0)
+Ability providers can attach declarative `interactions` to an ability. Creature Forge renders these as native PF2e inline automation where appropriate (`@Check`, `@Damage`, `[[/act ...]]`, or GM rolls), or as a GM chat-request button for target-facing saves. Every generated ability can also be sent to chat as a compact card, where chat-mode requests become normal PF2e inline links.
+
+This keeps add-ons data-driven: they declare the roll or action, while Creature Forge owns Foundry/PF2e presentation and chat handling.

@@ -24,6 +24,7 @@ import { estimateSpellcastingPower, highestSpellRankForLevel, spellcastingChance
 import { CreatureSpellRuntime } from "../runtime/spell-runtime.js";
 import { CreatureLootIntegration } from "../integration/loot-integration.js";
 import { CreatureLootRuntime } from "../runtime/loot-runtime.js";
+import { CreatureAbilityInteractionRuntime } from "../runtime/ability-interaction-runtime.js";
 import { createLootPlan, lootChannelChance } from "../core/loot.js";
 import { limitedAreaDamageFormula, resolveDragonBreathProfile, resolveElementalSignatureProfile, resolveSignaturePlan } from "../core/signature-powers.js";
 import { MYTHIC_ROLE_IDS, resolveMythicRole } from "../core/mythic.js";
@@ -94,6 +95,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
   const spellRuntime = new CreatureSpellRuntime();
   const lootIntegration = new CreatureLootIntegration({ integrations });
   const lootRuntime = new CreatureLootRuntime({ integrations });
+  const abilityInteractionRuntime = new CreatureAbilityInteractionRuntime();
 
   const registerByType = (type) => (definition, options = {}) => registry.register(type, definition, options);
 
@@ -399,7 +401,9 @@ export function initializePublicApi({ openCreatureForge } = {}) {
       materializeLoot: (actor, blueprint = null) => lootRuntime.materialize(actor, blueprint ?? undefined),
       refreshLoot: (actor, blueprint = null) => lootRuntime.materialize(actor, blueprint ?? undefined),
       cleanupCarriedLoot: (actor) => lootRuntime.cleanupCarried(actor),
-      createDeferredLootActor: (actorOrBlueprint, options = {}) => lootRuntime.createDeferredLootActor(actorOrBlueprint, options)
+      createDeferredLootActor: (actorOrBlueprint, options = {}) => lootRuntime.createDeferredLootActor(actorOrBlueprint, options),
+      sendAbilityToChat: (options = {}) => abilityInteractionRuntime.sendAbilityToChat(options),
+      sendAbilityInteractionToChat: (options = {}) => abilityInteractionRuntime.sendInteractionToChat(options)
     },
 
     content: {

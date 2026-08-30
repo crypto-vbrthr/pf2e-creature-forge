@@ -838,3 +838,78 @@
   border-radius: 5px;
   background: rgba(0,0,0,.05);
 }
+
+/* 1.1.0 interactive ability controls. Native PF2e inline links stay native; only
+   chat-request/share controls use Creature Forge buttons. */
+.pf2e-creature-forge-interactions {
+  --cf-interaction-accent: #6e5526;
+  --cf-interaction-gold: #d8b36a;
+  margin-top: .55rem;
+  padding-top: .45rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+}
+.pf2e-creature-forge-interactions > strong {
+  display: block;
+  margin-bottom: .3rem;
+}
+.pf2e-creature-forge-interaction-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+.pf2e-creature-forge-inline-interaction {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: .12rem .25rem;
+  border: 1px solid color-mix(in srgb, var(--cf-interaction-gold) 35%, currentColor 20%);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--cf-interaction-gold) 7%, transparent);
+}
+.pf2e-creature-forge-interaction-controls button.pf2e-creature-forge-chat-interaction,
+.pf2e-creature-forge-interaction-controls button.pf2e-creature-forge-share-ability {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .32rem;
+  width: auto;
+  min-height: 1.8rem;
+  margin: 0;
+  padding: .24rem .52rem;
+  border: 1px solid var(--cf-interaction-gold);
+  border-radius: 5px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cf-interaction-accent) 88%, #222), var(--cf-interaction-accent));
+  color: #fff4dd;
+  font-size: .78em;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+}
+.pf2e-creature-forge-interaction-controls button.pf2e-creature-forge-share-ability {
+  margin-left: auto;
+}
+.pf2e-creature-forge-interaction-controls button:hover,
+.pf2e-creature-forge-interaction-controls button:focus-visible {
+  border-color: #f0cf8c;
+  background: linear-gradient(180deg, #80642e, #5f491f);
+}
+.pf2e-creature-forge-interaction-controls button:disabled,
+.pf2e-creature-forge-interaction-controls button[aria-disabled="true"] {
+  pointer-events: none;
+  opacity: .5;
+}
+.pf2e-creature-forge-chat-card h3 {
+  margin: 0 0 .45rem;
+}
+@media (max-width: 560px) {
+  .pf2e-creature-forge-interaction-controls {
+    align-items: stretch;
+  }
+  .pf2e-creature-forge-interaction-controls > * {
+    flex: 1 1 100%;
+  }
+  .pf2e-creature-forge-interaction-controls button.pf2e-creature-forge-share-ability {
+    margin-left: 0;
+  }
+}

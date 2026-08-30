@@ -293,7 +293,8 @@ export class CreatureEffectRuntime {
       const rebuilt = buildAbilityDescription(ability, effectResources, {
         runtimeLinks,
         actorUuid: actor.uuid,
-        runtimeAvailable: this.available
+        runtimeAvailable: this.available,
+        interactionRuntimeAvailable: true
       });
       updates.push({
         _id: item.id,

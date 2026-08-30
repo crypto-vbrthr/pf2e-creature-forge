@@ -9,6 +9,18 @@ function distanceLabel(feet) {
   return `${value} ft.`;
 }
 
+function escapeInlineLabel(value) {
+  return String(value ?? "").replaceAll("}", "").replaceAll("{", "").trim();
+}
+
+function interactionLabel(interaction, fallback = "") {
+  return localize(interaction?.labelKey, interaction?.label ?? fallback);
+}
+
+function joinOptions(values = []) {
+  return [...new Set((values ?? []).map(String).map((value) => value.trim()).filter(Boolean))].join(",");
+}
+
 const INLINE_TEMPLATE_SHAPES = new Set(["burst", "cone", "emanation", "line"]);
 
 export function abilityAreaTemplateInline(ability) {
@@ -24,6 +36,62 @@ export function abilityAreaTemplateInline(ability) {
   const shapeLabel = localize(`PF2E_CREATURE_FORGE.Area.${shape}`, shape);
   const label = `${distanceLabel(distanceFeet)} ${shapeLabel}`;
   return `@Template[${parameters.join("|")}]{${label}}`;
+}
+
+export function abilityInteractionInline(interaction) {
+  if (!interaction || typeof interaction !== "object") return "";
+  const kind = String(interaction.kind ?? "").toLowerCase();
+  const label = escapeInlineLabel(interactionLabel(interaction, ""));
+
+  if (kind === "check") {
+    const statistic = String(interaction.statistic ?? interaction.type ?? "").trim();
+    if (!statistic) return "";
+    const parameters = [statistic];
+    if (interaction.defense) parameters.push(`defense:${interaction.defense}`);
+    else if (interaction.against) parameters.push(`against:${interaction.against}`);
+    else if (Number.isFinite(Number(interaction.dc))) parameters.push(`dc:${Number(interaction.dc)}`);
+    if (interaction.rollerRole) parameters.push(`rollerRole:${interaction.rollerRole}`);
+    if (interaction.basic) parameters.push("basic");
+    if (interaction.showDC) parameters.push(`showDC:${interaction.showDC}`);
+    if (Number.isFinite(Number(interaction.adjustment)) && Number(interaction.adjustment) !== 0) parameters.push(`adjustment:${Number(interaction.adjustment)}`);
+    const traits = joinOptions(interaction.traits);
+    if (traits) parameters.push(`traits:${traits}`);
+    const options = joinOptions(interaction.options);
+    if (options) parameters.push(`options:${options}`);
+    if (interaction.overrideTraits) parameters.push("overrideTraits");
+    return `@Check[${parameters.join("|")}]${label ? `{${label}}` : ""}`;
+  }
+
+  if (kind === "action") {
+    const slug = String(interaction.slug ?? interaction.action ?? "").trim();
+    if (!slug) return "";
+    const args = [`/act ${slug}`];
+    if (interaction.variant) args.push(`variant=${interaction.variant}`);
+    if (interaction.statistic) args.push(`statistic=${interaction.statistic}`);
+    if (Number.isFinite(Number(interaction.dc))) args.push(`dc=${Number(interaction.dc)}`);
+    return `[[${args.join(" ")}]]`;
+  }
+
+  if (kind === "damage") {
+    const formula = String(interaction.formula ?? "").trim();
+    if (!formula) return "";
+    const type = String(interaction.damageType ?? interaction.type ?? "").trim();
+    const options = joinOptions(interaction.options);
+    const typedFormula = type && !formula.includes("[")
+      ? `${/[+\-*/]/.test(formula) ? `(${formula})` : formula}[${type}]`
+      : formula;
+    return `@Damage[${typedFormula}${options ? `|options:${options}` : ""}]${label ? `{${label}}` : ""}`;
+  }
+
+  if (kind === "roll") {
+    const formula = String(interaction.formula ?? "").trim();
+    if (!formula) return "";
+    const command = interaction.gmOnly ? "/gmr" : "/r";
+    const flavor = String(interaction.flavor ?? "").replaceAll("]", "").trim();
+    return `[[${command} ${formula}${flavor ? ` #${flavor}` : ""}]]${label ? `{${label}}` : ""}`;
+  }
+
+  return "";
 }
 
 export function abilityMechanicsLabel(ability) {

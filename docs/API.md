@@ -687,3 +687,15 @@ The editor is a host-neutral embedded surface. It scopes field lookup and event 
 ### Signature powers 0.7.2
 
 `api.abilities.signature.resolveElementalSignatureProfile(subtypes)` resolves the same locale-neutral elemental affinity used by the new Elemental Retaliation signature family. `api.abilities.signature.plan(...)` can now return dragon-breath, troll-regeneration, vampiric-drain, hydra-heads, phoenix-rebirth, or elemental-retaliation abilities when their category/subtype requirements match.
+
+## Ability interactions (Content v11 / Blueprint v12)
+Ability definitions may include an optional `interactions` array. Supported interaction kinds are:
+
+- `check`: PF2e `@Check` links. Use `statistic`, optional `defense`/`against`/`dc`, `basic`, `traits`, `options`, and `mode`. A provider may use `dcRank: "extreme" | "high" | "moderate" | "low"`; generation resolves this to a numeric creature DC for the generated level.
+- `action`: PF2e action macros using `slug` plus optional `variant`, `statistic`, and numeric `dc`.
+- `damage`: PF2e `@Damage` links using `formula`, optional `damageType`, and `options`.
+- `roll`: Foundry inline rolls using `formula`; `gmOnly: true` emits a GM roll.
+
+`mode` defaults to `inline`. Use `mode: "chat"` for target-facing saves or prompts that should be sent to chat by the GM instead of being rolled from the source NPC sheet. `labelKey` / `label` provide the inline label; `requestLabelKey` / `requestLabel` provide the chat button label.
+
+Generated abilities default to `shareToChat: true`. The runtime exposes `api.runtime.sendAbilityToChat({ actor, abilityId })` and `api.runtime.sendAbilityInteractionToChat({ actor, abilityId, interactionIndex })`.

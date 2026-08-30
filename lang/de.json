@@ -746,5 +746,12 @@
   "PF2E_CREATURE_FORGE.Mythic.Power.Unimpeded.Name": "Ungehindert",
   "PF2E_CREATURE_FORGE.Mythic.Power.Unimpeded.Description": "Kosten 1 Mythenpunkt. Beendet einen Situationsmalus auf die Bewegungsrate; Entkommen gegen Bewegungsunfähig, Gebunden oder Gegriffen gelingt automatisch.",
   "PF2E_CREATURE_FORGE.Mythic.Immunity.strikes": "Angriffe",
-  "PF2E_CREATURE_FORGE.Mythic.Immunity.spells": "Zauber"
+  "PF2E_CREATURE_FORGE.Mythic.Immunity.spells": "Zauber",
+  "PF2E_CREATURE_FORGE.Editor.InteractiveActions": "Interaktive Aktionen",
+  "PF2E_CREATURE_FORGE.Action.SendAbilityToChat": "Fähigkeit an Chat senden",
+  "PF2E_CREATURE_FORGE.Action.SendInteractionToChat": "An Chat senden",
+  "PF2E_CREATURE_FORGE.Runtime.ChatUnavailable": "Der Chat ist nicht verfügbar.",
+  "PF2E_CREATURE_FORGE.Runtime.AbilityMissing": "Die Kreaturenfähigkeit konnte nicht gefunden werden.",
+  "PF2E_CREATURE_FORGE.Runtime.InteractionMissing": "Der interaktive Wurf oder die Aktion konnte nicht gefunden werden.",
+  "PF2E_CREATURE_FORGE.Runtime.ChatFailed": "Die Fähigkeit konnte nicht an den Chat gesendet werden."
 }

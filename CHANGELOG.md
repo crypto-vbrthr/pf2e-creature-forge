@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0-dev.1 - Interactive Ability Actions
+- Added declarative ability `interactions` for native PF2e inline checks, action macros, damage rolls, and GM-only utility rolls.
+- Added ranked creature DC materialization for interaction checks (`dcRank` using the GM Core creature spell-DC bands).
+- Added per-interaction chat requests and a compact **Send ability to chat** control on generated ability items.
+- Added a dedicated interaction runtime that enriches PF2e inline syntax before creating chat messages.
+- Bumped Blueprint schema to v12 and Content schema to v11; Request schema remains v8.
+
 ## 1.0.1 – Localization Startup Hotfix
 
 - Fixed Foundry VTT localization loading failures caused by dotted localization keys that were both string values and parents of `.Description` keys.

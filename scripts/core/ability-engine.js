@@ -1,4 +1,5 @@
 import { deepClone } from "./clone.js";
+import { SPELL_DC_TABLE, resolveRankValue } from "./tables.js";
 
 const ROLE_COUNTS = Object.freeze({
   custom: 2,
@@ -79,7 +80,18 @@ function weightedCandidates(entries, context, selected, focus) {
   return entries.map((entry) => ({ value: entry, weight: scoreAbility(entry, context, selected, focus) }));
 }
 
-export function materializeAbility(entry, index) {
+function materializeInteractions(entries = [], level = 0) {
+  return (entries ?? []).map((entry) => {
+    const copy = deepClone(entry ?? {});
+    if (copy.kind === "check" && copy.dc == null && copy.dcRank) {
+      copy.dc = resolveRankValue(SPELL_DC_TABLE, level, copy.dcRank);
+      copy.dcSource = { mode: "creature-rank", rank: copy.dcRank, level };
+    }
+    return copy;
+  });
+}
+
+export function materializeAbility(entry, index, { level = 0 } = {}) {
   return {
     id: `ability-${index + 1}`,
     contentId: entry.id,
@@ -99,6 +111,8 @@ export function materializeAbility(entry, index) {
     traits: [...new Set(entry.traits ?? [])],
     tags: [...new Set(entry.tags ?? [])],
     applications: deepClone(entry.applications ?? []),
+    interactions: materializeInteractions(entry.interactions ?? [], level),
+    shareToChat: entry.shareToChat !== false,
     synergy: deepClone(entry.synergy ?? {}),
     requirements: deepClone(entry.requirements ?? {}),
     source: deepClone(entry.source ?? {}),
@@ -211,7 +225,7 @@ export function generateAbilities({ request, registry, level, roleId, category, 
     });
     if (!candidates.length) break;
     const picked = random.fork(`ability:${index}`).weightedPick(weightedCandidates(candidates, context, selected, focus));
-    const materialized = materializeAbility(picked, index);
+    const materialized = materializeAbility(picked, index, { level });
     selected.push(materialized);
     spent += materialized.powerCost;
   }

@@ -746,5 +746,12 @@
   "PF2E_CREATURE_FORGE.Mythic.Power.Unimpeded.Name": "Unimpeded",
   "PF2E_CREATURE_FORGE.Mythic.Power.Unimpeded.Description": "Cost 1 Mythic Point. End a circumstance penalty to Speed; Escape automatically succeeds against immobilized, grabbed, or restrained.",
   "PF2E_CREATURE_FORGE.Mythic.Immunity.strikes": "Strikes",
-  "PF2E_CREATURE_FORGE.Mythic.Immunity.spells": "Spells"
+  "PF2E_CREATURE_FORGE.Mythic.Immunity.spells": "Spells",
+  "PF2E_CREATURE_FORGE.Editor.InteractiveActions": "Interactive actions",
+  "PF2E_CREATURE_FORGE.Action.SendAbilityToChat": "Send ability to chat",
+  "PF2E_CREATURE_FORGE.Action.SendInteractionToChat": "Send to chat",
+  "PF2E_CREATURE_FORGE.Runtime.ChatUnavailable": "Chat is unavailable.",
+  "PF2E_CREATURE_FORGE.Runtime.AbilityMissing": "The creature ability could not be found.",
+  "PF2E_CREATURE_FORGE.Runtime.InteractionMissing": "The interactive roll or action could not be found.",
+  "PF2E_CREATURE_FORGE.Runtime.ChatFailed": "The ability could not be sent to chat."
 }

@@ -5,6 +5,7 @@ import { initializeCreatureForgeUi, openCreatureForge } from "./ui/creature-forg
 import { initializeEffectRuntimeUi } from "./runtime/effect-runtime.js";
 import { initializeSpecialFeatureRuntimeUi } from "./runtime/special-feature-runtime.js";
 import { initializeLootRuntimeUi } from "./runtime/loot-runtime-ui.js";
+import { initializeAbilityInteractionRuntimeUi } from "./runtime/ability-interaction-runtime.js";
 
 Hooks.once("init", () => {
   registerSettings();
@@ -45,6 +46,10 @@ Hooks.once("ready", () => {
   });
   initializeLootRuntimeUi({
     createDeferredLootActor: (actorOrBlueprint, options) => api.runtime.createDeferredLootActor(actorOrBlueprint, options)
+  });
+  initializeAbilityInteractionRuntimeUi({
+    sendAbilityToChat: (options) => api.runtime.sendAbilityToChat(options),
+    sendInteractionToChat: (options) => api.runtime.sendAbilityInteractionToChat(options)
   });
   Hooks.callAll("pf2eCreatureForgeReady", api);
   Hooks.callAll("pf2eCreatureForgeContentReady", api.content.getRegistrySnapshot());
