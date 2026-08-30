@@ -323,3 +323,13 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - Freeze the first stable API/data-contract baseline at Request v8, Blueprint v11, Content v10, Embedded Creature Editor v13, and runtime-status v2.
 - Align release metadata and packaging to v1.0.0 with no functional drift from the reviewed RC.
 - Permanent suite: 183 passing tests. Final RC integration audit remained clean across generation, Mythic generation, compilation, and scoped rerolls.
+
+## 1.1.0-rc.1 - Interactive Ability Release Candidate ✅
+
+- Declarative PF2e inline checks/actions/damage rolls and GM chat requests for generated abilities.
+- Full rules-text review of all 50 shipped Core abilities in DE/EN.
+- Request v8, Blueprint v12, Content v11, Embedded Creature Editor v13, runtime-status v2.
+- Verified compatibility with Predator Tactics 0.1.0 and persisted 1.0.1 Blueprint v11 creatures.
+- Corrected public API contract documentation and added documentation/version drift regression coverage.
+- Permanent suite: 192 passing tests; representative Core+Predator and legacy-persistence audits clean.
+

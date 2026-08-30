@@ -2,7 +2,7 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **1.1.0-dev.2** continues the interactive-ability development line. In addition to declarative inline rolls and chat actions, this build completes a full rules-text review of the shipped Core ability library: all 50 Core abilities now state their actual PF2e mechanics instead of relying on short flavor summaries. Generated actions such as **Pounce** and **Pack Hunter** therefore tell the GM exactly when and how they work, while save-based abilities expose level-resolved DCs and interactive chat controls.
+Version **1.1.0-rc.1** is the release candidate for the interactive-ability update. It combines declarative inline rolls and GM chat actions with the completed rules-text review of all 50 shipped Core abilities. Generated actions such as **Pounce** and **Pack Hunter** state their concrete PF2e mechanics, save-based abilities expose level-resolved DCs, and the reviewed 1.0.x persistence baseline remains compatible.
 
 The 1.0 stable baseline remains fully represented, including first-class **Mythic Creatures** based on *Pathfinder War of Immortals / Krieg der Unsterblichen*, the four mythic role templates, optional Forge Suite integrations, rerolls, spellcasting, special features, loot, and the embeddable editor.
 
@@ -29,7 +29,7 @@ Suggestions and feature requests are equally welcome. Even small ideas can lead 
 **Open an issue here:** https://github.com/crypto-vbrthr/pf2e-creature-forge/issues
 
 
-## What 1.1.0-dev.2 adds
+## What 1.1.0-rc.1 adds
 
 - All 50 Core ability descriptions have explicit German and English PF2e-style rules text.
 - Core abilities with saving throws materialize their ranked creature DC into both structured mechanics and interactive GM chat controls.

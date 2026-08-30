@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Legacy Wolf",
+    "sourceBlueprintSchema": 11,
+    "valid": true,
+    "errorCount": 0,
+    "compiledItems": 4,
+    "rehydratedRequestSchema": 8,
+    "mythicEnabled": false,
+    "mythicRole": "auto"
+  },
+  {
+    "name": "Legacy Lich",
+    "sourceBlueprintSchema": 11,
+    "valid": true,
+    "errorCount": 0,
+    "compiledItems": 8,
+    "rehydratedRequestSchema": 8,
+    "mythicEnabled": true,
+    "mythicRole": "caster"
+  },
+  {
+    "name": "Legacy Dragon",
+    "sourceBlueprintSchema": 11,
+    "valid": true,
+    "errorCount": 0,
+    "compiledItems": 4,
+    "rehydratedRequestSchema": 8,
+    "mythicEnabled": false,
+    "mythicRole": "auto"
+  }
+]

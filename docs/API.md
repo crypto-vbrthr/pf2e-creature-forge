@@ -1,6 +1,8 @@
-# Public API 1.0.0
+# Public API 1.1.0-rc.1
 
-> **1.0.0 stable API commitment:** public data contracts remain Request v8, Blueprint v11, Content v10, Embedded Creature Editor v13, and runtime-status v2. The 1.0.0 release promotes the reviewed RC without changing those contracts. An embedded editor opened with a persisted Blueprint but no explicit request rehydrates from `blueprint.metadata.requestSnapshot` and normalizes older snapshots. Optional integration status retains `ready` for API exposure and adds `complete` plus `missingCapabilities` for capability-safe diagnostics.
+> **1.1.0 release-candidate contract:** public data contracts are Request v8, Blueprint v12, Content v11, Embedded Creature Editor v13, and runtime-status v2. Blueprint v12 and Content v11 add declarative interactive ability metadata while keeping the request/editor/runtime-status contracts stable. Persisted Blueprint v11 creatures from the 1.0.x line remain accepted, compilable, and editable; their request snapshots are normalized through `api.createRequest()`.
+>
+> **1.1.0 Interactive Ability Actions:** generated abilities can carry declarative `interactions` for PF2e checks, actions, damage, and GM rolls. Ranked creature DCs are materialized at generation time, and `api.runtime.sendAbilityToChat()` / `api.runtime.sendAbilityInteractionToChat()` expose the chat runtime.
 >
 > **0.8.0 Mythic Creatures:** Request schema v8 adds `mythic.enabled` and `mythic.role`; Blueprint schema v11 stores the resolved mythic progression/template. `api.mythic.roles` and `api.mythic.resolveRole(request)` expose the role mapping. Compiled NPCs receive the PF2E `mythic` trait and a 3-point Mythic Point resource.
 >

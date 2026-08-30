@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0-rc.1 - Interactive Ability Release Candidate
+- Promoted the tested 1.1.0-dev.2 feature set to the first 1.1 release candidate with no gameplay-rule changes after the Foundry usability pass.
+- Completed the RC review of Interactive Ability Actions, all 50 Core ability rules texts, Predator Tactics 0.1.0 compatibility, DE/EN localization, 1.0.x persisted Blueprint compatibility, and release packaging.
+- Corrected the public API documentation, which still advertised the 1.0.0 Blueprint v11 / Content v10 contract after the 1.1 development line had moved to Blueprint v12 / Content v11.
+- Added release-documentation regression coverage so API/README version and schema declarations cannot silently drift from the shipped constants.
+- Public contracts for this RC: Request v8, Blueprint v12, Content v11, Embedded Creature Editor v13, runtime-status v2.
+- Permanent suite: 192/192 passing tests. RC audits also verified 384 Core+Predator generations with zero invalid Blueprints, warnings, compilation failures, or unresolved ranked DCs, plus successful validation/compilation/editor rehydration of representative 1.0.1 Blueprint v11 creatures.
+
 ## 1.1.0-dev.2 - Core Ability Rules Text Review
 - Reworked all 50 shipped Core ability descriptions in German and English into explicit PF2e-style rules text with clear triggers, requirements, ranges, durations, saves, movement, and outcomes where applicable.
 - Defined Core **Pounce / Anspringen** as a 1-action movement-plus-Strike activity, including hidden-state handling and alternate movement modes, and exposed Stride as an interactive PF2e action.
