@@ -333,6 +333,13 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - Corrected public API contract documentation and added documentation/version drift regression coverage.
 - Permanent suite: 192 passing tests; representative Core+Predator and legacy-persistence audits clean.
 
+## 1.1.1 - Affliction Delivery Host Hotfix ✅
+
+- Require real concept matches for preferred Affliction delivery hosts.
+- Reject passive abilities for `on-use` delivery.
+- Fall back to manual application when no compatible carrier exists.
+- No schema changes.
+
 ## 1.1.0 - Stable Interactive Ability Release ✅
 
 - Promote the successfully Foundry-smoke-tested 1.1.0-rc.1 candidate without functional drift.

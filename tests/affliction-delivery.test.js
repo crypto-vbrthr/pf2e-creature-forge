@@ -34,6 +34,67 @@ test("curse delivery prefers a thematically matching ability over an attack", ()
   assert.equal(delivery.trigger, "on-use");
 });
 
+
+
+test("curse delivery falls back to manual when no concept-matching host exists", () => {
+  const resource = {
+    definition: { afflictionType: "curse", delivery: { injuryPoison: false } },
+    deliveryProfile: {
+      hostOrder: ["ability", "attack"],
+      preferredAbilityTags: ["curse", "fiend", "unholy", "mental", "control", "fear"],
+      trigger: "on-use",
+      application: "prompt",
+      fallback: "manual"
+    }
+  };
+  const bp = {
+    combat: { attacks: [{ id: "attack-1", kind: "melee", name: "Claw", damage: { type: "slashing" }, traits: [] }] },
+    abilities: [{ id: "dense-bones", type: "passive", tags: ["bones", "stability", "falling"], traits: [] }]
+  };
+  const delivery = resolveAfflictionDelivery(resource, bp);
+  assert.deepEqual(delivery, { mode: "manual", trigger: "manual", application: "manual", reason: "no-compatible-host" });
+});
+
+test("on-use delivery never binds to a passive ability even when its tags match", () => {
+  const resource = {
+    definition: { afflictionType: "curse", delivery: { injuryPoison: false } },
+    deliveryProfile: {
+      hostOrder: ["ability"],
+      preferredAbilityTags: ["curse"],
+      trigger: "on-use",
+      application: "prompt",
+      fallback: "manual"
+    }
+  };
+  const bp = {
+    combat: { attacks: [] },
+    abilities: [{ id: "passive-curse", type: "passive", tags: ["curse"], traits: [] }]
+  };
+  const delivery = resolveAfflictionDelivery(resource, bp);
+  assert.equal(delivery.mode, "manual");
+  assert.equal(delivery.reason, "no-compatible-host");
+});
+
+test("attack delivery with explicit preferences requires an actual attack match", () => {
+  const resource = {
+    definition: { afflictionType: "disease", delivery: { injuryPoison: false } },
+    deliveryProfile: {
+      hostOrder: ["attack"],
+      preferredAttackNames: ["bite"],
+      trigger: "on-hit",
+      application: "automatic",
+      fallback: "manual"
+    }
+  };
+  const bp = {
+    combat: { attacks: [{ id: "attack-1", kind: "melee", name: "Hammer", damage: { type: "bludgeoning" }, traits: [] }] },
+    abilities: []
+  };
+  const delivery = resolveAfflictionDelivery(resource, bp);
+  assert.equal(delivery.mode, "manual");
+  assert.equal(delivery.reason, "no-compatible-host");
+});
+
 test("runtime creates actor-local Affliction template and attaches an Affliction Forge reference to the selected host", async () => {
   const bp = {
     resources: { auras: [], afflictions: [{ id: "test.aff", name: "Venom", definition: { id: "test.aff", name: "Venom", afflictionType: "poison", stages: [{ number: 1, name: "Stage 1" }] }, delivery: { mode: "hosted", hostType: "attack", hostId: "attack-1", trigger: "on-damage", application: "automatic", injuryPoison: false } }] }

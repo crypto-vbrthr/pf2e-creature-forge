@@ -34,26 +34,71 @@ function inferredProfile(resource = {}) {
   return { hostOrder: ["ability", "attack"], trigger: "on-use", application: "prompt", fallback: "manual" };
 }
 
+function attackConceptHints(profile) {
+  return [
+    ...list(profile.preferredDamageTypes),
+    ...list(profile.preferredAttackNames),
+    ...list(profile.preferredAttackTraits),
+    ...list(profile.requiredAttackTraits)
+  ];
+}
+
+function abilityConceptHints(profile) {
+  return [
+    ...list(profile.preferredAbilityTags),
+    ...list(profile.requiredAbilityTags)
+  ];
+}
+
+function hasConceptHints(profile) {
+  return attackConceptHints(profile).length > 0 || abilityConceptHints(profile).length > 0;
+}
+
 function scoreAttack(attack, profile) {
   if (!attack) return -1;
-  let score = attack.kind === "melee" ? 20 : 5;
+
+  const attackHints = attackConceptHints(profile);
+  if (hasConceptHints(profile) && attackHints.length === 0) return -1;
+
+  const traits = new Set((attack.traits ?? []).map(lower));
+  for (const trait of list(profile.requiredAttackTraits).map(lower)) if (!traits.has(trait)) return -1;
+
   const damageType = lower(attack.damage?.type);
-  if (list(profile.preferredDamageTypes).includes(damageType)) score += 40;
   const attackName = lower(attack.name);
-  for (const hint of list(profile.preferredAttackNames).map(lower)) if (hint && attackName.includes(hint)) score += 55;
-  for (const trait of list(profile.requiredAttackTraits)) if (!(attack.traits ?? []).includes(trait)) return -1;
-  for (const trait of list(profile.preferredAttackTraits)) if ((attack.traits ?? []).includes(trait)) score += 15;
+  const preferredDamageTypes = list(profile.preferredDamageTypes).map(lower);
+  const preferredAttackNames = list(profile.preferredAttackNames).map(lower);
+  const preferredAttackTraits = list(profile.preferredAttackTraits).map(lower);
+  const hasPreferredCriteria = preferredDamageTypes.length > 0 || preferredAttackNames.length > 0 || preferredAttackTraits.length > 0;
+  const preferredMatch = preferredDamageTypes.includes(damageType)
+    || preferredAttackNames.some((hint) => hint && attackName.includes(hint))
+    || preferredAttackTraits.some((trait) => traits.has(trait));
+  if (hasPreferredCriteria && !preferredMatch) return -1;
+
+  let score = attack.kind === "melee" ? 20 : 5;
+  if (preferredDamageTypes.includes(damageType)) score += 40;
+  for (const hint of preferredAttackNames) if (hint && attackName.includes(hint)) score += 55;
+  for (const trait of preferredAttackTraits) if (traits.has(trait)) score += 15;
   if (attack.profile === "accurate") score += 3;
   return score;
 }
 
 function scoreAbility(ability, profile) {
   if (!ability) return -1;
+  if (lower(profile.trigger) === "on-use" && lower(ability.type) === "passive") return -1;
+
+  const abilityHints = abilityConceptHints(profile);
+  if (hasConceptHints(profile) && abilityHints.length === 0) return -1;
+
   const tags = new Set([...(ability.tags ?? []), ...(ability.traits ?? [])].map(lower));
-  for (const tag of list(profile.requiredAbilityTags).map(lower)) if (!tags.has(tag)) return -1;
+  const requiredTags = list(profile.requiredAbilityTags).map(lower);
+  for (const tag of requiredTags) if (!tags.has(tag)) return -1;
+
+  const preferredTags = list(profile.preferredAbilityTags).map(lower);
+  if (preferredTags.length > 0 && !preferredTags.some((tag) => tags.has(tag))) return -1;
+
   let score = 10;
-  for (const tag of list(profile.preferredAbilityTags).map(lower)) if (tags.has(tag)) score += 35;
-  if (ability.type === "passive") score -= 8;
+  for (const tag of preferredTags) if (tags.has(tag)) score += 35;
+  if (lower(ability.type) === "passive") score -= 8;
   return score;
 }
 

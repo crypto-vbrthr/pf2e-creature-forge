@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.1 - Affliction Delivery Host Hotfix
+- Fixed automatic Affliction delivery attaching unrelated afflictions to arbitrary generated abilities or attacks when no thematic carrier existed.
+- Delivery profiles with preferred host criteria now require at least one actual preferred match; host types with no applicable concept hints are skipped.
+- Passive abilities are never eligible for `on-use` Affliction delivery, preventing nonsensical bindings such as a curse being transmitted by a passive defensive feature.
+- When no compatible carrier exists, delivery now fails closed to the existing manual-application path.
+- Added regression coverage for an unrelated curse + passive ability case, matching the reported `Dense Bones / Dichte Knochen` scenario, plus passive-tag and attack-preference edge cases.
+- Public schemas remain Request v8, Blueprint v12, Content v11, Embedded Creature Editor v13, runtime-status v2.
+- Permanent suite: 195/195 passing tests after the hotfix.
+
 ## 1.1.0 - Stable Interactive Ability Release
 - Promoted the successfully Foundry-smoke-tested 1.1.0-rc.1 candidate to stable with no gameplay, schema, runtime, or integration changes.
 - Ships declarative Interactive Ability Actions and the completed PF2e-style rules-text review for all 50 Core abilities in German and English.

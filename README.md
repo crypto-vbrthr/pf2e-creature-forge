@@ -2,7 +2,7 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **1.1.0** is the stable interactive-ability release. It combines declarative inline rolls and GM chat actions with the completed rules-text review of all 50 shipped Core abilities. Generated actions such as **Pounce** and **Pack Hunter** state their concrete PF2e mechanics, save-based abilities expose level-resolved DCs, and the reviewed 1.0.x persistence baseline remains compatible. The release is functionally identical to the successfully smoke-tested 1.1.0-rc.1 candidate.
+Version **1.1.1** is a focused Affliction-delivery hotfix on top of the stable interactive-ability release. It prevents conceptually unrelated abilities or attacks from being selected as automatic carriers for generated afflictions, and it prevents passive abilities from being used as `on-use` delivery hosts. Public schemas remain Request v8, Blueprint v12, Content v11, Embedded Creature Editor v13, and runtime-status v2.
 
 The 1.0 stable baseline remains fully represented, including first-class **Mythic Creatures** based on *Pathfinder War of Immortals / Krieg der Unsterblichen*, the four mythic role templates, optional Forge Suite integrations, rerolls, spellcasting, special features, loot, and the embeddable editor.
 
@@ -28,6 +28,14 @@ Suggestions and feature requests are equally welcome. Even small ideas can lead 
 
 **Open an issue here:** https://github.com/crypto-vbrthr/pf2e-creature-forge/issues
 
+
+## What 1.1.1 fixes
+
+- Affliction delivery now requires an actual concept match when a delivery profile declares preferred host traits, tags, damage types, or attack names.
+- Passive abilities can no longer be selected for `on-use` affliction delivery.
+- Host types without matching concept hints are skipped instead of receiving unrelated afflictions as a fallback.
+- If no compatible carrier exists, the affliction safely falls back to manual application.
+- Added regression coverage for unrelated curse hosts, passive `on-use` hosts, and non-matching attack preferences.
 
 ## What 1.1.0 adds
 
