@@ -1,6 +1,7 @@
 import { RANKS, SIZES, SKILL_SLUGS } from "../constants.js";
 import { ROLE_IDS } from "../core/role-presets.js";
 import { deepClone } from "../core/clone.js";
+import { adjustPreviewNumber, sectionLocked, toggleSectionLock } from "../core/blueprint-controls.js";
 import { CreatureEditorSession } from "./editor-session.js";
 import { resolveAttackNameKey } from "../core/attack-localization.js";
 import { localize } from "../i18n.js";
@@ -175,7 +176,7 @@ function triStateOptions(current) {
 }
 
 export class EmbeddedCreatureEditor {
-  static CONTRACT_VERSION = 13;
+  static CONTRACT_VERSION = 14;
 
   constructor({ api, session = null, request = {}, blueprint = null, mode = "create", layout = "full", activeTab = "creature", capabilities = {}, onChange = null, onGenerate = null } = {}) {
     if (!api) throw new Error("EmbeddedCreatureEditor requires the Creature Forge API.");
@@ -185,6 +186,7 @@ export class EmbeddedCreatureEditor {
     this.layout = layout;
     this.activeTab = activeTab === "sources" ? "sources" : "creature";
     this.tabScrollPositions = { creature: 0, sources: 0 };
+    this.panelScrollPositions = { concept: 0, generated: 0 };
     this.capabilities = {
       generation: true,
       actorCreation: false,
@@ -220,6 +222,10 @@ export class EmbeddedCreatureEditor {
     const next = tab === "sources" && this.capabilities.sourceSelection ? "sources" : "creature";
     if (next === this.activeTab) return this;
     if (this.scrollElement) this.tabScrollPositions[this.activeTab] = this.scrollElement.scrollTop;
+    if (this.activeTab === "creature" && this.root) {
+      this.panelScrollPositions.concept = this.root.querySelector("[data-cf-concept-scroll]")?.scrollTop ?? this.panelScrollPositions.concept;
+      this.panelScrollPositions.generated = this.root.querySelector("[data-cf-generated-scroll]")?.scrollTop ?? this.panelScrollPositions.generated;
+    }
     this.activeEffectId = null;
     this.activeAuraId = null;
     this.activeAfflictionId = null;
@@ -427,17 +433,50 @@ export class EmbeddedCreatureEditor {
         await this.#emitChange("generate");
       } else if (action === "reroll-all") {
         this.#syncRequestFromForm();
-        this.session.generate();
-        await this.session.rerollAsync({ scope: "all" });
+        await this.session.rerollAsync({ scope: "all", request: this.session.request });
         this.#render();
         await this.onGenerate?.({ blueprint: this.value, request: this.request });
         await this.#emitChange("reroll-all");
+      } else if (action === "toggle-section-lock") {
+        const scope = target.closest?.("[data-cf-section]")?.dataset.cfSection;
+        if (this.mode !== "view" && this.session.blueprint && scope) {
+          const previousSpellLock = scope === "spellcasting" && Boolean(this.session.blueprint.combat?.spellcasting?.[0]?.locked);
+          if (previousSpellLock) {
+            this.session.blueprint.locks ??= {};
+            this.session.blueprint.locks.spellcasting = false;
+            this.session.blueprint.combat.spellcasting[0].locked = false;
+          } else if (!toggleSectionLock(this.session.blueprint, scope)) return;
+          this.session.dirty = true;
+          this.#render();
+          await this.#emitChange("section-lock");
+        }
+      } else if (action === "reroll-section") {
+        const scope = target.closest?.("[data-cf-section]")?.dataset.cfSection;
+        if (this.capabilities.generation && this.session.blueprint && scope && !sectionLocked(this.session.blueprint, scope) && !(scope === "defenses.affinities" && sectionLocked(this.session.blueprint, "defenses"))) {
+          if (scope === "loot") {
+            this.session.blueprint = await this.api.loot.refresh(this.session.blueprint);
+            this.session.request = deepClone(this.session.blueprint.metadata.requestSnapshot);
+            this.session.dirty = true;
+          } else {
+            this.session.reroll({ scope });
+          }
+          this.#render();
+          await this.#emitChange("reroll-section");
+        }
+      } else if (action === "adjust-number") {
+        const button = target.closest?.("[data-cf-stat-path]");
+        if (this.mode !== "view" && this.session.blueprint && button && adjustPreviewNumber(this.session.blueprint, button.dataset.cfStatPath, Number(button.dataset.cfDelta))) {
+          this.session.dirty = true;
+          this.#render();
+          await this.#emitChange("adjust-number");
+        }
       } else if (action === "reroll-hp") {
+        if (sectionLocked(this.session.blueprint, "defenses") || sectionLocked(this.session.blueprint, "statistics.hp")) return;
         this.session.reroll({ scope: "statistics.hp" });
         this.#render();
         await this.#emitChange("reroll-hp");
       } else if (action === "reroll-loot") {
-        if (this.session.blueprint) {
+        if (this.session.blueprint && !sectionLocked(this.session.blueprint, "loot")) {
           this.session.blueprint = await this.api.loot.refresh(this.session.blueprint);
           this.session.request = deepClone(this.session.blueprint.metadata.requestSnapshot);
           this.session.dirty = true;
@@ -446,7 +485,7 @@ export class EmbeddedCreatureEditor {
         }
       } else if (action === "reroll-loot-channel") {
         const channel = target.closest?.("[data-loot-channel]")?.dataset?.lootChannel;
-        if (channel && this.session.blueprint?.loot?.channels?.[channel] && !this.session.blueprint.loot.channels[channel].locked) {
+        if (channel && !sectionLocked(this.session.blueprint, "loot") && this.session.blueprint?.loot?.channels?.[channel] && !this.session.blueprint.loot.channels[channel].locked) {
           this.session.blueprint = await this.api.loot.refreshChannel(this.session.blueprint, channel);
           this.session.request = deepClone(this.session.blueprint.metadata.requestSnapshot);
           this.session.dirty = true;
@@ -463,47 +502,56 @@ export class EmbeddedCreatureEditor {
           await this.#emitChange("loot-lock");
         }
       } else if (action === "reroll-skills") {
+        if (sectionLocked(this.session.blueprint, "statistics.skills")) return;
         this.session.reroll({ scope: "statistics.skills" });
         this.#render();
         await this.#emitChange("reroll-skills");
       } else if (action === "reroll-movement") {
+        if (sectionLocked(this.session.blueprint, "statistics.movement")) return;
         this.session.reroll({ scope: "statistics.movement" });
         this.#render();
         await this.#emitChange("reroll-movement");
       } else if (action === "reroll-senses") {
+        if (sectionLocked(this.session.blueprint, "statistics.senses")) return;
         this.session.reroll({ scope: "statistics.senses" });
         this.#render();
         await this.#emitChange("reroll-senses");
       } else if (action === "reroll-attacks") {
+        if (sectionLocked(this.session.blueprint, "combat.attacks")) return;
         this.session.reroll({ scope: "combat.attacks" });
         this.#render();
         await this.#emitChange("reroll-attacks");
       } else if (action === "reroll-affinities") {
+        if (sectionLocked(this.session.blueprint, "defenses.affinities") || sectionLocked(this.session.blueprint, "defenses")) return;
         this.session.reroll({ scope: "defenses.affinities" });
         this.#render();
         await this.#emitChange("reroll-affinities");
       } else if (action === "reroll-abilities") {
+        if (sectionLocked(this.session.blueprint, "abilities")) return;
         this.session.reroll({ scope: "abilities" });
         this.activeEffectId = null;
         this.#render();
         await this.#emitChange("reroll-abilities");
       } else if (action === "reroll-auras") {
+        if (sectionLocked(this.session.blueprint, "auras")) return;
         this.session.reroll({ scope: "auras" });
         this.activeAuraId = null;
         this.#render();
         await this.#emitChange("reroll-auras");
       } else if (action === "reroll-afflictions") {
+        if (sectionLocked(this.session.blueprint, "afflictions")) return;
         this.session.reroll({ scope: "afflictions" });
         this.activeAfflictionId = null;
         this.#render();
         await this.#emitChange("reroll-afflictions");
       } else if (action === "reroll-spellcasting") {
+        if (sectionLocked(this.session.blueprint, "spellcasting")) return;
         this.session.reroll({ scope: "spellcasting" });
         this.#render();
         await this.#emitChange("reroll-spellcasting");
       } else if (action === "reroll-spell") {
         const spellId = target.closest?.("[data-spell-id]")?.dataset?.spellId;
-        if (spellId) {
+        if (spellId && !sectionLocked(this.session.blueprint, "spellcasting")) {
           this.session.reroll({ scope: `spell:${spellId}` });
           this.#render();
           await this.#emitChange("reroll-spell");
@@ -565,7 +613,7 @@ export class EmbeddedCreatureEditor {
         this.#render();
       } else if (action === "reroll-ability") {
         const abilityId = target.closest?.("[data-ability-id]")?.dataset?.abilityId;
-        if (abilityId) {
+        if (abilityId && !sectionLocked(this.session.blueprint, "abilities")) {
           this.session.reroll({ scope: `ability:${abilityId}` });
           this.activeEffectId = null;
           this.#render();
@@ -740,6 +788,10 @@ export class EmbeddedCreatureEditor {
     if (captureScroll && this.scrollElement && !previousRenderWasSubeditorMode) {
       this.tabScrollPositions[this.activeTab] = this.scrollElement.scrollTop;
     }
+    if (captureScroll && !previousRenderWasSubeditorMode && this.root?.querySelector?.('[data-cf-tab-panel="creature"].active') && this.root?.querySelector?.("[data-cf-concept-scroll]")) {
+      this.panelScrollPositions.concept = this.root.querySelector("[data-cf-concept-scroll]").scrollTop;
+      this.panelScrollPositions.generated = this.root.querySelector("[data-cf-generated-scroll]")?.scrollTop ?? 0;
+    }
     const previousScrollTop = this.tabScrollPositions[this.activeTab] ?? 0;
     if (this.boundHandler && this.root) {
       this.root.removeEventListener("change", this.boundHandler);
@@ -832,6 +884,27 @@ export class EmbeddedCreatureEditor {
       ? `<ul class="cf-diagnostics">${diagnostics.map((entry) => `<li class="${entry.level}">${escapeHtml(entry.message)}</li>`).join("")}</ul>`
       : `<p class="cf-ok">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Valid", "Blueprint valid"))}</p>`;
 
+    const sectionControls = (scope, { reroll = true } = {}) => {
+      if (!canGenerate || !blueprint) return "";
+      const locked = sectionLocked(blueprint, scope);
+      const rerollBlocked = locked || (scope === "defenses.affinities" && sectionLocked(blueprint, "defenses")) ||
+        (scope === "spellcasting" && Boolean(blueprint.combat?.spellcasting?.[0]?.locked));
+      const lockTitle = localize(locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", locked ? "Unlock" : "Lock");
+      const rerollTitle = localize("PF2E_CREATURE_FORGE.Editor.RerollSection", "Reroll only this section");
+      return `<span class="cf-section-controls" data-cf-section="${escapeHtml(scope)}">
+        <button type="button" class="cf-icon-button cf-section-lock${locked ? " is-locked" : ""}" data-cf-action="toggle-section-lock" title="${escapeHtml(lockTitle)}" aria-label="${escapeHtml(lockTitle)}"><i class="fa-solid ${locked ? "fa-lock" : "fa-lock-open"}"></i></button>
+        ${reroll ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-section" title="${escapeHtml(rerollTitle)}" aria-label="${escapeHtml(rerollTitle)}" ${rerollBlocked ? "disabled" : ""}><i class="fa-solid fa-dice"></i></button>` : ""}
+      </span>`;
+    };
+    const numericControl = (path, value, { sign = false } = {}) => {
+      const rendered = sign ? signed(value) : (Number.isFinite(Number(value)) ? String(value) : "—");
+      if (!canGenerate || !blueprint || !Number.isFinite(Number(value))) return escapeHtml(rendered);
+      const lower = localize("PF2E_CREATURE_FORGE.Editor.DecreaseValue", "Decrease value");
+      const higher = localize("PF2E_CREATURE_FORGE.Editor.IncreaseValue", "Increase value");
+      const stat = escapeHtml(path);
+      return `<span class="cf-number-control"><button type="button" data-cf-action="adjust-number" data-cf-stat-path="${stat}" data-cf-delta="-1" aria-label="${escapeHtml(lower)}" title="${escapeHtml(lower)}">−</button><span class="cf-number-value">${escapeHtml(rendered)}</span><button type="button" data-cf-action="adjust-number" data-cf-stat-path="${stat}" data-cf-delta="1" aria-label="${escapeHtml(higher)}" title="${escapeHtml(higher)}">+</button></span>`;
+    };
+
     const abilityFields = ABILITIES.map((ability) => `
       <label><span>${escapeHtml(localize(`PF2E_CREATURE_FORGE.Field.${ability.toUpperCase()}`, ability.toUpperCase()))}</span>
         <select name="${ability}" ${disabled}>${rankOptions(request.attributes[ability], RANKS.ATTRIBUTE)}</select>
@@ -839,11 +912,11 @@ export class EmbeddedCreatureEditor {
 
     const abilityPreview = ABILITIES.map((ability) => {
       const stat = blueprint?.statistics?.abilities?.[ability];
-      return `<div><dt>${escapeHtml(localize(`PF2E_CREATURE_FORGE.Field.${ability.toUpperCase()}`, ability.toUpperCase()))}</dt><dd>${signed(stat?.value)} <small>${escapeHtml(rankLabel(stat?.rank))}</small></dd></div>`;
+      return `<div><dt>${escapeHtml(localize(`PF2E_CREATURE_FORGE.Field.${ability.toUpperCase()}`, ability.toUpperCase()))}</dt><dd>${numericControl(`statistics.abilities.${ability}.value`, stat?.value, { sign: true })} <small>${escapeHtml(rankLabel(stat?.rank))}</small></dd></div>`;
     }).join("");
 
     const skillRows = Object.values(blueprint?.statistics?.skills ?? {}).map((skill) => `
-      <li class="cf-compact-row"><strong>${escapeHtml(skillLabel(skill.slug))}</strong><span>${signed(skill.value)} <small>${escapeHtml(rankLabel(skill.rank))}</small></span></li>`).join("");
+      <li class="cf-compact-row"><strong>${escapeHtml(skillLabel(skill.slug))}</strong><span>${numericControl(`statistics.skills.${skill.slug}.value`, skill.value, { sign: true })} <small>${escapeHtml(rankLabel(skill.rank))}</small></span></li>`).join("");
     const movementRows = [
       { type: "land", value: blueprint?.statistics?.speed?.land },
       ...(blueprint?.statistics?.speed?.other ?? [])
@@ -852,10 +925,10 @@ export class EmbeddedCreatureEditor {
     const senseRows = (blueprint?.statistics?.senses ?? []).map((sense) => `
       <li class="cf-compact-row"><strong>${escapeHtml(senseLabel(sense.type))}</strong><span>${sense.range ? `${Number(sense.range)} ft. · ` : ""}${escapeHtml(localize(`PF2E_CREATURE_FORGE.Acuity.${sense.acuity}`, sense.acuity ?? ""))}</span></li>`).join("");
 
-    const attackRows = (blueprint?.combat?.attacks ?? []).map((attack) => `
+    const attackRows = (blueprint?.combat?.attacks ?? []).map((attack, index) => `
       <li class="cf-attack-row">
         <div><strong>${escapeHtml(attackNameLabel(attack))}</strong><small>${escapeHtml(localize(`PF2E_CREATURE_FORGE.AttackProfile.${attack.profile}`, attack.profile))} · ${escapeHtml(localize(`PF2E_CREATURE_FORGE.AttackKind.${attack.kind}`, attack.kind))}</small></div>
-        <div class="cf-attack-numbers"><span>${signed(attack.attack.value)} <small>${escapeHtml(rankLabel(attack.attack.rank))}</small></span><span>${escapeHtml(attack.damage.formula)} ${escapeHtml(damageTypeLabel(attack.damage.type))} <small>${escapeHtml(rankLabel(attack.damage.rank))}</small></span></div>
+        <div class="cf-attack-numbers"><span>${numericControl(`combat.attacks.${index}.attack.value`, attack.attack.value, { sign: true })} <small>${escapeHtml(rankLabel(attack.attack.rank))}</small></span><span>${escapeHtml(attack.damage.formula)} ${escapeHtml(damageTypeLabel(attack.damage.type))} <small>${escapeHtml(rankLabel(attack.damage.rank))}</small></span></div>
       </li>`).join("");
 
     const spellcastingEntry = blueprint?.combat?.spellcasting?.[0] ?? null;
@@ -865,7 +938,7 @@ export class EmbeddedCreatureEditor {
         <div class="cf-spell-main"><img src="${escapeHtml(spell.img ?? "icons/svg/book.svg")}" alt=""><div><strong>${escapeHtml(spell.name)}</strong><small>${escapeHtml(spellRankLabel(spell))}${sourceLabel ? ` · ${escapeHtml(sourceLabel)}` : ""}</small>${spell.themes?.length ? `<div class="cf-spell-tags">${spell.themes.slice(0, 5).map((theme) => `<span>${escapeHtml(traitLabel(theme))}</span>`).join("")}</div>` : ""}</div></div>
         <div class="cf-ability-controls">
           ${canGenerate ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-spell-lock" title="${escapeHtml(localize(spell.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", spell.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${spell.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}
-          ${canGenerate && !spell.locked && !spellcastingEntry?.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-spell" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollSpell", "Reroll spell"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
+          ${canGenerate && !spell.locked && !spellcastingEntry?.locked && !sectionLocked(blueprint, "spellcasting") ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-spell" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollSpell", "Reroll spell"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
         </div>
       </article>`;
     }).join("");
@@ -890,7 +963,7 @@ export class EmbeddedCreatureEditor {
         <header><div><strong>${escapeHtml(abilityNameLabel(ability))}</strong><small>${escapeHtml(abilityTypeLabel(ability))} · ${escapeHtml(localize(`PF2E_CREATURE_FORGE.AbilityCategory.${ability.category}`, ability.category ?? ""))}</small>${source}${power}${signature}</div>
         <div class="cf-ability-controls">
           ${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-ability-lock" title="${escapeHtml(localize(ability.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", ability.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${ability.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}
-          ${this.capabilities.generation && this.mode !== "view" && !ability.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-ability" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbility", "Reroll ability"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
+          ${canGenerate && !ability.locked && !sectionLocked(blueprint, "abilities") ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-ability" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbility", "Reroll ability"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
         </div></header>
         <p>${escapeHtml(abilityDescriptionLabel(ability))}</p>
         ${mechanics ? `<p class="cf-ability-mechanics"><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Signature.Mechanics", "Mechanics"))}:</strong> ${escapeHtml(mechanics)}</p>` : ""}
@@ -908,7 +981,7 @@ export class EmbeddedCreatureEditor {
         <header><div><strong>${escapeHtml(name)}</strong><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.SpecialFeature.Aura", "Aura"))} · ${Number(resource.definition?.radius ?? 0)} ft.${sourceLabel ? ` · ${escapeHtml(sourceLabel)}` : ""}</small></div>
         <div class="cf-ability-controls">
           ${canGenerate ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-aura-lock" title="${escapeHtml(localize(resource.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", resource.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${resource.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}
-          ${canGenerate && !resource.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-auras" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAura", "Reroll aura"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
+          ${canGenerate && !resource.locked && !sectionLocked(blueprint, "auras") ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-auras" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAura", "Reroll aura"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
         </div></header>
         ${description ? `<p>${escapeHtml(description)}</p>` : ""}
         <footer><span class="cf-ability-power">${escapeHtml(localize("PF2E_CREATURE_FORGE.Ability.Power", "Power"))} ${Number(resource.powerCost ?? 0)}</span><button type="button" data-cf-action="edit-aura" ${!auraIntegrationReady || !this.capabilities.auraEditing ? "disabled" : ""}><i class="fa-solid fa-circle-radiation"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.EditAura", "Edit aura"))}</button></footer>
@@ -923,7 +996,7 @@ export class EmbeddedCreatureEditor {
         <header><div><strong>${escapeHtml(name)}</strong><small>${escapeHtml(type)}${sourceLabel ? ` · ${escapeHtml(sourceLabel)}` : ""}</small></div>
         <div class="cf-ability-controls">
           ${canGenerate ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-affliction-lock" title="${escapeHtml(localize(resource.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", resource.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${resource.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}
-          ${canGenerate && !resource.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-afflictions" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAffliction", "Reroll affliction"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
+          ${canGenerate && !resource.locked && !sectionLocked(blueprint, "afflictions") ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-afflictions" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAffliction", "Reroll affliction"))}"><i class="fa-solid fa-dice"></i></button>` : ""}
         </div></header>
         ${description ? `<p>${escapeHtml(description)}</p>` : ""}
         <footer><span class="cf-ability-power">${escapeHtml(localize("PF2E_CREATURE_FORGE.Ability.Power", "Power"))} ${Number(resource.powerCost ?? 0)}</span><button type="button" data-cf-action="edit-affliction" ${!afflictionIntegrationReady || !this.capabilities.afflictionEditing ? "disabled" : ""}><i class="fa-solid fa-biohazard"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.EditAffliction", "Edit affliction"))}</button></footer>
@@ -943,7 +1016,7 @@ export class EmbeddedCreatureEditor {
       const names = [...items.slice(0, 3).map((item) => item?.name).filter(Boolean), ...salvage.slice(0, 3).map((item) => localize(item?.nameKey, item?.fallbackName ?? ""))].filter(Boolean);
       const count = items.length + salvage.length;
       const details = names.length ? names.join(", ") : count ? `${count}` : entry.reason ?? "";
-      return `<article class="cf-loot-channel${entry.selected ? " selected" : ""}${entry.locked ? " locked" : ""}" data-loot-channel="${escapeHtml(channel)}"><div><strong>${escapeHtml(label)}</strong><small>${escapeHtml(status)}${entry.mode === "required" ? ` · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Required", "required"))}` : ""}</small></div><span class="cf-loot-details">${escapeHtml(details || "—")}</span>${canGenerate ? `<div class="cf-ability-controls"><button type="button" class="cf-icon-button" data-cf-action="toggle-loot-lock" title="${escapeHtml(localize(entry.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", entry.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${entry.locked ? "fa-lock" : "fa-lock-open"}"></i></button>${!entry.locked ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-loot-channel" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollLootChannel", "Reroll loot channel"))}"><i class="fa-solid fa-dice"></i></button>` : ""}</div>` : ""}</article>`;
+      return `<article class="cf-loot-channel${entry.selected ? " selected" : ""}${entry.locked ? " locked" : ""}" data-loot-channel="${escapeHtml(channel)}"><div><strong>${escapeHtml(label)}</strong><small>${escapeHtml(status)}${entry.mode === "required" ? ` · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Required", "required"))}` : ""}</small></div><span class="cf-loot-details">${escapeHtml(details || "—")}</span>${canGenerate ? `<div class="cf-ability-controls"><button type="button" class="cf-icon-button" data-cf-action="toggle-loot-lock" title="${escapeHtml(localize(entry.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", entry.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${entry.locked ? "fa-lock" : "fa-lock-open"}"></i></button>${!entry.locked && !sectionLocked(blueprint, "loot") ? `<button type="button" class="cf-icon-button" data-cf-action="reroll-loot-channel" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollLootChannel", "Reroll loot channel"))}"><i class="fa-solid fa-dice"></i></button>` : ""}</div>` : ""}</article>`;
     }).join("");
 
     const activeEffectResource = this.activeEffectId ? effectResources.get(this.activeEffectId) : null;
@@ -995,7 +1068,7 @@ export class EmbeddedCreatureEditor {
         <div class="cf-editor-scroll" data-cf-editor-scroll>
           <div class="cf-tab-panel ${this.activeTab === "creature" ? "active" : ""}" data-cf-tab-panel="creature" role="tabpanel">
             <div class="cf-grid">
-          <section class="cf-panel cf-inputs">
+          <section class="cf-panel cf-inputs" data-cf-concept-scroll>
             <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Concept", "Concept"))}</h3>
             <div class="cf-form-grid">
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Name", "Name"))}</span><input name="name" type="text" value="${escapeHtml(request.identity.name)}" ${disabled}></label>
@@ -1105,20 +1178,21 @@ export class EmbeddedCreatureEditor {
 
           </section>
 
-          <section class="cf-panel cf-preview">
+          <section class="cf-panel cf-preview" data-cf-generated-scroll>
             <div class="cf-preview-header"><div><h3>${escapeHtml(blueprint?.identity?.name || localize("PF2E_CREATURE_FORGE.Untitled", "Creature"))}</h3><p>${escapeHtml(localize(`PF2E_CREATURE_FORGE.Role.${blueprint?.identity?.role}`, blueprint?.identity?.role ?? "custom"))} · ${escapeHtml(localize(`PF2E_CREATURE_FORGE.Size.${blueprint?.identity?.size}`, blueprint?.identity?.size ?? "med"))} · ${escapeHtml(blueprint?.identity?.traits?.join(", ") ?? "")}</p></div><span class="cf-level">${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Level", "Level"))} ${blueprint?.identity?.level ?? "—"}</span></div>
 
-            <h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Attributes", "Attributes"))}</h4>
+            ${canGenerate ? `<p class="cf-preview-edit-hint"><i class="fa-solid fa-circle-info"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.PreviewEditHint", "Lock sections to keep them; dice reroll only that section; +/− adjusts a value."))}</p>` : ""}
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Attributes", "Attributes"))}</h4>${sectionControls("statistics.abilities")}</div>
             <dl class="cf-stat-grid cf-ability-grid">${abilityPreview}</dl>
 
-            <h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Defenses", "Defenses"))}</h4>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Defenses", "Defenses"))}</h4>${sectionControls("defenses")}</div>
             <dl class="cf-stat-grid">
-              <div><dt>RK / AC</dt><dd>${blueprint?.statistics?.ac?.value ?? "—"} <small>${escapeHtml(rankLabel(blueprint?.statistics?.ac?.rank))}</small></dd></div>
-              <div><dt>TP / HP</dt><dd>${blueprint?.statistics?.hp?.value ?? "—"} <small>${escapeHtml(rankLabel(blueprint?.statistics?.hp?.rank))}${hpAdjustment ? ` · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Affinity.HpAdjustment", "affinity"))} ${hpAdjustment > 0 ? "+" : ""}${hpAdjustment}` : ""}</small> ${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="Reroll HP" data-cf-action="reroll-hp"><i class="fa-solid fa-dice"></i></button>` : ""}</dd></div>
-              <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Perception", "Perception"))}</dt><dd>${signed(blueprint?.statistics?.perception?.value)}</dd></div>
-              <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Fortitude", "Fortitude"))}</dt><dd>${signed(blueprint?.statistics?.saves?.fortitude?.value)}</dd></div>
-              <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Reflex", "Reflex"))}</dt><dd>${signed(blueprint?.statistics?.saves?.reflex?.value)}</dd></div>
-              <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Will", "Will"))}</dt><dd>${signed(blueprint?.statistics?.saves?.will?.value)}</dd></div>
+              <div><dt>RK / AC</dt><dd>${numericControl("statistics.ac.value", blueprint?.statistics?.ac?.value)} <small>${escapeHtml(rankLabel(blueprint?.statistics?.ac?.rank))}</small></dd></div>
+              <div><dt>TP / HP</dt><dd>${numericControl("statistics.hp.value", blueprint?.statistics?.hp?.value)} <small>${escapeHtml(rankLabel(blueprint?.statistics?.hp?.rank))}${hpAdjustment ? ` · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Affinity.HpAdjustment", "affinity"))} ${hpAdjustment > 0 ? "+" : ""}${hpAdjustment}` : ""}</small> ${canGenerate && !sectionLocked(blueprint, "defenses") && !sectionLocked(blueprint, "statistics.hp") ? `<button type="button" class="cf-icon-button" title="Reroll HP" data-cf-action="reroll-hp"><i class="fa-solid fa-dice"></i></button>` : ""}${sectionControls("statistics.hp", { reroll: false })}</dd></div>
+              <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Perception", "Perception"))}</dt><dd>${numericControl("statistics.perception.value", blueprint?.statistics?.perception?.value, { sign: true })}</dd></div>
+              <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Fortitude", "Fortitude"))}</dt><dd>${numericControl("statistics.saves.fortitude.value", blueprint?.statistics?.saves?.fortitude?.value, { sign: true })}</dd></div>
+              <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Reflex", "Reflex"))}</dt><dd>${numericControl("statistics.saves.reflex.value", blueprint?.statistics?.saves?.reflex?.value, { sign: true })}</dd></div>
+              <div><dt>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.Will", "Will"))}</dt><dd>${numericControl("statistics.saves.will.value", blueprint?.statistics?.saves?.will?.value, { sign: true })}</dd></div>
             </dl>
 
             ${blueprint?.mythic?.enabled ? `<section class="cf-mythic-preview">
@@ -1127,49 +1201,49 @@ export class EmbeddedCreatureEditor {
               <div class="cf-spell-tags">${(blueprint.mythic?.actions ?? []).map((entry) => `<span title="${escapeHtml(localize(entry.descriptionKey, entry.description ?? ""))}">${escapeHtml(localize(entry.nameKey, entry.name ?? entry.id))}</span>`).join("")}</div>
             </section>` : ""}
 
-            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.DefensiveAffinities", "Immunities, Resistances & Weaknesses"))}</h4>${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAffinities", "Reroll defensive affinities"))}" data-cf-action="reroll-affinities"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.DefensiveAffinities", "Immunities, Resistances & Weaknesses"))}</h4>${sectionControls("defenses.affinities")}</div>
             <div class="cf-affinity-preview">
               <div><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Affinity.Immunities", "Immunities"))}</strong>${immunityRows ? `<ul class="cf-compact-list">${immunityRows}</ul>` : `<p class="cf-muted">—</p>`}</div>
               <div><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Affinity.Resistances", "Resistances"))}</strong>${resistanceRows ? `<ul class="cf-compact-list">${resistanceRows}</ul>` : `<p class="cf-muted">—</p>`}</div>
               <div><strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Affinity.Weaknesses", "Weaknesses"))}</strong>${weaknessRows ? `<ul class="cf-compact-list">${weaknessRows}</ul>` : `<p class="cf-muted">—</p>`}</div>
             </div>
 
-            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Skills", "Skills"))}</h4>${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollSkills", "Reroll skills"))}" data-cf-action="reroll-skills"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Skills", "Skills"))}</h4>${sectionControls("statistics.skills")}</div>
             ${skillRows ? `<ul class="cf-compact-list">${skillRows}</ul>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoSkills", "No skills generated."))}</p>`}
 
-            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Movement", "Movement"))}</h4>${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollMovement", "Reroll movement"))}" data-cf-action="reroll-movement"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Movement", "Movement"))}</h4>${sectionControls("statistics.movement")}</div>
             <ul class="cf-compact-list">${movementRows}</ul>
 
-            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Senses", "Senses"))}</h4>${this.capabilities.generation && this.mode !== "view" ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollSenses", "Reroll senses"))}" data-cf-action="reroll-senses"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Senses", "Senses"))}</h4>${sectionControls("statistics.senses")}</div>
             ${senseRows ? `<ul class="cf-compact-list">${senseRows}</ul>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoSpecialSenses", "No special senses."))}</p>`}
 
-            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Attacks", "Attacks"))}</h4>${this.capabilities.generation && this.mode !== "view" && (blueprint?.combat?.attacks?.length ?? 0) ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAttacks", "Reroll attacks"))}" data-cf-action="reroll-attacks"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Attacks", "Attacks"))}</h4>${sectionControls("combat.attacks")}</div>
             ${(blueprint?.combat?.attacks?.length ?? 0) ? `<ul class="cf-attacks">${attackRows}</ul>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAttacks", "No strikes generated."))}</p>`}
 
-            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Spellcasting", "Spellcasting"))}</h4><div class="cf-heading-tools">${spellcastingEntry ? `<span class="cf-budget-badge">${escapeHtml(localize("PF2E_CREATURE_FORGE.Ability.Power", "Power"))} ${Number(spellcastingEntry.powerCost ?? 0)}</span>` : ""}${canGenerate && spellcastingEntry ? `<button type="button" class="cf-icon-button" data-cf-action="toggle-spellcasting-lock" title="${escapeHtml(localize(spellcastingEntry.locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", spellcastingEntry.locked ? "Unlock" : "Lock"))}"><i class="fa-solid ${spellcastingEntry.locked ? "fa-lock" : "fa-lock-open"}"></i></button>` : ""}${canGenerate ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollSpellcasting", "Reroll spellcasting"))}" data-cf-action="reroll-spellcasting"><i class="fa-solid fa-dice"></i></button>` : ""}</div></div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Spellcasting", "Spellcasting"))}</h4><div class="cf-heading-tools">${spellcastingEntry ? `<span class="cf-budget-badge">${escapeHtml(localize("PF2E_CREATURE_FORGE.Ability.Power", "Power"))} ${Number(spellcastingEntry.powerCost ?? 0)}</span>` : ""}${sectionControls("spellcasting")}</div></div>
             ${spellcastingEntry ? `<section class="cf-spellcasting-card${spellcastingEntry.locked ? " locked" : ""}">
               <div class="cf-spellcasting-summary">
                 <strong>${escapeHtml(spellTraditionLabel(spellcastingEntry.tradition))} · ${escapeHtml(spellStyleLabel(spellcastingEntry.style))}</strong>
-                <span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellDc", "DC"))} ${Number(spellcastingEntry.dc ?? 0)} · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellAttack", "Attack"))} ${signed(spellcastingEntry.attack)} · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellHighestRank", "Highest rank"))} ${Number(spellcastingEntry.highestRank ?? 1)} · ${escapeHtml(spellBreadthLabel(spellcastingEntry.breadth))}</span>
+                <span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellDc", "DC"))} ${numericControl("combat.spellcasting.0.dc", spellcastingEntry.dc)} · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellAttack", "Attack"))} ${numericControl("combat.spellcasting.0.attack", spellcastingEntry.attack, { sign: true })} · ${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellHighestRank", "Highest rank"))} ${Number(spellcastingEntry.highestRank ?? 1)} · ${escapeHtml(spellBreadthLabel(spellcastingEntry.breadth))}</span>
               </div>
               ${spellcastingEntry.themes?.length ? `<div class="cf-spell-tags">${spellcastingEntry.themes.map((theme) => `<span>${escapeHtml(traitLabel(theme))}</span>`).join("")}</div>` : ""}
               ${spellRows ? `<div class="cf-spell-list">${spellRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoSpells", "No spells selected."))}</p>`}
             </section>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoSpellcasting", "No spellcasting generated."))}</p>`}
 
-            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Abilities", "Abilities"))}</h4><div class="cf-heading-tools">${blueprint?.metadata?.abilityBudget ? `<span class="cf-budget-badge" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilityBudgetHint", "Power spent / budget"))}">${Number(blueprint.metadata.abilityBudget.spent ?? 0)}/${Number(blueprint.metadata.abilityBudget.limit ?? 0)}</span>` : ""}${canGenerate && (blueprint?.abilities?.length ?? 0) ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAbilities", "Reroll abilities"))}" data-cf-action="reroll-abilities"><i class="fa-solid fa-dice"></i></button>` : ""}</div></div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Abilities", "Abilities"))}</h4><div class="cf-heading-tools">${blueprint?.metadata?.abilityBudget ? `<span class="cf-budget-badge" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilityBudgetHint", "Power spent / budget"))}">${Number(blueprint.metadata.abilityBudget.spent ?? 0)}/${Number(blueprint.metadata.abilityBudget.limit ?? 0)}</span>` : ""}${sectionControls("abilities")}</div></div>
             ${(blueprint?.abilities?.length ?? 0) ? `<div class="cf-abilities">${abilityRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAbilities", "No abilities generated."))}</p>`}
 
             <div class="cf-special-budget-row">
               <strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpecialFeatures", "Special features"))}</strong>
               ${blueprint?.metadata?.specialFeatureBudget ? `<span class="cf-budget-badge" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpecialBudgetHint", "Total special-feature power spent / shared budget"))}">${Number(blueprint.metadata.specialFeatureBudget.spent ?? 0)}/${Number(blueprint.metadata.specialFeatureBudget.limit ?? blueprint?.metadata?.abilityBudget?.limit ?? 0)}</span>` : ""}
             </div>
-            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Auras", "Auras"))}</h4>${canGenerate ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAura", "Reroll aura"))}" data-cf-action="reroll-auras"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Auras", "Auras"))}</h4>${sectionControls("auras")}</div>
             ${auraRows ? `<div class="cf-special-list">${auraRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAura", "No aura generated."))}</p>`}
 
-            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Afflictions", "Afflictions"))}</h4>${canGenerate ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollAffliction", "Reroll affliction"))}" data-cf-action="reroll-afflictions"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Afflictions", "Afflictions"))}</h4>${sectionControls("afflictions")}</div>
             ${afflictionRows ? `<div class="cf-special-list">${afflictionRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoAffliction", "No affliction generated."))}</p>`}
 
-            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Loot", "Loot & equipment"))}</h4>${canGenerate ? `<button type="button" class="cf-icon-button" title="${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RerollLoot", "Reroll loot"))}" data-cf-action="reroll-loot"><i class="fa-solid fa-dice"></i></button>` : ""}</div>
+            <div class="cf-heading-row"><h4>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.Loot", "Loot & equipment"))}</h4>${sectionControls("loot")}</div>
             ${lootChannelRows ? `<div class="cf-loot-list">${lootChannelRows}</div>` : `<p class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoLoot", "No loot planned."))}</p>`}
             ${lootPlan?.summary ? `<div class="cf-loot-summary"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Carried", "Carried"))}: ${Number(lootPlan.summary.carriedItemCount ?? 0)}</span><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Loot.Deferred", "Deferred"))}: ${Number(lootPlan.summary.deferredItemCount ?? 0)}</span></div>` : ""}
 
@@ -1238,6 +1312,10 @@ export class EmbeddedCreatureEditor {
     this.root = this.container.querySelector("[data-cf-editor]");
     this.scrollElement = this.root?.querySelector("[data-cf-editor-scroll]") ?? null;
     if (this.scrollElement) this.scrollElement.scrollTop = previousScrollTop;
+    const conceptPanel = this.root?.querySelector("[data-cf-concept-scroll]");
+    const generatedPanel = this.root?.querySelector("[data-cf-generated-scroll]");
+    if (conceptPanel) conceptPanel.scrollTop = this.panelScrollPositions.concept;
+    if (generatedPanel) generatedPanel.scrollTop = this.panelScrollPositions.generated;
     this.boundHandler = this.#handleEvent.bind(this);
     this.root?.addEventListener("change", this.boundHandler);
     this.root?.addEventListener("input", this.boundHandler);

@@ -3,6 +3,10 @@
 
 const CATALOGS = Object.freeze({
   "de": Object.freeze({
+    "PF2E_CREATURE_FORGE.Editor.RerollSection": "Nur diesen Bereich neu würfeln",
+    "PF2E_CREATURE_FORGE.Editor.DecreaseValue": "Wert um 1 verringern",
+    "PF2E_CREATURE_FORGE.Editor.IncreaseValue": "Wert um 1 erhöhen",
+    "PF2E_CREATURE_FORGE.Editor.PreviewEditHint": "Schloss: Bereich beim Neu-Würfeln behalten. Würfel: Nur diesen Bereich neu erzeugen. +/−: Generierten Wert manuell ändern.",
     "PF2E_CREATURE_FORGE.WindowTitle": "PF2E Creature Forge",
     "PF2E_CREATURE_FORGE.Open": "Creature Forge",
     "PF2E_CREATURE_FORGE.FoundationHint": "API-first Kreaturengenerierung mit eingebettetem Editor und erweiterbaren Inhaltsquellen.",
@@ -767,6 +771,10 @@ const CATALOGS = Object.freeze({
     "PF2E_CREATURE_FORGE.Save.will": "Wille"
   }),
   "en": Object.freeze({
+    "PF2E_CREATURE_FORGE.Editor.RerollSection": "Reroll only this section",
+    "PF2E_CREATURE_FORGE.Editor.DecreaseValue": "Decrease value by 1",
+    "PF2E_CREATURE_FORGE.Editor.IncreaseValue": "Increase value by 1",
+    "PF2E_CREATURE_FORGE.Editor.PreviewEditHint": "Lock: preserve this section when rerolling. Die: reroll only this section. +/−: manually adjust the generated value.",
     "PF2E_CREATURE_FORGE.WindowTitle": "PF2E Creature Forge",
     "PF2E_CREATURE_FORGE.Open": "Creature Forge",
     "PF2E_CREATURE_FORGE.FoundationHint": "API-first creature generation with an embeddable editor and extensible content sources.",

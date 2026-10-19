@@ -347,3 +347,10 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - Stable public contracts: Request v8, Blueprint v12, Content v11, Embedded Creature Editor v13, runtime-status v2.
 - Preserve 1.0.x Blueprint v11 compatibility and the reviewed Predator Tactics 0.1.0 integration.
 - Permanent suite: 192 passing tests; RC generation, integration, localization, and legacy-persistence audits remain clean.
+
+## 1.2.0-dev.1 – Preview Editing UX (in development)
+
+- Independent concept/generated scroll regions.
+- Section rerolls and persistent section locks.
+- Numeric +/- adjustments with explicit bounds.
+- Manual smoke test pending.

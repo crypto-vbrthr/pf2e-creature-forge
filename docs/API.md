@@ -1,8 +1,10 @@
-# Public API 1.1.1
+# Public API 1.2.0-dev.1
+
+> **1.2.0-dev.1 UI extension:** The embedded editor adds two independent scroll regions, section locks/rerolls and direct numeric adjustments to blueprint fields. Request/Blueprint/Content schemas remain unchanged.
 
 > **1.1.1 Affliction-delivery hotfix:** public schemas are unchanged. Hosted Affliction delivery now requires a real concept match whenever a delivery profile declares preferred host hints, and passive abilities are rejected for `on-use` delivery. If no compatible carrier exists, delivery falls back to manual application.
 >
-> **1.1.0 stable contract:** public data contracts are Request v8, Blueprint v12, Content v11, Embedded Creature Editor v13, and runtime-status v2. Blueprint v12 and Content v11 add declarative interactive ability metadata while keeping the request/editor/runtime-status contracts stable. Persisted Blueprint v11 creatures from the 1.0.x line remain accepted, compilable, and editable; their request snapshots are normalized through `api.createRequest()`.
+> **1.1.0 stable contract:** public data contracts are Request v8, Blueprint v12, Content v11, Embedded Creature Editor v14, and runtime-status v2. Blueprint v12 and Content v11 add declarative interactive ability metadata while keeping the request/editor/runtime-status contracts stable. Persisted Blueprint v11 creatures from the 1.0.x line remain accepted, compilable, and editable; their request snapshots are normalized through `api.createRequest()`.
 >
 > **1.1.0 Interactive Ability Actions:** generated abilities can carry declarative `interactions` for PF2e checks, actions, damage, and GM rolls. Ranked creature DCs are materialized at generation time, and `api.runtime.sendAbilityToChat()` / `api.runtime.sendAbilityInteractionToChat()` expose the chat runtime.
 >

@@ -6,9 +6,9 @@ const editorUrl = new URL("../scripts/ui/creature-editor.js", import.meta.url);
 const appUrl = new URL("../scripts/ui/creature-forge-app.js", import.meta.url);
 const cssUrl = new URL("../styles/creature-forge.css", import.meta.url);
 
-test("embedded editor v13 exposes Effect, Aura, Affliction, and spellcasting controls with dedicated source selectors", async () => {
+test("embedded editor v14 exposes Effect, Aura, Affliction, and spellcasting controls with dedicated source selectors", async () => {
   const source = await readFile(editorUrl, "utf8");
-  assert.match(source, /static CONTRACT_VERSION = 13/);
+  assert.match(source, /static CONTRACT_VERSION = 14/);
   assert.match(source, /this\.root = this\.container\.querySelector\("\[data-cf-editor\]"\)/);
   assert.match(source, /data-cf-editor-scroll/);
   assert.match(source, /data-cf-editor-footer/);
@@ -30,7 +30,8 @@ test("embedded editor v13 exposes Effect, Aura, Affliction, and spellcasting con
   assert.match(source, /name="spellcastingMode"/);
   assert.match(source, /name="spellcastingStyle"/);
   assert.match(source, /name="spellTradition"/);
-  assert.match(source, /data-cf-action="reroll-spellcasting"/);
+  assert.match(source, /data-cf-action="reroll-section"/);
+  assert.match(source, /sectionControls\("spellcasting"\)/);
   assert.match(source, /data-cf-action="reroll-spell"/);
   assert.match(source, /persistSourceSelection/);
   assert.match(source, /effectEditing: true/);

@@ -129,6 +129,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
     rerollAsync: async (blueprint, options = {}) => {
       const rerolled = generator.reroll(blueprint, options);
       const scope = String(options.scope ?? "all");
+      if (scope === "all" && rerolled?.locks?.loot) return rerolled;
       if (scope === "all" || scope === "loot" || scope.startsWith("loot:")) {
         return lootIntegration.generateForBlueprint(rerolled, rerolled?.metadata?.requestSnapshot ?? {});
       }

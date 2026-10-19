@@ -913,3 +913,39 @@
     margin-left: 0;
   }
 }
+
+/* 1.2.0: independent concept and generated-result scrollports. The embedded
+   editor also works inside hosts with a constrained height. */
+.cf-editor .cf-editor-scroll { overflow: hidden; }
+.cf-editor .cf-tab-panel.active { height: 100%; min-height: 0; }
+.cf-editor .cf-grid { height: 100%; min-height: 0; align-items: stretch; }
+.cf-editor .cf-grid > .cf-inputs,
+.cf-editor .cf-grid > .cf-preview {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.cf-editor .cf-sources-panel { height: 100%; overflow-y: auto; }
+.cf-editor .cf-section-controls { display: inline-flex; gap: .15rem; flex: 0 0 auto; align-items: center; }
+.cf-editor .cf-section-controls .cf-icon-button { margin-left: 0; }
+.cf-editor .cf-section-controls .cf-section-lock.is-locked { color: var(--color-level-warning, #dba94c); }
+.cf-editor .cf-section-controls button:disabled { opacity: .4; cursor: not-allowed; }
+.cf-editor .cf-number-control { display: inline-flex; align-items: center; gap: .22rem; vertical-align: middle; white-space: nowrap; }
+.cf-editor .cf-number-control > button {
+  display: inline-grid; place-items: center; width: 1.35rem; height: 1.35rem;
+  min-width: 1.35rem; border: 1px solid var(--color-border-light-tertiary, #666);
+  border-radius: 4px; padding: 0; font-size: .88rem; line-height: 1;
+}
+.cf-editor .cf-number-control > .cf-number-value { min-width: 1.7ch; text-align: center; font-variant-numeric: tabular-nums; }
+.cf-editor .cf-attack-row .cf-attack-numbers span { display: inline-flex; align-items: center; gap: .2rem; justify-content: flex-end; }
+.cf-editor .cf-compact-row > span { display: inline-flex; align-items: center; gap: .3rem; }
+.cf-editor .cf-stat-grid dd { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem; }
+.cf-editor.cf-layout-compact .cf-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(220px, 1fr) minmax(240px, 1fr); }
+@media (max-width: 980px) {
+  .cf-editor .cf-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(220px, 1fr) minmax(240px, 1fr); }
+}
+.cf-editor .cf-preview-edit-hint { margin: .5rem 0 .35rem; font-size: .77em; opacity: .75; line-height: 1.4; }
+
+.cf-editor .cf-stat-grid .cf-section-controls .cf-icon-button { width: 1.5rem; min-width: 1.5rem; height: 1.5rem; }

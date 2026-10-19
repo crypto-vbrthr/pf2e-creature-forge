@@ -760,5 +760,9 @@
   "PF2E_CREATURE_FORGE.Interaction.reflex.Request": "Send Reflex save to chat",
   "PF2E_CREATURE_FORGE.Interaction.fortitude.Label": "Fortitude save",
   "PF2E_CREATURE_FORGE.Interaction.fortitude.Request": "Send Fortitude save to chat",
-  "PF2E_CREATURE_FORGE.Save.will": "Will"
+  "PF2E_CREATURE_FORGE.Save.will": "Will",
+  "PF2E_CREATURE_FORGE.Editor.RerollSection": "Reroll only this section",
+  "PF2E_CREATURE_FORGE.Editor.DecreaseValue": "Decrease value by 1",
+  "PF2E_CREATURE_FORGE.Editor.IncreaseValue": "Increase value by 1",
+  "PF2E_CREATURE_FORGE.Editor.PreviewEditHint": "Lock: preserve this section when rerolling. Die: reroll only this section. +/−: manually adjust the generated value."
 }

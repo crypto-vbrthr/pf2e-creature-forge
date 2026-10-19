@@ -8,6 +8,7 @@ import {
 } from "./tables.js";
 import { validateBlueprint, validateGenerationRequest } from "./validator.js";
 import { deepClone } from "./clone.js";
+import { preserveLockedSections, refreshPreviewBudgets } from "./blueprint-controls.js";
 import { resolveAttackNameKey } from "./attack-localization.js";
 import { generateSkills } from "./skills.js";
 import { generateMovement, generateSenses } from "./mobility.js";
@@ -494,7 +495,51 @@ export class CreatureGenerator {
     const newSeed = String(options.seed ?? createRandomSeed(`reroll-${scope}`));
 
     if (scope === "all") {
-      return this.generate({ ...deepClone(snapshot), generation: { ...snapshot.generation, seed: newSeed } });
+      const requested = createGenerationRequest(options.request ?? snapshot);
+      const generated = this.generate({ ...requested, generation: { ...requested.generation, seed: newSeed } });
+      // Existing per-ability locks are respected during an entire-creature
+      // reroll as well. Re-run the normal ability selector with preserved slots
+      // instead of appending old entries after selection: appending can exceed
+      // budgets or duplicate ability families.
+      const lockedSlots = (blueprint.abilities ?? [])
+        .map((ability, index) => ability?.locked ? { index, ability } : null)
+        .filter(Boolean);
+      if (!blueprint.locks?.abilities && lockedSlots.length) {
+        const preserved = [...lockedSlots];
+        const signature = generated.abilities?.find((ability) => ability?.signature?.kind);
+        if (signature && !preserved.some((entry) => entry.index === 0)) preserved.push({ index: 0, ability: signature });
+        const availableForAbilities = Math.max(0,
+          Number(generated.metadata?.specialFeatureBudget?.limit ?? 0) -
+          Number(generated.metadata?.specialFeatureBudget?.auraSpent ?? 0) -
+          Number(generated.metadata?.specialFeatureBudget?.afflictionSpent ?? 0) -
+          Number(generated.metadata?.specialFeatureBudget?.spellcastingSpent ?? 0)
+        );
+        const generatedAbilitySet = generateAbilities({
+          request: generated.metadata.requestSnapshot,
+          registry: this.registry,
+          level: generated.identity.level,
+          roleId: generated.identity.role,
+          category: generated.identity.category,
+          subtypes: generated.identity.resolvedSubtypes ?? generated.identity.subtypes,
+          random: new SeededRandom(newSeed).fork("abilities"),
+          preserve: preserved,
+          budgetLimitOverride: availableForAbilities,
+          excludeSignatureCandidates: true
+        });
+        generated.abilities = generatedAbilitySet.abilities;
+        generated.resources.effects = collectAbilityEffectResources(generated.abilities, this.registry, [
+          ...(blueprint.resources?.effects ?? []),
+          ...(generated.resources?.effects ?? []),
+          ...(generatedAbilitySet.effects ?? [])
+        ]);
+        generated.metadata.abilityBudget = generatedAbilitySet.budget;
+      }
+      const next = preserveLockedSections(blueprint, generated);
+      next.metadata.rerollHistory = [ ...(blueprint.metadata?.rerollHistory ?? []), { scope, previousSeed: blueprint.metadata.seed, seed: newSeed } ];
+      refreshPreviewBudgets(next);
+      assignAfflictionDeliveries(next);
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
     }
 
     const next = deepClone(blueprint);
@@ -520,7 +565,7 @@ export class CreatureGenerator {
     }
 
     if (scope === "statistics.hp") {
-      if (next.locks?.["statistics.hp"]) return next;
+      if (next.locks?.defenses || next.locks?.["statistics.hp"]) return next;
       const range = next.statistics.hp.range ?? resolveHpRange(next.identity.level, next.statistics.hp.rank);
       const baseValue = random.fork("statistics.hp").int(range.min, range.max);
       const adjustment = Number(next.defenses?.hpAdjustment?.value ?? next.statistics.hp?.adjustment ?? 0);
@@ -532,6 +577,15 @@ export class CreatureGenerator {
     }
 
     const regenerated = () => this.generate({ ...deepClone(snapshot), generation: { ...snapshot.generation, seed: newSeed } });
+
+    if (scope === "statistics.ac" || scope === "statistics.perception" || scope === "statistics.saves") {
+      if (next.locks?.defenses) return next;
+      const generated = regenerated();
+      const key = scope.split(".").at(-1);
+      next.statistics[key] = deepClone(generated.statistics[key]);
+      next.diagnostics = validateBlueprint(next).warnings;
+      return next;
+    }
 
     if (scope === "statistics.abilities") {
       if (next.locks?.["statistics.abilities"]) return next;
@@ -778,7 +832,7 @@ export class CreatureGenerator {
     }
 
     if (scope === "defenses.affinities" || scope === "affinities") {
-      if (next.locks?.["defenses.affinities"]) return next;
+      if (next.locks?.defenses || next.locks?.["defenses.affinities"]) return next;
       const generated = regenerated();
       const merged = {};
       for (const kind of ["immunities", "resistances", "weaknesses"]) {
@@ -806,12 +860,15 @@ export class CreatureGenerator {
       if (next.locks?.defenses) return next;
       const generated = regenerated();
       next.statistics.ac = generated.statistics.ac;
-      next.statistics.hp = generated.statistics.hp;
+      if (!next.locks?.["statistics.hp"]) next.statistics.hp = generated.statistics.hp;
       next.statistics.perception = generated.statistics.perception;
       next.statistics.saves = generated.statistics.saves;
-      next.defenses = generated.defenses;
-      next.identity.resolvedSubtypes = generated.identity.resolvedSubtypes;
-      next.identity.traits = generated.identity.traits;
+      if (!next.locks?.["defenses.affinities"]) {
+        next.defenses = generated.defenses;
+        next.identity.resolvedSubtypes = generated.identity.resolvedSubtypes;
+        next.identity.traits = generated.identity.traits;
+      }
+
       next.diagnostics = validateBlueprint(next).warnings;
       return next;
     }

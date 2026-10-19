@@ -1,3 +1,12 @@
+## 1.2.0-dev.1 – Scroll, Locks, Scoped Rerolls & Numeric Adjustments
+
+- Separate independently scrolling concept and generated-preview panels, with preserved scroll offsets after rerenders and tab switching.
+- Blueprint section locks stored in `locks`; whole-creature rerolls now preserve locked groups and per-entry locks, while intentional fresh generation starts without old locks.
+- Per-section rerolls for attributes, defenses, skills, movement, senses, attacks, spellcasting, abilities, auras, afflictions, and loot. HP/affinities remain independently rerollable.
+- +/- controls on generated ability modifiers, AC, HP, perception, saves, skills, strike attack bonuses and spellcasting attack/DC. Actor compilation uses the adjusted values.
+- Full reroll honors newly edited concept fields while retaining protected blueprint fields. Locked ability slots are regenerated through the normal family-aware selector rather than appended after selection.
+- Embedded editor contract v14. Request, Blueprint, Content schemas unchanged (v8/v12/v11). German/English localization updated, safety tests added.
+
 # Changelog
 
 ## 1.1.1 - Affliction Delivery Host Hotfix

@@ -760,5 +760,9 @@
   "PF2E_CREATURE_FORGE.Interaction.reflex.Request": "Reflexwurf an Chat senden",
   "PF2E_CREATURE_FORGE.Interaction.fortitude.Label": "Zähigkeitswurf",
   "PF2E_CREATURE_FORGE.Interaction.fortitude.Request": "Zähigkeitswurf an Chat senden",
-  "PF2E_CREATURE_FORGE.Save.will": "Wille"
+  "PF2E_CREATURE_FORGE.Save.will": "Wille",
+  "PF2E_CREATURE_FORGE.Editor.RerollSection": "Nur diesen Bereich neu würfeln",
+  "PF2E_CREATURE_FORGE.Editor.DecreaseValue": "Wert um 1 verringern",
+  "PF2E_CREATURE_FORGE.Editor.IncreaseValue": "Wert um 1 erhöhen",
+  "PF2E_CREATURE_FORGE.Editor.PreviewEditHint": "Schloss: Bereich beim Neu-Würfeln behalten. Würfel: Nur diesen Bereich neu erzeugen. +/−: Generierten Wert manuell ändern."
 }

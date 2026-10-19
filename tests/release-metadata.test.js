@@ -26,6 +26,6 @@ test("release documentation advertises the shipped version and public schemas", 
   assert.ok(apiDoc.includes(`Request v${REQUEST_SCHEMA_VERSION}`));
   assert.ok(apiDoc.includes(`Blueprint v${BLUEPRINT_SCHEMA_VERSION}`));
   assert.ok(apiDoc.includes(`Content v${CONTENT_SCHEMA_VERSION}`));
-  assert.ok(apiDoc.includes("Embedded Creature Editor v13"));
+  assert.ok(apiDoc.includes("Embedded Creature Editor v14"));
   assert.ok(apiDoc.includes("runtime-status v2"));
 });
