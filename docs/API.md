@@ -1,6 +1,6 @@
-# Public API 1.2.0-rc.3
+# Public API 1.2.0
 
-> **1.2.0-rc.3 UI extension:** The embedded editor adds two independent scroll regions, section locks/rerolls and direct numeric adjustments to blueprint fields. Request/Blueprint/Content schemas remain unchanged; the Embedded Creature Editor v14 contract applies. Numeric defense locks now protect AC, HP, Perception, and saves without protecting defensive affinities. Affinity locks independently protect immunities, resistances, weaknesses, and their HP compensation. HP remains stable if its numeric section is locked, and the internal base HP is reconciled to the selected affinity compensation.
+> **1.2.0 UI extension:** The embedded editor adds two independent scroll regions, section locks/rerolls and direct numeric adjustments to blueprint fields. Request/Blueprint/Content schemas remain unchanged; the Embedded Creature Editor v14 contract applies. Numeric defense locks now protect AC, HP, Perception, and saves without protecting defensive affinities. Affinity locks independently protect immunities, resistances, weaknesses, and their HP compensation. HP remains stable if its numeric section is locked, and the internal base HP is reconciled to the selected affinity compensation.
 
 > **1.1.1 Affliction-delivery hotfix:** public schemas are unchanged. Hosted Affliction delivery now requires a real concept match whenever a delivery profile declares preferred host hints, and passive abilities are rejected for `on-use` delivery. If no compatible carrier exists, delivery falls back to manual application.
 >

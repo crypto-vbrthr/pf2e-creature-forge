@@ -1,0 +1,20 @@
+{
+  "total": 576,
+  "errors": 0,
+  "warnings": {},
+  "selected": {
+    "core": 997,
+    "predator": 510,
+    "brutal": 741
+  },
+  "sections": {
+    "statistics.abilities": 576,
+    "statistics.skills": 576,
+    "combat.attacks": 576,
+    "abilities": 576,
+    "defenses.affinities": 576
+  },
+  "compiled": 576,
+  "lockTests": 2880,
+  "failures": []
+}

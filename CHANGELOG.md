@@ -1,3 +1,12 @@
+## 1.2.0 – Stable Preview Controls Release
+
+- Promoted the Foundry-tested 1.2.0-rc.3 to stable with no gameplay, editor, generator, schema, or runtime logic changes. Live Foundry NPC Actor creation was confirmed after fixing section-lock flag storage.
+- Includes separately scrolling concept/result panels, section lock and reroll controls, and +/- numeric adjustments from the 1.2.0 development cycle.
+- Includes the RC fixes for independently locking Defenses versus Immunities/Resistances/Weaknesses, for preserving HP with affinity compensation, and for dot-free section lock keys stored in Actor flags.
+- Retains migration for old RC lock key names and compatibility with Predator Tactics 0.1.1 and Brutal Physiology 0.1.0.
+- Public contracts unchanged: Request v8, Blueprint v12, Content v11, Embedded Editor v14, runtime-status v2. Manifest, module/package/API versions and GitHub download tag aligned to 1.2.0.
+- Final package re-extracted and verified with the full automated suite and syntax checks.
+
 ## 1.2.0-rc.3 – Foundry Actor Creation / Section Lock Flags Hotfix
 
 - Fixed a Foundry VTT 14 / PF2e 8.6.1 Actor creation crash (`Cannot use 'in' operator to search for 'affinities' in false`) when section locks were present.

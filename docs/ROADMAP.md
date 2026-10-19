@@ -363,6 +363,12 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - Added five regression tests covering UI guards and the generator; 1,600 multi-role/category/level lock-rerolls validated and compiled without errors.
 - No public schema or add-on API change; Foundry smoke test recommended before stable promotion.
 
+## 1.2.0 – Stable Preview Controls Release
+
+- Promoted Foundry-tested 1.2.0-rc.3 to stable. Includes independent scrolling, section locks, section-only rerolls and editable numeric output values.
+- Preserves the RC fixes for defense/affinity lock separation, HP compensation and Foundry-safe Actor flag lock keys, including older RC Blueprint lock migration.
+- Stable API contracts: Request v8, Blueprint v12, Content v11, Embedded Creature Editor v14, runtime-status v2.
+
 ## 1.2.0-rc.3 – Foundry-Safe Section Lock Storage
 
 - Fixed NPC Actor creation failure caused by Foundry recursively expanding dotted section lock keys in Blueprint Actor flags.
