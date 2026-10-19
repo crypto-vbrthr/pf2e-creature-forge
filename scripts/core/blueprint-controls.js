@@ -9,15 +9,83 @@ export const LOCKABLE_SECTIONS = Object.freeze([
 ]);
 const LOCKABLE = new Set(LOCKABLE_SECTIONS);
 
+// Foundry v14 expands dotted property names recursively while constructing
+// Actors. A flat locks map with `defenses: false` and
+// `"defenses.affinities": true` breaks schema cleaning (`affinities in false`).
+// Keep editor/reroll scope names unchanged, but persist lock keys without dots.
+export function sectionLockKey(scope) {
+  return String(scope).replaceAll(".", "_");
+}
+
+function readLock(locks, scope) {
+  if (!locks || typeof locks !== "object") return false;
+  const key = sectionLockKey(scope);
+  if (typeof locks[key] === "boolean") return locks[key];
+  // Earlier 1.2 release candidates kept dotted keys in the in-memory blueprint.
+  if (typeof locks[scope] === "boolean") return locks[scope];
+  // Also recognize earlier Actor flags after Foundry expanded non-conflicting
+  // dotted fields into nested objects during schema cleaning.
+  const nested = scope.split(".").reduce((value, name) =>
+    value && typeof value === "object" ? value[name] : undefined, locks);
+  return typeof nested === "boolean" ? nested : false;
+}
+
 export function sectionLocked(blueprint, scope) {
-  return Boolean(LOCKABLE.has(scope) && blueprint?.locks?.[scope]);
+  return Boolean(LOCKABLE.has(scope) && readLock(blueprint?.locks, scope));
+}
+
+// Canonicalize before passing blueprint data to the Foundry Actor schema.
+// This is also used when rerolling old blueprints to preserve lock semantics.
+export function normalizeBlueprintLocks(blueprint) {
+  if (!blueprint || typeof blueprint !== "object") return blueprint;
+  const old = blueprint.locks ?? {};
+  const normalized = {};
+  for (const scope of LOCKABLE_SECTIONS) {
+    const key = sectionLockKey(scope);
+    if (typeof old[key] === "boolean" || typeof old[scope] === "boolean" ||
+        (scope.includes(".") && typeof scope.split(".").reduce((value, name) =>
+          value && typeof value === "object" ? value[name] : undefined, old) === "boolean")) {
+      normalized[key] = readLock(old, scope);
+    }
+  }
+  // Older blueprints can carry the internal special-feature lock as well.
+  if (typeof old["special-features"] === "boolean") normalized["special-features"] = old["special-features"];
+  blueprint.locks = normalized;
+  return blueprint;
 }
 
 export function toggleSectionLock(blueprint, scope) {
   if (!blueprint || !LOCKABLE.has(scope)) return false;
-  blueprint.locks ??= {};
-  blueprint.locks[scope] = !Boolean(blueprint.locks[scope]);
+  normalizeBlueprintLocks(blueprint);
+  const key = sectionLockKey(scope);
+  blueprint.locks[key] = !sectionLocked(blueprint, scope);
   return true;
+}
+
+// The numeric defense block and the defensive-affinity block are sibling
+// controls, not parent/child locks. Spellcasting has an additional entry lock.
+export function canRerollSection(blueprint, scope) {
+  return Boolean(blueprint && LOCKABLE.has(scope) && !sectionLocked(blueprint, scope) &&
+    !(scope === "spellcasting" && blueprint.combat?.spellcasting?.[0]?.locked));
+}
+
+// Keep a creature's displayed HP constant when its numeric defenses or HP
+// are locked, even as independent affinity rerolls change HP compensation.
+export function reconcileHpAffinityAdjustment(blueprint, { preserveHpValue = false } = {}) {
+  const hp = blueprint?.statistics?.hp;
+  if (!hp) return;
+  const adjustment = Number(blueprint.defenses?.hpAdjustment?.value ?? 0);
+  const previousAdjustment = Number(hp.adjustment ?? 0);
+  const oldValue = Number(hp.value ?? 1);
+  const base = Number(hp.baseValue ?? (oldValue - previousAdjustment));
+  hp.adjustment = adjustment;
+  if (preserveHpValue) {
+    hp.value = oldValue;
+    hp.baseValue = oldValue - adjustment;
+  } else {
+    hp.baseValue = base;
+    hp.value = Math.max(1, base + adjustment);
+  }
 }
 
 function replace(parent, property, value) {
@@ -38,28 +106,22 @@ function mergeLockedById(previous = [], generated = [], key = "id") {
 export function preserveLockedSections(previous, generated) {
   if (!previous || !generated) return generated;
   const result = generated;
-  result.locks = deepClone(previous.locks ?? {});
+  result.locks = normalizeBlueprintLocks({ locks: deepClone(previous.locks ?? {}) }).locks;
   const locked = (scope) => sectionLocked(previous, scope);
   if (locked("statistics.abilities")) replace(result.statistics, "abilities", previous.statistics?.abilities);
+  // Locking numeric defenses must not implicitly lock the independent
+  // immunity/resistance/weakness block. The reverse is equally important.
   if (locked("defenses")) {
     for (const key of ["ac", "hp", "perception", "saves"]) replace(result.statistics, key, previous.statistics?.[key]);
+  } else if (locked("statistics.hp")) {
+    replace(result.statistics, "hp", previous.statistics?.hp);
+  }
+  if (locked("defenses.affinities")) {
     replace(result, "defenses", previous.defenses);
     for (const key of ["resolvedSubtypes", "traits"]) replace(result.identity, key, previous.identity?.[key]);
-  } else {
-    if (locked("statistics.hp")) replace(result.statistics, "hp", previous.statistics?.hp);
-    if (locked("defenses.affinities")) {
-      replace(result, "defenses", previous.defenses);
-      replace(result.identity, "resolvedSubtypes", previous.identity?.resolvedSubtypes);
-      replace(result.identity, "traits", previous.identity?.traits);
-      if (!locked("statistics.hp")) {
-        const hp = result.statistics?.hp;
-        if (hp) {
-          const base = Number(hp.baseValue ?? hp.value);
-          hp.adjustment = Number(result.defenses?.hpAdjustment?.value ?? 0);
-          hp.value = Math.max(1, base + hp.adjustment);
-        }
-      }
-    }
+  }
+  if (locked("defenses") || locked("statistics.hp") || locked("defenses.affinities")) {
+    reconcileHpAffinityAdjustment(result, { preserveHpValue: locked("defenses") || locked("statistics.hp") });
   }
   if (locked("statistics.skills")) replace(result.statistics, "skills", previous.statistics?.skills);
   else if (previous.statistics?.skills) {

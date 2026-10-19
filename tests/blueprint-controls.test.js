@@ -6,7 +6,7 @@ import { registerCoreContent } from "../scripts/core/core-content.js";
 import { CreatureGenerator } from "../scripts/core/generator.js";
 import { validateBlueprint } from "../scripts/core/validator.js";
 import { compileActorSource } from "../scripts/core/compiler.js";
-import { toggleSectionLock, sectionLocked, adjustPreviewNumber, LOCKABLE_SECTIONS } from "../scripts/core/blueprint-controls.js";
+import { toggleSectionLock, canRerollSection, sectionLocked, adjustPreviewNumber, LOCKABLE_SECTIONS, sectionLockKey, normalizeBlueprintLocks } from "../scripts/core/blueprint-controls.js";
 
 function makeGenerator() {
   const registry = new ContentRegistry();
@@ -132,6 +132,136 @@ test("reroll all accepts edited concept request without discarding protected pre
   assert.equal(next.identity.size, "lg");
   assert.deepEqual(next.statistics.abilities, bp.statistics.abilities);
   assert.deepEqual(next.combat.attacks, bp.combat.attacks);
-  assert.equal(next.locks["statistics.abilities"], true);
+  assert.equal(next.locks[sectionLockKey("statistics.abilities")], true);
   assert.equal(next.metadata.requestSnapshot.identity.name, "Changed");
+});
+
+test("HP section lock survives affinity reroll while keeping compensation coherent", () => {
+  const generator = makeGenerator();
+  const bp = generator.generate({ ...source, generation: { seed: "rc-hp-locked" } });
+  toggleSectionLock(bp, "statistics.hp");
+  const value = bp.statistics.hp.value;
+  const rerolled = generator.reroll(bp, { scope: "defenses.affinities", seed: "rc-new-affinities" });
+  assert.equal(rerolled.statistics.hp.value, value);
+  assert.equal(rerolled.statistics.hp.adjustment, Number(rerolled.defenses.hpAdjustment?.value ?? 0));
+  assert.equal(rerolled.statistics.hp.baseValue + rerolled.statistics.hp.adjustment, value);
+  assert.equal(validateBlueprint(rerolled).valid, true);
+});
+
+test("locked affinities retain their HP adjustment when rerolling the other defenses", () => {
+  const generator = makeGenerator();
+  const bp = generator.generate({ ...source, generation: { seed: "rc-affinities-locked" } });
+  toggleSectionLock(bp, "defenses.affinities");
+  // A genuinely different adjustment makes this a regression for the previous
+  // accidental adoption of the newly generated affinity's HP modifier.
+  bp.defenses.hpAdjustment = { value: 14, reasons: ["review test"] };
+  const rerolled = generator.reroll(bp, { scope: "defenses", seed: "rc-new-defenses" });
+  assert.deepEqual(rerolled.defenses, bp.defenses);
+  assert.equal(rerolled.statistics.hp.adjustment, 14);
+  assert.equal(rerolled.statistics.hp.value, rerolled.statistics.hp.baseValue + 14);
+  assert.equal(validateBlueprint(rerolled).valid, true);
+});
+
+test("locking HP while rerolling defenses protects its value even when affinities change", () => {
+  const generator = makeGenerator();
+  const bp = generator.generate({ ...source, generation: { seed: "rc-hp-defenses" } });
+  toggleSectionLock(bp, "statistics.hp");
+  const original = bp.statistics.hp.value;
+  const rerolled = generator.reroll(bp, { scope: "defenses", seed: "rc-hp-defenses-new" });
+  assert.equal(rerolled.statistics.hp.value, original);
+  assert.equal(rerolled.statistics.hp.adjustment, Number(rerolled.defenses.hpAdjustment?.value ?? 0));
+  assert.equal(rerolled.statistics.hp.baseValue + rerolled.statistics.hp.adjustment, original);
+  assert.equal(validateBlueprint(rerolled).valid, true);
+});
+
+test("locking defense stats leaves defensive affinities independently rerollable", () => {
+  const generator = makeGenerator();
+  const bp = generator.generate({ ...source, generation: { seed: "rc2-defense-lock" } });
+  toggleSectionLock(bp, "defenses");
+  assert.equal(canRerollSection(bp, "defenses"), false);
+  assert.equal(canRerollSection(bp, "defenses.affinities"), true);
+
+  // Use a sentinel affinity to prove the ability to change that section,
+  // independently of the random category's initial affinity distribution.
+  bp.defenses.resistances = [{ type: "fire", value: 5 }];
+  bp.defenses.hpAdjustment = { value: -10, reasons: [] };
+  const before = structuredClone(bp.statistics);
+  const rerolled = generator.reroll(bp, { scope: "defenses.affinities", seed: "rc2-affinities" });
+  const freshlyGenerated = generator.generate({ ...source, generation: { seed: "rc2-affinities" } });
+
+  for (const key of ["ac", "perception", "saves"]) assert.deepEqual(rerolled.statistics[key], before[key]);
+  assert.equal(rerolled.statistics.hp.value, before.hp.value);
+  for (const key of ["immunities", "resistances", "weaknesses"]) {
+    assert.deepEqual(rerolled.defenses[key], freshlyGenerated.defenses[key]);
+  }
+  assert.equal(rerolled.statistics.hp.adjustment, rerolled.defenses.hpAdjustment.value);
+  assert.equal(rerolled.statistics.hp.baseValue + rerolled.statistics.hp.adjustment, before.hp.value);
+  assert.equal(rerolled.locks.defenses, true);
+  assert.equal(validateBlueprint(rerolled).valid, true);
+  assert.deepEqual(bp.statistics, before, "source blueprint must remain untouched");
+});
+
+test("full reroll preserves locked numeric defenses but not unlocked affinities", () => {
+  const generator = makeGenerator();
+  const bp = generator.generate({ ...source, generation: { seed: "rc2-all-before" } });
+  toggleSectionLock(bp, "defenses");
+  bp.defenses.resistances = [{ type: "cold", value: 6 }];
+  bp.defenses.hpAdjustment = { value: -8, reasons: [] };
+  const previousStats = structuredClone(bp.statistics);
+  const rerolled = generator.reroll(bp, { scope: "all", seed: "rc2-all-after" });
+  const rawNext = generator.generate({ ...source, generation: { seed: "rc2-all-after" } });
+
+  for (const key of ["ac", "perception", "saves"]) assert.deepEqual(rerolled.statistics[key], previousStats[key]);
+  assert.equal(rerolled.statistics.hp.value, previousStats.hp.value);
+  assert.equal(rerolled.statistics.hp.adjustment, rerolled.defenses.hpAdjustment.value);
+  assert.equal(rerolled.statistics.hp.baseValue + rerolled.statistics.hp.adjustment, previousStats.hp.value);
+  assert.deepEqual(rerolled.defenses, rawNext.defenses);
+  assert.deepEqual(rerolled.identity.resolvedSubtypes, rawNext.identity.resolvedSubtypes);
+  assert.deepEqual(rerolled.identity.traits, rawNext.identity.traits);
+  assert.equal(validateBlueprint(rerolled).valid, true);
+});
+
+test("affinities lock independently protects affinities during defense reroll and full reroll", () => {
+  const generator = makeGenerator();
+  const bp = generator.generate({ ...source, generation: { seed: "rc2-affinity-lock" } });
+  toggleSectionLock(bp, "defenses.affinities");
+  bp.defenses.hpAdjustment = { value: 9, reasons: ["test"] };
+  assert.equal(canRerollSection(bp, "defenses.affinities"), false);
+  assert.equal(canRerollSection(bp, "defenses"), true);
+  const parts = generator.reroll(bp, { scope: "defenses", seed: "rc2-reroll-stats" });
+  assert.deepEqual(parts.defenses, bp.defenses);
+  assert.equal(parts.statistics.hp.adjustment, 9);
+  assert.equal(parts.statistics.hp.value, parts.statistics.hp.baseValue + 9);
+  const all = generator.reroll(bp, { scope: "all", seed: "rc2-full-restart" });
+  assert.deepEqual(all.defenses, bp.defenses);
+  assert.equal(all.statistics.hp.adjustment, 9);
+  assert.equal(all.statistics.hp.value, all.statistics.hp.baseValue + 9);
+  assert.equal(validateBlueprint(parts).valid, true);
+  assert.equal(validateBlueprint(all).valid, true);
+});
+
+test("simultaneous defense, HP and affinity locks keep both sections without HP drift", () => {
+  const generator = makeGenerator();
+  const bp = generator.generate({ ...source, generation: { seed: "rc2-both-before" } });
+  toggleSectionLock(bp, "defenses");
+  toggleSectionLock(bp, "statistics.hp");
+  toggleSectionLock(bp, "defenses.affinities");
+  const all = generator.reroll(bp, { scope: "all", seed: "rc2-both-after" });
+  assert.deepEqual(all.statistics.ac, bp.statistics.ac);
+  assert.deepEqual(all.statistics.hp, bp.statistics.hp);
+  assert.deepEqual(all.defenses, bp.defenses);
+  assert.equal(canRerollSection(all, "defenses.affinities"), false);
+  assert.equal(validateBlueprint(all).valid, true);
+});
+
+test("UI only disables affinity reroll for its own lock, not for a defense lock", () => {
+  const editor = readFileSync(new URL("../scripts/ui/creature-editor.js", import.meta.url), "utf8");
+  assert.match(editor, /const rerollBlocked = !canRerollSection\(blueprint, scope\)/);
+  assert.match(editor, /if \(this\.capabilities\.generation && canRerollSection\(this\.session\.blueprint, scope\)\)/);
+  assert.match(editor, /if \(!canRerollSection\(this\.session\.blueprint, "defenses\.affinities"\)\) return/);
+  const bp = makeGenerator().generate(source);
+  toggleSectionLock(bp, "defenses");
+  assert.equal(canRerollSection(bp, "defenses.affinities"), true);
+  toggleSectionLock(bp, "defenses.affinities");
+  assert.equal(canRerollSection(bp, "defenses.affinities"), false);
 });

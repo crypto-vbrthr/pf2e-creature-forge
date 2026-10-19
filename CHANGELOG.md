@@ -1,3 +1,29 @@
+## 1.2.0-rc.3 – Foundry Actor Creation / Section Lock Flags Hotfix
+
+- Fixed a Foundry VTT 14 / PF2e 8.6.1 Actor creation crash (`Cannot use 'in' operator to search for 'affinities' in false`) when section locks were present.
+- Foundry expands dotted keys in deeply nested Actor flags; `blueprint.locks.defenses` (boolean) collided with `blueprint.locks["defenses.affinities"]`. All section locks now store Foundry-safe, dot-free keys; UI scope names and behavior remain unchanged.
+- Migrates 1.2.0-rc.1/rc.2 legacy dotted lock maps, including maps partially expanded into nested structures, while preserving lock state. Actor compilation normalizes a cloned snapshot and does not mutate the preview.
+- Added five permanent tests for lock combinations, saved Actor flag safety, legacy migration, and createActor path. Automated suite 216/216; 320 Core+Predator+Brutal generations, 960 rerolls and 1,280 compiled Actor sources with no unsafe flags or lock failures. Request/Blueprint/Content schema numbers remain v8/v12/v11.
+- Live Foundry Actor-creation smoke test remains required; automated tests do not execute PF2e's full Actor schema.
+
+## 1.2.0-rc.2 – Independent Defense / Affinity Lock Fix
+
+- Fixed UI reroll button for **Immunities, Resistances & Weaknesses** becoming disabled when **Defenses** was locked.
+- Removed corresponding engine-level defense-lock guard preventing the affinity-only reroll even if invoked directly.
+- Split full-reroll lock preservation: **Defenses** now locks AC, HP, Perception and saves, while **Defensive Affinities** separately locks immunities, resistances, weaknesses and their HP adjustment.
+- Reconciled affinity-driven HP compensation without changing locked displayed HP; simultaneously locking both blocks remains supported.
+- Added five regression cases and audited 1,600 full-reroll lock combinations across levels, roles and creature categories with no validation errors or warnings and all 1,600 NPCs compiling.
+- Automated suite: 211/211 tests; Request/Blueprint/Content versions and Embedded Editor API remain unchanged.
+
+## 1.2.0-rc.1 - Preview Controls Release Candidate
+
+- Promoted the Foundry-tested 1.2.0-dev.1 editor controls after a release-candidate integration review. Independent scrolling, section locks/rerolls and +/- editing are unchanged in their user-facing behavior.
+- Fixed a cross-section consistency bug: rerolling defensive affinities now preserves a locked HP total and updates the underlying base/compensation values; rerolling all defenses respects a locked affinity compensation even when HP is unlocked.
+- Reconciled an HP lock correctly during a full-defense section reroll when affinities may change.
+- Added three permanent regressions for HP/affinity lock combinations (206/206 tests passing).
+- Audited 576 Core + Predator Tactics 0.1.1 + Brutal Physiology 0.1.0 generation/compile combinations and the associated section locks, whole-creature rerolls and scoped rerolls. No validation errors, warnings, family duplicates or lock losses.
+- No Request/Blueprint/Content schema changes: v8/v12/v11; Embedded Creature Editor remains v14.
+
 ## 1.2.0-dev.1 – Scroll, Locks, Scoped Rerolls & Numeric Adjustments
 
 - Separate independently scrolling concept and generated-preview panels, with preserved scroll offsets after rerenders and tab switching.

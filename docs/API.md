@@ -1,10 +1,10 @@
-# Public API 1.2.0-dev.1
+# Public API 1.2.0-rc.3
 
-> **1.2.0-dev.1 UI extension:** The embedded editor adds two independent scroll regions, section locks/rerolls and direct numeric adjustments to blueprint fields. Request/Blueprint/Content schemas remain unchanged.
+> **1.2.0-rc.3 UI extension:** The embedded editor adds two independent scroll regions, section locks/rerolls and direct numeric adjustments to blueprint fields. Request/Blueprint/Content schemas remain unchanged; the Embedded Creature Editor v14 contract applies. Numeric defense locks now protect AC, HP, Perception, and saves without protecting defensive affinities. Affinity locks independently protect immunities, resistances, weaknesses, and their HP compensation. HP remains stable if its numeric section is locked, and the internal base HP is reconciled to the selected affinity compensation.
 
 > **1.1.1 Affliction-delivery hotfix:** public schemas are unchanged. Hosted Affliction delivery now requires a real concept match whenever a delivery profile declares preferred host hints, and passive abilities are rejected for `on-use` delivery. If no compatible carrier exists, delivery falls back to manual application.
 >
-> **1.1.0 stable contract:** public data contracts are Request v8, Blueprint v12, Content v11, Embedded Creature Editor v14, and runtime-status v2. Blueprint v12 and Content v11 add declarative interactive ability metadata while keeping the request/editor/runtime-status contracts stable. Persisted Blueprint v11 creatures from the 1.0.x line remain accepted, compilable, and editable; their request snapshots are normalized through `api.createRequest()`.
+> **1.1.0 stable contract:** public data contracts are Request v8, Blueprint v12, Content v11, Embedded Creature Editor v13, and runtime-status v2. Blueprint v12 and Content v11 add declarative interactive ability metadata while keeping the request/editor/runtime-status contracts stable. Persisted Blueprint v11 creatures from the 1.0.x line remain accepted, compilable, and editable; their request snapshots are normalized through `api.createRequest()`.
 >
 > **1.1.0 Interactive Ability Actions:** generated abilities can carry declarative `interactions` for PF2e checks, actions, damage, and GM rolls. Ranked creature DCs are materialized at generation time, and `api.runtime.sendAbilityToChat()` / `api.runtime.sendAbilityInteractionToChat()` expose the chat runtime.
 >
@@ -705,3 +705,8 @@ Ability definitions may include an optional `interactions` array. Supported inte
 `mode` defaults to `inline`. Use `mode: "chat"` for target-facing saves or prompts that should be sent to chat by the GM instead of being rolled from the source NPC sheet. `labelKey` / `label` provide the inline label; `requestLabelKey` / `requestLabel` provide the chat button label.
 
 Generated abilities default to `shareToChat: true`. The runtime exposes `api.runtime.sendAbilityToChat({ actor, abilityId })` and `api.runtime.sendAbilityInteractionToChat({ actor, abilityId, interactionIndex })`.
+
+
+### 1.2.0-rc.3 section lock storage
+
+`blueprint.locks` now uses Foundry-safe dot-free internal keys such as `statistics_hp` and `defenses_affinities` to avoid property expansion collisions in Actor flags. Editor and public reroll scopes still use `statistics.hp` and `defenses.affinities`. Existing 1.2.0-rc.1/rc.2 blueprints with dotted lock keys are recognized and normalized on reroll and compile; the compile operation does not mutate the input. The schema version remains Blueprint v12.

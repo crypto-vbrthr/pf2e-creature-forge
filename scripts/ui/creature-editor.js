@@ -1,7 +1,7 @@
 import { RANKS, SIZES, SKILL_SLUGS } from "../constants.js";
 import { ROLE_IDS } from "../core/role-presets.js";
 import { deepClone } from "../core/clone.js";
-import { adjustPreviewNumber, sectionLocked, toggleSectionLock } from "../core/blueprint-controls.js";
+import { adjustPreviewNumber, canRerollSection, sectionLocked, toggleSectionLock } from "../core/blueprint-controls.js";
 import { CreatureEditorSession } from "./editor-session.js";
 import { resolveAttackNameKey } from "../core/attack-localization.js";
 import { localize } from "../i18n.js";
@@ -452,7 +452,7 @@ export class EmbeddedCreatureEditor {
         }
       } else if (action === "reroll-section") {
         const scope = target.closest?.("[data-cf-section]")?.dataset.cfSection;
-        if (this.capabilities.generation && this.session.blueprint && scope && !sectionLocked(this.session.blueprint, scope) && !(scope === "defenses.affinities" && sectionLocked(this.session.blueprint, "defenses"))) {
+        if (this.capabilities.generation && canRerollSection(this.session.blueprint, scope)) {
           if (scope === "loot") {
             this.session.blueprint = await this.api.loot.refresh(this.session.blueprint);
             this.session.request = deepClone(this.session.blueprint.metadata.requestSnapshot);
@@ -522,7 +522,7 @@ export class EmbeddedCreatureEditor {
         this.#render();
         await this.#emitChange("reroll-attacks");
       } else if (action === "reroll-affinities") {
-        if (sectionLocked(this.session.blueprint, "defenses.affinities") || sectionLocked(this.session.blueprint, "defenses")) return;
+        if (!canRerollSection(this.session.blueprint, "defenses.affinities")) return;
         this.session.reroll({ scope: "defenses.affinities" });
         this.#render();
         await this.#emitChange("reroll-affinities");
@@ -887,8 +887,7 @@ export class EmbeddedCreatureEditor {
     const sectionControls = (scope, { reroll = true } = {}) => {
       if (!canGenerate || !blueprint) return "";
       const locked = sectionLocked(blueprint, scope);
-      const rerollBlocked = locked || (scope === "defenses.affinities" && sectionLocked(blueprint, "defenses")) ||
-        (scope === "spellcasting" && Boolean(blueprint.combat?.spellcasting?.[0]?.locked));
+      const rerollBlocked = !canRerollSection(blueprint, scope);
       const lockTitle = localize(locked ? "PF2E_CREATURE_FORGE.Action.Unlock" : "PF2E_CREATURE_FORGE.Action.Lock", locked ? "Unlock" : "Lock");
       const rerollTitle = localize("PF2E_CREATURE_FORGE.Editor.RerollSection", "Reroll only this section");
       return `<span class="cf-section-controls" data-cf-section="${escapeHtml(scope)}">

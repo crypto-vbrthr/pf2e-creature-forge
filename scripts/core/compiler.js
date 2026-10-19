@@ -1,3 +1,4 @@
+import { normalizeBlueprintLocks } from "./blueprint-controls.js";
 import { deepClone } from "./clone.js";
 import { validateBlueprint } from "./validator.js";
 import { resolveAttackNameKey } from "./attack-localization.js";
@@ -519,7 +520,7 @@ export function compileActorSource(blueprint, options = {}) {
         blueprintSchemaVersion: blueprint.schemaVersion,
         generatorVersion: blueprint.metadata?.generatorVersion ?? MODULE_VERSION,
         seed: blueprint.metadata?.seed ?? "",
-        blueprint: deepClone(blueprint)
+        blueprint: normalizeBlueprintLocks(deepClone(blueprint))
       }
     }
   };

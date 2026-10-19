@@ -348,9 +348,23 @@ PF2e 8.4 strict treasure persistence, native deferred-loot materialization, and 
 - Preserve 1.0.x Blueprint v11 compatibility and the reviewed Predator Tactics 0.1.0 integration.
 - Permanent suite: 192 passing tests; RC generation, integration, localization, and legacy-persistence audits remain clean.
 
-## 1.2.0-dev.1 – Preview Editing UX (in development)
+## 1.2.0-rc.1 – Preview Editing UX (release candidate)
 
 - Independent concept/generated scroll regions.
 - Section rerolls and persistent section locks.
 - Numeric +/- adjustments with explicit bounds.
-- Manual smoke test pending.
+- Initial development smoke test passed in Foundry; RC awaits final Foundry confirmation.
+- HP lock/affinity compensation coherence review and mixed Core+Predator+Brutal audit completed.
+
+## 1.2.0-rc.2 – Independent Defense and Affinity Locks
+
+- Correct numeric defense locks suppressing defensive-affinity rerolls in the preview and generator.
+- Apply independent lock semantics to all rerolls and partial rerolls, retaining coherent HP compensation and preserving locked maximum HP.
+- Added five regression tests covering UI guards and the generator; 1,600 multi-role/category/level lock-rerolls validated and compiled without errors.
+- No public schema or add-on API change; Foundry smoke test recommended before stable promotion.
+
+## 1.2.0-rc.3 – Foundry-Safe Section Lock Storage
+
+- Fixed NPC Actor creation failure caused by Foundry recursively expanding dotted section lock keys in Blueprint Actor flags.
+- Dot-free lock keys and legacy lock-state normalization preserve independent defense/affinity rerolls.
+- Pending live-world smoke test before 1.2.0 Stable.

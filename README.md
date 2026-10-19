@@ -2,7 +2,7 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
-Version **1.2.0-dev.1** adds independent scrolling for the concept and generated preview, section-level reroll locks, section-only rerolls and +/− numeric stat adjustments. Affliction-delivery hardening from 1.1.1 remains included. Public schemas remain Request v8, Blueprint v12 and Content v11; the Embedded Creature Editor contract is v14 and runtime-status remains v2.
+Version **1.2.0-rc.3** adds independent scrolling for the concept and generated preview, section-level reroll locks, section-only rerolls and +/− numeric stat adjustments. Affliction-delivery hardening from 1.1.1 remains included. Public schemas remain Request v8, Blueprint v12 and Content v11; the Embedded Creature Editor contract is v14 and runtime-status remains v2.
 
 The 1.0 stable baseline remains fully represented, including first-class **Mythic Creatures** based on *Pathfinder War of Immortals / Krieg der Unsterblichen*, the four mythic role templates, optional Forge Suite integrations, rerolls, spellcasting, special features, loot, and the embeddable editor.
 
@@ -29,10 +29,14 @@ Suggestions and feature requests are equally welcome. Even small ideas can lead 
 **Open an issue here:** https://github.com/crypto-vbrthr/pf2e-creature-forge/issues
 
 
-## What 1.2.0-dev.1 adds
+## What 1.2.0-rc.3 adds
+
+**Hotfix:** Foundry 14 attempted to expand dotted Blueprint lock keys during NPC Actor creation. They now use collision-free identifiers inside the saved Blueprint, so locking Defenses and rerolling or locking Immunities/Resistances/Weaknesses no longer breaks Actor creation. Existing preview lock state from earlier RCs is migrated automatically.
+
+This release candidate fixes a lock coupling bug: locking numeric **Defenses** (AC/HP/Perception/saves) no longer disables or prevents rerolling the separate **Immunities, Resistances & Weaknesses** block. HP compensation stays consistent without modifying locked HP totals.
 
 - Concept and generated results now scroll independently in full and compact layouts, and both scroll positions survive a UI rerender.
-- Each generated section has a lock and an independent reroll button. Locked sections survive **Reroll all**, including when the concept changes. **Generate** intentionally creates a new blueprint without old locks.
+- Each generated section has a lock and an independent reroll button. In particular, numeric Defenses and Defensive Affinities have truly separate locks. Locked sections survive **Reroll all**, including when the concept changes. **Generate** intentionally creates a new blueprint without old locks.
 - Numeric generated attributes, AC, HP, perception, saves, skills, strike modifiers and spell attack/DC have direct ±1 controls. These adjust the actual blueprint values used when creating the NPC; they do not automatically recalculate other statistics.
 - Existing individual ability/spell/loot locks remain supported. The lock state travels with the blueprint (no new public schema).
 

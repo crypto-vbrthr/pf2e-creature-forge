@@ -8,7 +8,7 @@ import {
 } from "./tables.js";
 import { validateBlueprint, validateGenerationRequest } from "./validator.js";
 import { deepClone } from "./clone.js";
-import { preserveLockedSections, refreshPreviewBudgets } from "./blueprint-controls.js";
+import { normalizeBlueprintLocks, preserveLockedSections, reconcileHpAffinityAdjustment, refreshPreviewBudgets, sectionLocked } from "./blueprint-controls.js";
 import { resolveAttackNameKey } from "./attack-localization.js";
 import { generateSkills } from "./skills.js";
 import { generateMovement, generateSenses } from "./mobility.js";
@@ -504,7 +504,7 @@ export class CreatureGenerator {
       const lockedSlots = (blueprint.abilities ?? [])
         .map((ability, index) => ability?.locked ? { index, ability } : null)
         .filter(Boolean);
-      if (!blueprint.locks?.abilities && lockedSlots.length) {
+      if (!sectionLocked(blueprint, "abilities") && lockedSlots.length) {
         const preserved = [...lockedSlots];
         const signature = generated.abilities?.find((ability) => ability?.signature?.kind);
         if (signature && !preserved.some((entry) => entry.index === 0)) preserved.push({ index: 0, ability: signature });
@@ -542,7 +542,7 @@ export class CreatureGenerator {
       return next;
     }
 
-    const next = deepClone(blueprint);
+    const next = normalizeBlueprintLocks(deepClone(blueprint));
     next.metadata.seed = newSeed;
     next.metadata.rerollHistory ??= [];
     next.metadata.rerollHistory.push({ scope, previousSeed: blueprint.metadata.seed, seed: newSeed });
@@ -550,14 +550,14 @@ export class CreatureGenerator {
     const random = new SeededRandom(newSeed);
 
     if (scope === "loot") {
-      if (next.locks?.loot) return next;
+      if (sectionLocked(next, "loot")) return next;
       next.loot = rerollLootPlan({ request: next.metadata.requestSnapshot, blueprint: next, random: random.fork("loot") });
       next.diagnostics = validateBlueprint(next).warnings;
       return next;
     }
 
     if (scope.startsWith("loot:")) {
-      if (next.locks?.loot) return next;
+      if (sectionLocked(next, "loot")) return next;
       const channel = scope.slice("loot:".length);
       next.loot = rerollLootChannel({ request: next.metadata.requestSnapshot, blueprint: next, random: random.fork(`loot.${channel}`), channel });
       next.diagnostics = validateBlueprint(next).warnings;
@@ -565,7 +565,7 @@ export class CreatureGenerator {
     }
 
     if (scope === "statistics.hp") {
-      if (next.locks?.defenses || next.locks?.["statistics.hp"]) return next;
+      if (sectionLocked(next, "defenses") || sectionLocked(next, "statistics.hp")) return next;
       const range = next.statistics.hp.range ?? resolveHpRange(next.identity.level, next.statistics.hp.rank);
       const baseValue = random.fork("statistics.hp").int(range.min, range.max);
       const adjustment = Number(next.defenses?.hpAdjustment?.value ?? next.statistics.hp?.adjustment ?? 0);
@@ -579,7 +579,7 @@ export class CreatureGenerator {
     const regenerated = () => this.generate({ ...deepClone(snapshot), generation: { ...snapshot.generation, seed: newSeed } });
 
     if (scope === "statistics.ac" || scope === "statistics.perception" || scope === "statistics.saves") {
-      if (next.locks?.defenses) return next;
+      if (sectionLocked(next, "defenses")) return next;
       const generated = regenerated();
       const key = scope.split(".").at(-1);
       next.statistics[key] = deepClone(generated.statistics[key]);
@@ -588,14 +588,14 @@ export class CreatureGenerator {
     }
 
     if (scope === "statistics.abilities") {
-      if (next.locks?.["statistics.abilities"]) return next;
+      if (sectionLocked(next, "statistics.abilities")) return next;
       next.statistics.abilities = regenerated().statistics.abilities;
       next.diagnostics = validateBlueprint(next).warnings;
       return next;
     }
 
     if (scope === "statistics.skills" || scope === "skills") {
-      if (next.locks?.["statistics.skills"]) return next;
+      if (sectionLocked(next, "statistics.skills")) return next;
       const generated = regenerated();
       const locked = Object.fromEntries(Object.entries(next.statistics?.skills ?? {}).filter(([, skill]) => skill?.locked));
       next.statistics.skills = { ...generated.statistics.skills, ...locked };
@@ -604,14 +604,14 @@ export class CreatureGenerator {
     }
 
     if (scope === "statistics.movement" || scope === "movement") {
-      if (next.locks?.["statistics.movement"]) return next;
+      if (sectionLocked(next, "statistics.movement")) return next;
       next.statistics.speed = regenerated().statistics.speed;
       next.diagnostics = validateBlueprint(next).warnings;
       return next;
     }
 
     if (scope === "statistics.senses" || scope === "senses") {
-      if (next.locks?.["statistics.senses"]) return next;
+      if (sectionLocked(next, "statistics.senses")) return next;
       const generated = regenerated();
       const lockedByType = new Map((next.statistics?.senses ?? []).filter((sense) => sense.locked).map((sense) => [sense.type, sense]));
       next.statistics.senses = generated.statistics.senses.map((sense) => lockedByType.get(sense.type) ?? sense);
@@ -623,7 +623,7 @@ export class CreatureGenerator {
     }
 
     if (scope === "combat.attacks" || scope === "attacks") {
-      if (next.locks?.["combat.attacks"]) return next;
+      if (sectionLocked(next, "combat.attacks")) return next;
       const generated = regenerated();
       const lockedById = new Map((next.combat?.attacks ?? []).filter((attack) => attack.locked).map((attack) => [attack.id, attack]));
       next.combat.attacks = generated.combat.attacks.map((attack) => lockedById.get(attack.id) ?? attack);
@@ -633,7 +633,7 @@ export class CreatureGenerator {
     }
 
     if (scope === "abilities") {
-      if (next.locks?.abilities) return next;
+      if (sectionLocked(next, "abilities")) return next;
       const preserved = (next.abilities ?? [])
         .map((ability, index) => (ability?.locked || ability?.signature?.kind) ? { index, ability } : null)
         .filter(Boolean);
@@ -676,7 +676,7 @@ export class CreatureGenerator {
 
     if (scope === "auras" || scope === "afflictions") {
       const kind = scope === "auras" ? "aura" : "affliction";
-      if (next.locks?.[scope]) return next;
+      if (sectionLocked(next, scope)) return next;
       const result = rerollSpecialFeature({
         request: next.metadata.requestSnapshot,
         registry: this.registry,
@@ -800,7 +800,7 @@ export class CreatureGenerator {
     }
 
     if (scope === "spellcasting" || scope === "combat.spellcasting") {
-      if (next.locks?.spellcasting) return next;
+      if (sectionLocked(next, "spellcasting")) return next;
       const spellRequest = deepClone(next.metadata.requestSnapshot);
       prepareMythicRequest(spellRequest);
       const result = rerollSpellcasting({
@@ -832,7 +832,7 @@ export class CreatureGenerator {
     }
 
     if (scope === "defenses.affinities" || scope === "affinities") {
-      if (next.locks?.defenses || next.locks?.["defenses.affinities"]) return next;
+      if (sectionLocked(next, "defenses.affinities")) return next;
       const generated = regenerated();
       const merged = {};
       for (const kind of ["immunities", "resistances", "weaknesses"]) {
@@ -846,10 +846,7 @@ export class CreatureGenerator {
         ? { value: 0, reasons: [] }
         : calculateAffinityHpAdjustment({ affinities: merged, hpRank: next.statistics.hp.rank });
       next.defenses = { ...merged, hpAdjustment };
-      const baseValue = Number(next.statistics.hp.baseValue ?? next.statistics.hp.value - Number(next.statistics.hp.adjustment ?? blueprint.defenses?.hpAdjustment?.value ?? 0));
-      next.statistics.hp.baseValue = baseValue;
-      next.statistics.hp.adjustment = Number(hpAdjustment.value ?? 0);
-      next.statistics.hp.value = Math.max(1, baseValue + Number(hpAdjustment.value ?? 0));
+      reconcileHpAffinityAdjustment(next, { preserveHpValue: Boolean(sectionLocked(next, "statistics.hp") || sectionLocked(next, "defenses")) });
       next.identity.resolvedSubtypes = generated.identity.resolvedSubtypes;
       next.identity.traits = generated.identity.traits;
       next.diagnostics = validateBlueprint(next).warnings;
@@ -857,17 +854,20 @@ export class CreatureGenerator {
     }
 
     if (scope === "defenses") {
-      if (next.locks?.defenses) return next;
+      if (sectionLocked(next, "defenses")) return next;
       const generated = regenerated();
       next.statistics.ac = generated.statistics.ac;
-      if (!next.locks?.["statistics.hp"]) next.statistics.hp = generated.statistics.hp;
+      if (!sectionLocked(next, "statistics.hp")) next.statistics.hp = generated.statistics.hp;
       next.statistics.perception = generated.statistics.perception;
       next.statistics.saves = generated.statistics.saves;
-      if (!next.locks?.["defenses.affinities"]) {
+      if (!sectionLocked(next, "defenses.affinities")) {
         next.defenses = generated.defenses;
         next.identity.resolvedSubtypes = generated.identity.resolvedSubtypes;
         next.identity.traits = generated.identity.traits;
       }
+      // Rerolling defenses must never silently replace an HP lock, or use a
+      // regenerated affinity modifier when the affinities themselves are locked.
+      reconcileHpAffinityAdjustment(next, { preserveHpValue: Boolean(sectionLocked(next, "statistics.hp")) });
 
       next.diagnostics = validateBlueprint(next).warnings;
       return next;
