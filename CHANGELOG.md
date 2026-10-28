@@ -1,3 +1,12 @@
+## 1.2.1-rc.1 (2026-10-28)
+
+- Promoted the visually confirmed 1.2.1-dev.3 focus-tag checkbox layout to release candidate with no additional feature or gameplay modifications.
+- Includes 1.2.1-dev.2 ability prerequisites (required skill modifiers; generated melee/ranged attack compatibility), localized effect timing, and weighted focus-tag checkboxes alongside free-form addon tags.
+- Includes 1.2.1-dev.1 chat effect buttons with click-to-selected-target and drag-to-token interaction; GM adjudication remains required.
+- Maintains public contracts: Request v8, Blueprint v12, Content v11, Embedded Editor v14, runtime-status v2; no data migrations required.
+- Release metadata, API constants, documentation and GitHub release download target aligned with `1.2.1-rc.1`. Automated tests/syntax checks are required before release. Live Foundry smoke test remains pending.
+- Battlefield Control 0.1.0-dev.7 still declares a minimum *stable* Creature Forge version of `1.2.1`; its dependency metadata must be realigned before testing with this prerelease, or it must await the 1.2.1 stable release.
+
 ## 1.2.1-dev.3 (2026-10-28)
 
 - Corrected the layout of focus-tag checkboxes in Foundry/PF2e themes: compact, consistently aligned indicators no longer overlap tag labels.

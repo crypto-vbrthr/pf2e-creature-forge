@@ -1,0 +1,17 @@
+{
+  "coreVersion": "1.2.1-rc.1",
+  "testedAddon": "Battlefield Control 0.1.0-dev.7",
+  "libraryAbilities": 25,
+  "cases": 480,
+  "valid": 480,
+  "compiled": 480,
+  "withBattlefieldAbilities": 859,
+  "withRequiredSkills": 59,
+  "missingRequiredSkills": 0,
+  "meleeTaggedOnRangedOnly": 0,
+  "warnings": {
+    "ABILITY_BUDGET_EXHAUSTED": 14
+  },
+  "rerollChecks": 32,
+  "failures": []
+}
