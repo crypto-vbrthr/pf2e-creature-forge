@@ -101,7 +101,7 @@ function effectTimingLabel(timing) {
   return key ? localizeKey(key, timing) : String(timing ?? "");
 }
 
-function effectRuntimeLine({ ability, application, applicationIndex, resource, runtimeLink, actorUuid, runtimeAvailable }) {
+function effectRuntimeLine({ ability, application, applicationIndex, resource, runtimeLink, actorUuid, runtimeAvailable, renderForChat = false }) {
   const effectName = localizeKey(resource?.nameKey, resource?.definition?.name ?? resource?.name ?? application.ref);
   const linked = runtimeLink?.primaryUuid
     ? `@UUID[${runtimeLink.primaryUuid}]{${effectName}}`
@@ -111,10 +111,15 @@ function effectRuntimeLine({ ability, application, applicationIndex, resource, r
   const timing = timingLabel
     ? `<span class="pf2e-creature-forge-effect-timing"><i class="fa-regular fa-clock"></i> ${escapeAttribute(timingLabel)}</span>`
     : "";
+  const dragLabel = localizeKey("PF2E_CREATURE_FORGE.Action.DragEffect", "Click to apply to selected targets, or drag onto a token");
+  const draggable = renderForChat && runtimeAvailable && actorUuid;
   const button = runtimeAvailable && actorUuid
-    ? `<button type="button" class="pf2e-creature-forge-apply-effect" data-cf-actor-uuid="${escapeAttribute(actorUuid)}" data-cf-ability-id="${escapeAttribute(ability?.id)}" data-cf-effect-ref="${escapeAttribute(application.ref)}" data-cf-application-index="${applicationIndex}" title="${escapeAttribute(applyLabel)}" aria-label="${escapeAttribute(applyLabel)}"><i class="fa-solid fa-wand-magic-sparkles"></i><span>${applyLabel}</span></button>`
+    ? `<button type="button" class="pf2e-creature-forge-apply-effect${draggable ? " pf2e-creature-forge-drag-effect" : ""}"${draggable ? ' draggable="true"' : ""} data-cf-actor-uuid="${escapeAttribute(actorUuid)}" data-cf-ability-id="${escapeAttribute(ability?.id)}" data-cf-effect-ref="${escapeAttribute(application.ref)}" data-cf-application-index="${applicationIndex}"${draggable && runtimeLink?.primaryUuid ? ` data-cf-effect-item-uuid="${escapeAttribute(runtimeLink.primaryUuid)}"` : ""} title="${escapeAttribute(draggable ? dragLabel : applyLabel)}" aria-label="${escapeAttribute(draggable ? dragLabel : applyLabel)}"><i class="fa-solid fa-wand-magic-sparkles"></i><span>${escapeAttribute(draggable ? effectName : applyLabel)}</span></button>`
     : "";
-  return `<span class="pf2e-creature-forge-runtime-effect"><span class="pf2e-creature-forge-effect-reference"><i class="fa-solid fa-sparkles"></i>${linked}</span>${timing}${button}</span>`;
+  // The chat card uses the effect itself as an actionable, draggable button.
+  // The NPC item sheet retains the existing item link and Apply control.
+  const reference = renderForChat && draggable ? "" : `<span class="pf2e-creature-forge-effect-reference"><i class="fa-solid fa-sparkles"></i>${linked}</span>`;
+  return `<span class="pf2e-creature-forge-runtime-effect">${reference}${timing}${button}</span>`;
 }
 
 export function buildAbilityDescription(ability, effectResources = new Map(), {
@@ -142,7 +147,8 @@ export function buildAbilityDescription(ability, effectResources = new Map(), {
         resource,
         runtimeLink: runtimeLinks?.[resource.id] ?? runtimeLinks?.[application.ref] ?? null,
         actorUuid,
-        runtimeAvailable
+        runtimeAvailable,
+        renderForChat
       });
     }).filter(Boolean);
     if (lines.length) {

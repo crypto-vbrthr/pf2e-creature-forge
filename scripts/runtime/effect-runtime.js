@@ -388,6 +388,70 @@ export function initializeEffectRuntimeUi(runtime) {
     }, { capture: true });
   }
 
+  // Chat cards expose a regular world Item when materialized. The extra
+  // creatureForgeEffect payload lets canvas drops use Effect Forge's normal
+  // apply semantics even when the user drops on the TOKEN, not its sheet.
+  globalThis.document?.addEventListener?.("dragstart", (event) => {
+    const button = event.target?.closest?.(".pf2e-creature-forge-drag-effect");
+    if (!button || !event.dataTransfer) return;
+    const { cfActorUuid: actorUuid, cfAbilityId: abilityId, cfEffectRef: effectRef,
+      cfApplicationIndex: index, cfEffectItemUuid: itemUuid } = button.dataset ?? {};
+    if (!actorUuid || !abilityId || !effectRef) { event.preventDefault(); return; }
+    const payload = {
+      type: itemUuid ? "Item" : "CreatureForgeEffect",
+      ...(itemUuid ? { uuid: itemUuid } : {}),
+      creatureForgeEffect: {
+        actorUuid, abilityId, effectRef, applicationIndex: Number(index)
+      }
+    };
+    event.dataTransfer.setData("text/plain", JSON.stringify(payload));
+    event.dataTransfer.effectAllowed = "copy";
+  }, { capture: true });
+
+  // Unlike a world Item dropped on the scene, this is a targeted effect.
+  // Do not let Foundry spawn a new Item tile or trigger a second application.
+  globalThis.Hooks?.on?.("dropCanvasData", (sceneCanvas, data) => {
+    const details = data?.creatureForgeEffect;
+    if (!details || !["Item", "CreatureForgeEffect"].includes(data.type)) return;
+    const tokens = sceneCanvas?.tokens?.placeables ?? globalThis.canvas?.tokens?.placeables ?? [];
+    const x = Number(data.x), y = Number(data.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+    const token = [...tokens].reverse().find((t) => {
+      if (!t.actor) return false;
+      if (t.bounds?.contains) return t.bounds.contains(x, y);
+      return x >= t.x && x < t.x + t.w && y >= t.y && y < t.y + t.h;
+    });
+    if (!token) {
+      globalThis.ui?.notifications?.warn?.(localize("PF2E_CREATURE_FORGE.Runtime.DropOnToken", "Drop the effect on a token."));
+      return false;
+    }
+    void (async () => {
+      try {
+        if (!globalThis.game?.user?.isGM) throw new Error(localize("PF2E_CREATURE_FORGE.Notifications.GmOnly", "Only the GM can apply Creature Forge effects."));
+        const actor = await globalThis.fromUuid?.(details.actorUuid);
+        if (!actor) throw new Error(localize("PF2E_CREATURE_FORGE.Runtime.ActorMissing", "Source actor not found."));
+        const blueprint = actorBlueprint(actor);
+        const ability = blueprint?.abilities?.find?.((entry) => entry.id === details.abilityId);
+        if (!ability?.applications?.some?.((entry) => entry.type === "effect" && entry.ref === details.effectRef)) {
+          throw new Error(localize("PF2E_CREATURE_FORGE.Runtime.EffectDefinitionMissing", "This effect is no longer linked to the source ability."));
+        }
+        const applied = await runtime.apply({
+          actor, abilityId: details.abilityId, effectRef: details.effectRef,
+          applicationIndex: Number.isInteger(details.applicationIndex) ? details.applicationIndex : null,
+          targets: [token]
+        });
+        const name = localize(applied.resource?.nameKey,
+          applied.resource?.definition?.name ?? applied.resource?.name ?? details.effectRef);
+        globalThis.ui?.notifications?.info?.(format("PF2E_CREATURE_FORGE.Runtime.Applied",
+          { name, count: 1 }, `${name} applied.`));
+      } catch (error) {
+        console.error(`${MODULE_ID} | Chat effect token drop failed.`, error);
+        globalThis.ui?.notifications?.error?.(error?.message ?? localize("PF2E_CREATURE_FORGE.Runtime.ApplyFailed", "Could not apply the effect."));
+      }
+    })();
+    return false;
+  });
+
   globalThis.Hooks?.on?.("deleteActor", (actor) => {
     runtime.cleanupActorResources(actor).catch((error) => console.warn(`${MODULE_ID} | Runtime effect cleanup failed.`, error));
   });

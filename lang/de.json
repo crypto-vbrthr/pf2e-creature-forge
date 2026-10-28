@@ -764,5 +764,7 @@
   "PF2E_CREATURE_FORGE.Editor.RerollSection": "Nur diesen Bereich neu würfeln",
   "PF2E_CREATURE_FORGE.Editor.DecreaseValue": "Wert um 1 verringern",
   "PF2E_CREATURE_FORGE.Editor.IncreaseValue": "Wert um 1 erhöhen",
-  "PF2E_CREATURE_FORGE.Editor.PreviewEditHint": "Schloss: Bereich beim Neu-Würfeln behalten. Würfel: Nur diesen Bereich neu erzeugen. +/−: Generierten Wert manuell ändern."
+  "PF2E_CREATURE_FORGE.Editor.PreviewEditHint": "Schloss: Bereich beim Neu-Würfeln behalten. Würfel: Nur diesen Bereich neu erzeugen. +/−: Generierten Wert manuell ändern.",
+  "PF2E_CREATURE_FORGE.Action.DragEffect": "Klicken: auf ausgewählte Ziele anwenden. Ziehen: auf ein Token anwenden.",
+  "PF2E_CREATURE_FORGE.Runtime.DropOnToken": "Effekt auf ein Token ziehen."
 }

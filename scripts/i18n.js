@@ -3,6 +3,8 @@
 
 const CATALOGS = Object.freeze({
   "de": Object.freeze({
+    "PF2E_CREATURE_FORGE.Action.DragEffect": "Klicken: auf ausgewählte Ziele anwenden. Ziehen: auf ein Token anwenden.",
+    "PF2E_CREATURE_FORGE.Runtime.DropOnToken": "Effekt auf ein Token ziehen.",
     "PF2E_CREATURE_FORGE.Editor.RerollSection": "Nur diesen Bereich neu würfeln",
     "PF2E_CREATURE_FORGE.Editor.DecreaseValue": "Wert um 1 verringern",
     "PF2E_CREATURE_FORGE.Editor.IncreaseValue": "Wert um 1 erhöhen",
@@ -771,6 +773,8 @@ const CATALOGS = Object.freeze({
     "PF2E_CREATURE_FORGE.Save.will": "Wille"
   }),
   "en": Object.freeze({
+    "PF2E_CREATURE_FORGE.Action.DragEffect": "Click: apply to selected targets. Drag: apply to a token.",
+    "PF2E_CREATURE_FORGE.Runtime.DropOnToken": "Drop the effect on a token.",
     "PF2E_CREATURE_FORGE.Editor.RerollSection": "Reroll only this section",
     "PF2E_CREATURE_FORGE.Editor.DecreaseValue": "Decrease value by 1",
     "PF2E_CREATURE_FORGE.Editor.IncreaseValue": "Increase value by 1",

@@ -95,7 +95,7 @@ export function initializePublicApi({ openCreatureForge } = {}) {
   const spellRuntime = new CreatureSpellRuntime();
   const lootIntegration = new CreatureLootIntegration({ integrations });
   const lootRuntime = new CreatureLootRuntime({ integrations });
-  const abilityInteractionRuntime = new CreatureAbilityInteractionRuntime();
+  const abilityInteractionRuntime = new CreatureAbilityInteractionRuntime({ canApplyEffects: () => runtime.available });
 
   const registerByType = (type) => (definition, options = {}) => registry.register(type, definition, options);
 

@@ -1,4 +1,4 @@
-# Public API 1.2.0
+# Public API 1.2.1-dev.1
 
 > **1.2.0 UI extension:** The embedded editor adds two independent scroll regions, section locks/rerolls and direct numeric adjustments to blueprint fields. Request/Blueprint/Content schemas remain unchanged; the Embedded Creature Editor v14 contract applies. Numeric defense locks now protect AC, HP, Perception, and saves without protecting defensive affinities. Affinity locks independently protect immunities, resistances, weaknesses, and their HP compensation. HP remains stable if its numeric section is locked, and the internal base HP is reconciled to the selected affinity compensation.
 
@@ -710,3 +710,7 @@ Generated abilities default to `shareToChat: true`. The runtime exposes `api.run
 ### 1.2.0-rc.3 section lock storage
 
 `blueprint.locks` now uses Foundry-safe dot-free internal keys such as `statistics_hp` and `defenses_affinities` to avoid property expansion collisions in Actor flags. Editor and public reroll scopes still use `statistics.hp` and `defenses.affinities`. Existing 1.2.0-rc.1/rc.2 blueprints with dotted lock keys are recognized and normalized on reroll and compile; the compile operation does not mutate the input. The schema version remains Blueprint v12.
+
+## Chat effect application (1.2.1-dev.1)
+
+Shared ability cards now display linked effect applications as labeled buttons when an Effect Forge `effects.apply` integration is available. Clicking uses the existing selected-target application pipeline. Dragging the button onto a canvas token uses `dropCanvasData` and calls the same pipeline with an explicit token target. A materialized world Item UUID is also carried when available, enabling native item drops on actor sheets. No effect is applied until the user clicks or drops; determine success/critical-success and eligibility manually. Existing ability cards without effect applications remain unchanged.

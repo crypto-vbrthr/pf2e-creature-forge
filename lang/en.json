@@ -764,5 +764,7 @@
   "PF2E_CREATURE_FORGE.Editor.RerollSection": "Reroll only this section",
   "PF2E_CREATURE_FORGE.Editor.DecreaseValue": "Decrease value by 1",
   "PF2E_CREATURE_FORGE.Editor.IncreaseValue": "Increase value by 1",
-  "PF2E_CREATURE_FORGE.Editor.PreviewEditHint": "Lock: preserve this section when rerolling. Die: reroll only this section. +/−: manually adjust the generated value."
+  "PF2E_CREATURE_FORGE.Editor.PreviewEditHint": "Lock: preserve this section when rerolling. Die: reroll only this section. +/−: manually adjust the generated value.",
+  "PF2E_CREATURE_FORGE.Action.DragEffect": "Click: apply to selected targets. Drag: apply to a token.",
+  "PF2E_CREATURE_FORGE.Runtime.DropOnToken": "Drop the effect on a token."
 }

@@ -1,3 +1,12 @@
+## 1.2.1-dev.1 – Chat Effect Drag & Drop
+
+- Shared ability chat cards now show linked effects as buttons that can be clicked to apply to selected targets.
+- Drag effect buttons onto canvas tokens to apply specifically to that token through the existing Effect Forge integration.
+- Native Item drag payloads are included for materialized world effects.
+- No effect is executed on message creation; hit/save outcomes remain GM adjudicated.
+- Regressions cover chat buttons, dragging, selected-token application, and invalid effect references.
+- Public schemas remain Request v8, Blueprint v12, Content v11.
+
 ## 1.2.0 – Stable Preview Controls Release
 
 - Promoted the Foundry-tested 1.2.0-rc.3 to stable with no gameplay, editor, generator, schema, or runtime logic changes. Live Foundry NPC Actor creation was confirmed after fixing section-lock flag storage.
@@ -43,6 +52,14 @@
 - Embedded editor contract v14. Request, Blueprint, Content schemas unchanged (v8/v12/v11). German/English localization updated, safety tests added.
 
 # Changelog
+
+## 1.2.1-dev.1 — Draggable chat effect controls
+- Shared creature ability chat cards render linked effects as labeled drag/click buttons.
+- Clicking applies to selected targets via Effect Forge; dragging onto a canvas token applies exclusively to that token.
+- Standard Item drag metadata is included when a world Item was materialized; without it canvas drops still work through the runtime API.
+- Maintained manual timing adjudication and no automatic save/outcome inference.
+- Added dedicated regression tests for chat rendering, drag serialization, token targeting, and rejected invalid source effects.
+
 
 ## 1.1.1 - Affliction Delivery Host Hotfix
 - Fixed automatic Affliction delivery attaching unrelated afflictions to arbitrary generated abilities or attacks when no thematic carrier existed.

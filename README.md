@@ -2,6 +2,8 @@
 
 PF2E Creature Forge is an API-first creature generation engine and embeddable editor for Foundry VTT and Pathfinder Second Edition.
 
+Version **1.2.1-dev.1** retains the 1.2.0 editor and adds draggable effect buttons to shared creature abilities in chat. Click a button to apply the effect to selected targets, or drag it onto a canvas token to apply it to that token (optional Effect Forge integration required). No automatic success/critical-success evaluation is performed.
+
 Version **1.2.0** adds independent scrolling for the concept and generated preview, section-level reroll locks, section-only rerolls and +/− numeric stat adjustments. Affliction-delivery hardening from 1.1.1 remains included. Public schemas remain Request v8, Blueprint v12 and Content v11; the Embedded Creature Editor contract is v14 and runtime-status remains v2.
 
 The 1.0 stable baseline remains fully represented, including first-class **Mythic Creatures** based on *Pathfinder War of Immortals / Krieg der Unsterblichen*, the four mythic role templates, optional Forge Suite integrations, rerolls, spellcasting, special features, loot, and the embeddable editor.

@@ -949,3 +949,8 @@
 .cf-editor .cf-preview-edit-hint { margin: .5rem 0 .35rem; font-size: .77em; opacity: .75; line-height: 1.4; }
 
 .cf-editor .cf-stat-grid .cf-section-controls .cf-icon-button { width: 1.5rem; min-width: 1.5rem; height: 1.5rem; }
+
+/* Chat effect chips: click for targeted use, drag onto a token on the canvas. */
+.pf2e-creature-forge-chat-card .pf2e-creature-forge-drag-effect { cursor: grab !important; white-space: normal !important; min-width: 0 !important; }
+.pf2e-creature-forge-chat-card .pf2e-creature-forge-drag-effect:active { cursor: grabbing !important; }
+.pf2e-creature-forge-chat-card .pf2e-creature-forge-runtime-effect { flex-wrap: wrap; }

@@ -75,6 +75,10 @@ function assertGm() {
 }
 
 export class CreatureAbilityInteractionRuntime {
+  constructor({ canApplyEffects = () => false } = {}) {
+    this.canApplyEffects = canApplyEffects;
+  }
+
   resolve(actor, abilityId) {
     return resolveAbility(actor, abilityId);
   }
@@ -89,7 +93,7 @@ export class CreatureAbilityInteractionRuntime {
     const description = buildAbilityDescription(ability, effectResources, {
       runtimeLinks,
       actorUuid: actor.uuid ?? null,
-      runtimeAvailable: false,
+      runtimeAvailable: Boolean(this.canApplyEffects()),
       interactionRuntimeAvailable: false,
       renderForChat: true,
       includeShareButton: false
