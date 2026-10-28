@@ -11,6 +11,7 @@ import { deepClone } from "./clone.js";
 import { normalizeBlueprintLocks, preserveLockedSections, reconcileHpAffinityAdjustment, refreshPreviewBudgets, sectionLocked } from "./blueprint-controls.js";
 import { resolveAttackNameKey } from "./attack-localization.js";
 import { generateSkills } from "./skills.js";
+import { ensureAbilityRequiredSkills } from "./ability-skill-prerequisites.js";
 import { generateMovement, generateSenses } from "./mobility.js";
 import { calculateAffinityHpAdjustment, generateDefensiveAffinities } from "./defensive-affinities.js";
 import { collectAbilityEffectResources, generateAbilities, rerollAbilitySlot, resolveAbilityPowerBudget } from "./ability-engine.js";
@@ -314,6 +315,7 @@ export class CreatureGenerator {
       category: request.identity.category,
       subtypes: affinities.resolvedSubtypes,
       random: random.fork("abilities"),
+      attacks,
       preserve: preservedSignature,
       excludeContentIds: signatureAbility ? [signatureAbility.contentId] : [],
       budgetLimitOverride: Math.max(0, signatureSpent + generatedSpecialFeatures.budget.remaining),
@@ -367,7 +369,7 @@ export class CreatureGenerator {
       },
       perception: { rank: perceptionRank, value: resolveRankValue(PERCEPTION_TABLE, level, perceptionRank) },
       senses,
-      skills,
+      skills: ensureAbilityRequiredSkills(skills, generatedAbilities.abilities, level, random.fork("statistics.requiredSkills")),
       saves: Object.fromEntries(SAVE_NAMES.map((save) => [save, {
         rank: saveRanks[save],
         value: resolveRankValue(SAVE_TABLE, level, saveRanks[save])
@@ -522,6 +524,7 @@ export class CreatureGenerator {
           category: generated.identity.category,
           subtypes: generated.identity.resolvedSubtypes ?? generated.identity.subtypes,
           random: new SeededRandom(newSeed).fork("abilities"),
+          attacks: generated.combat?.attacks ?? [],
           preserve: preserved,
           budgetLimitOverride: availableForAbilities,
           excludeSignatureCandidates: true
@@ -534,6 +537,7 @@ export class CreatureGenerator {
         ]);
         generated.metadata.abilityBudget = generatedAbilitySet.budget;
       }
+      generated.statistics.skills = ensureAbilityRequiredSkills(generated.statistics.skills, generated.abilities, generated.identity.level, new SeededRandom(newSeed).fork("statistics.requiredSkills"));
       const next = preserveLockedSections(blueprint, generated);
       next.metadata.rerollHistory = [ ...(blueprint.metadata?.rerollHistory ?? []), { scope, previousSeed: blueprint.metadata.seed, seed: newSeed } ];
       refreshPreviewBudgets(next);
@@ -598,7 +602,7 @@ export class CreatureGenerator {
       if (sectionLocked(next, "statistics.skills")) return next;
       const generated = regenerated();
       const locked = Object.fromEntries(Object.entries(next.statistics?.skills ?? {}).filter(([, skill]) => skill?.locked));
-      next.statistics.skills = { ...generated.statistics.skills, ...locked };
+      next.statistics.skills = ensureAbilityRequiredSkills({ ...generated.statistics.skills, ...locked }, next.abilities, next.identity.level, random.fork("statistics.requiredSkills"));
       next.diagnostics = validateBlueprint(next).warnings;
       return next;
     }
@@ -648,10 +652,12 @@ export class CreatureGenerator {
         category: next.identity.category,
         subtypes: next.identity.resolvedSubtypes ?? next.identity.subtypes ?? [],
         random: random.fork("abilities"),
+        attacks: next.combat?.attacks ?? [],
         preserve: preserved,
         budgetLimitOverride: Math.max(0, totalBudget - featureSpent)
       });
       next.abilities = result.abilities;
+      next.statistics.skills = ensureAbilityRequiredSkills(next.statistics.skills, next.abilities, next.identity.level, random.fork("statistics.requiredSkills"));
       next.resources.effects = collectAbilityEffectResources(next.abilities, this.registry, [
         ...(next.resources?.effects ?? []),
         ...(result.effects ?? [])
@@ -758,6 +764,7 @@ export class CreatureGenerator {
           const replacement = deepClone(plan.ability);
           replacement.id = targetId;
           next.abilities[index] = replacement;
+          next.statistics.skills = ensureAbilityRequiredSkills(next.statistics.skills, next.abilities, next.identity.level, random.fork("statistics.requiredSkills"));
           next.resources.effects = collectAbilityEffectResources(next.abilities, this.registry, next.resources?.effects ?? []);
           const abilitySpent = next.abilities.reduce((sum, ability) => sum + Number(ability.powerCost ?? 0), 0);
           const signatureSpent = next.abilities.filter((ability) => ability?.signature?.kind).reduce((sum, ability) => sum + Number(ability.powerCost ?? 0), 0);
@@ -780,6 +787,7 @@ export class CreatureGenerator {
         random: random.fork(`ability-slot:${targetId}`)
       });
       next.abilities = result.abilities;
+      next.statistics.skills = ensureAbilityRequiredSkills(next.statistics.skills, next.abilities, next.identity.level, random.fork("statistics.requiredSkills"));
       next.resources.effects = result.effects;
       assignAfflictionDeliveries(next);
       next.metadata.abilityBudget = deepClone(result.budget);

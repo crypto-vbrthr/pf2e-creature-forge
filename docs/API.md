@@ -1,4 +1,4 @@
-# Public API 1.2.1-dev.1
+# Public API 1.2.1-dev.3
 
 > **1.2.0 UI extension:** The embedded editor adds two independent scroll regions, section locks/rerolls and direct numeric adjustments to blueprint fields. Request/Blueprint/Content schemas remain unchanged; the Embedded Creature Editor v14 contract applies. Numeric defense locks now protect AC, HP, Perception, and saves without protecting defensive affinities. Affinity locks independently protect immunities, resistances, weaknesses, and their HP compensation. HP remains stable if its numeric section is locked, and the internal base HP is reconciled to the selected affinity compensation.
 
@@ -714,3 +714,12 @@ Generated abilities default to `shareToChat: true`. The runtime exposes `api.run
 ## Chat effect application (1.2.1-dev.1)
 
 Shared ability cards now display linked effect applications as labeled buttons when an Effect Forge `effects.apply` integration is available. Clicking uses the existing selected-target application pipeline. Dragging the button onto a canvas token uses `dropCanvasData` and calls the same pipeline with an explicit token target. A materialized world Item UUID is also carried when available, enabling native item drops on actor sheets. No effect is applied until the user clicks or drops; determine success/critical-success and eligibility manually. Existing ability cards without effect applications remain unchanged.
+
+
+## Focus-tag checkbox editor (1.2.1-dev.3)
+
+The embedded editor offers curated focus-tag checkboxes grouped by tactics, combat style and theme. All checkboxes write into the existing `request.abilities.focus: string[]` property; unknown or extension-specific focus tags remain editable in the free-form input. No request-schema migration is needed (Request v8 / Blueprint v12 / Content v11).
+
+`generateAbilities()` applies **+20 selection weight** for each selected tag found in an eligible ability's `tags` array (or when the ability's category matches). The weight is additive and does **not** force an ability to be selected; level, category, subtypes, role, enabled libraries, dependencies and power budget still govern eligibility. Changes to the editor focus affect the **next generation or reroll**, not abilities already materialized.
+
+Abilities using a registered skill in `requirements.skills`, `tags`, or `interactions` checks cause the generator to add a moderate-rank creature skill if none was generated. Explicit and locked skill values are not overwritten. Entries tagged `melee` are excluded if the concrete generated attacks contain no melee attack (except already locked/preserved abilities). This explicit-tag check does not attempt to infer requirements from prose descriptions.

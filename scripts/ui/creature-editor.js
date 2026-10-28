@@ -3,6 +3,7 @@ import { ROLE_IDS } from "../core/role-presets.js";
 import { deepClone } from "../core/clone.js";
 import { adjustPreviewNumber, canRerollSection, sectionLocked, toggleSectionLock } from "../core/blueprint-controls.js";
 import { CreatureEditorSession } from "./editor-session.js";
+import { ABILITY_FOCUS_GROUPS, additionalAbilityFocus, normalizeAbilityFocus } from "../core/ability-focus-tags.js";
 import { resolveAttackNameKey } from "../core/attack-localization.js";
 import { localize } from "../i18n.js";
 import { abilityMechanicsLabel } from "../ability-presentation.js";
@@ -116,6 +117,7 @@ function effectTimingLabel(timing) {
     "after-use": "PF2E_CREATURE_FORGE.Runtime.Timing.AfterUse",
     "trigger": "PF2E_CREATURE_FORGE.Runtime.Timing.Trigger",
     "failed-save": "PF2E_CREATURE_FORGE.Runtime.Timing.FailedSave",
+    "critical-failure": "PF2E_CREATURE_FORGE.Runtime.Timing.CriticalFailure",
     "on-hit": "PF2E_CREATURE_FORGE.Runtime.Timing.OnHit",
     "on-success": "PF2E_CREATURE_FORGE.Runtime.Timing.OnSuccess",
     "always": "PF2E_CREATURE_FORGE.Runtime.Timing.Always",
@@ -373,7 +375,10 @@ export class EmbeddedCreatureEditor {
     request.abilities.complexity = get("abilityComplexity")?.value ?? "standard";
     const abilityPowerBudget = get("abilityPowerBudget")?.value ?? "auto";
     request.abilities.powerBudget = abilityPowerBudget === "auto" ? "auto" : number(abilityPowerBudget);
-    request.abilities.focus = String(get("abilityFocus")?.value ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+    request.abilities.focus = normalizeAbilityFocus([
+      ...[...root.querySelectorAll('input[name="abilityFocusChoice"]:checked')].map((input) => input.value),
+      ...String(get("abilityFocus")?.value ?? "").split(",")
+    ]);
     request.specialFeatures.frequency = get("specialFrequency")?.value ?? "normal";
     request.specialFeatures.auras.mode = get("auraMode")?.value ?? "auto";
     request.specialFeatures.afflictions.mode = get("afflictionMode")?.value ?? "auto";
@@ -804,6 +809,15 @@ export class EmbeddedCreatureEditor {
     const blueprint = this.session.blueprint;
     const validation = this.validate();
     const disabled = this.mode === "view" ? "disabled" : "";
+    const focusSelected = new Set(request.abilities.focus ?? []);
+    const focusGroups = ABILITY_FOCUS_GROUPS.map((group) => `<div class="cf-focus-group">
+      <span class="cf-focus-heading">${escapeHtml(localize(`PF2E_CREATURE_FORGE.FocusGroup.${group.id}`, group.id))}</span>
+      <div class="cf-focus-choices">${group.tags.map((tag) => `<label class="cf-focus-choice${focusSelected.has(tag) ? " is-selected" : ""}">
+        <input type="checkbox" name="abilityFocusChoice" value="${escapeHtml(tag)}" ${focusSelected.has(tag) ? "checked" : ""} ${disabled}>
+        <span class="cf-focus-indicator" aria-hidden="true"></span>
+        <span class="cf-focus-name">${escapeHtml(localize(`PF2E_CREATURE_FORGE.FocusTag.${tag}`, tag.replaceAll("-", " ")))}</span>
+      </label>`).join("")}</div>
+    </div>`).join("");
     const canGenerate = this.capabilities.generation && this.mode !== "view";
     const canCreateActor = this.capabilities.actorCreation && this.mode !== "view";
     const compendiumSources = this.api.sources.listCompendiums({ documentName: "Actor" });
@@ -1144,7 +1158,14 @@ export class EmbeddedCreatureEditor {
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityCount", "Ability count"))}</span><select name="abilityCount" ${disabled}>${["role",0,1,2,3,4,5].map((value) => option(String(value), value === "role" ? localize("PF2E_CREATURE_FORGE.Editor.RoleDefault", "Role default") : String(value), String(request.abilities.count))).join("")}</select></label>
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityComplexity", "Complexity"))}</span><select name="abilityComplexity" ${disabled}>${["simple","standard","complex"].map((value) => option(value, localize(`PF2E_CREATURE_FORGE.AbilityComplexity.${value}`, value), request.abilities.complexity)).join("")}</select></label>
               <label><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityPowerBudget", "Power budget"))}</span><select name="abilityPowerBudget" ${disabled}>${["auto",1,2,3,4,5,6,7,8,9,10,12,15,20].map((value) => option(String(value), value === "auto" ? localize("PF2E_CREATURE_FORGE.Field.Auto", "Automatic") : String(value), String(request.abilities.powerBudget ?? "auto"))).join("")}</select></label>
-              <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityFocus", "Focus tags"))}</span><input name="abilityFocus" type="text" value="${escapeHtml((request.abilities.focus ?? []).join(", "))}" placeholder="control, movement" ${disabled}></label>
+              <div class="cf-wide cf-focus-settings">
+                <strong>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilityFocus", "Focus tags"))}</strong>
+                <small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilityFocusHint", "Matching tags increase selection weight; they are not hard filters."))}</small>
+                ${focusGroups}
+                <label class="cf-focus-extra"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilityFocusExtra", "Additional tags (comma-separated)"))}</span>
+                  <input name="abilityFocus" type="text" value="${escapeHtml(additionalAbilityFocus(request.abilities.focus ?? []).join(", "))}" placeholder="counterattack, lightning" ${disabled}>
+                </label>
+              </div>
             </div>
 
             <h3>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpecialFeatures", "Special features"))}</h3>

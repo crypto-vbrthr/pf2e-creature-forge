@@ -183,15 +183,20 @@ function dependencyDiagnostics({ request, registry, level, roleId, category, sub
   });
 }
 
-export function generateAbilities({ request, registry, level, roleId, category, subtypes, random, preserve = [], excludeContentIds = [], budgetLimitOverride = null, excludeSignatureCandidates = true }) {
+export function generateAbilities({ request, registry, level, roleId, category, subtypes, random, attacks = null, preserve = [], excludeContentIds = [], budgetLimitOverride = null, excludeSignatureCandidates = true }) {
   if (request.abilities?.mode === "off") return { abilities: [], effects: [], diagnostics: [], budget: { limit: 0, spent: 0, remaining: 0, requestedCount: 0, generatedCount: 0 } };
   const count = normalizeCount(request, roleId);
   const budgetLimit = budgetLimitOverride == null ? resolveAbilityPowerBudget(request, roleId) : Math.max(0, Number(budgetLimitOverride) || 0);
   if (count === 0) return { abilities: [], effects: [], diagnostics: [], budget: { limit: budgetLimit, spent: 0, remaining: budgetLimit, requestedCount: 0, generatedCount: 0 } };
   const focus = request.abilities?.focus ?? [];
   const context = { level, role: roleId, category, subtypes };
+  const availableAttackKinds = attacks == null ? null : new Set(attacks.map((attack) => attack?.kind).filter(Boolean));
   const all = listAbilityCandidates({ request, registry, level, roleId, category, subtypes })
-    .filter((entry) => !excludeSignatureCandidates || !entry.signature?.kind);
+    .filter((entry) => !excludeSignatureCandidates || !entry.signature?.kind)
+    // "ranged" can describe a self-contained ranged ability (e.g. Hurl Debris),
+    // which need not reuse a generated basic attack. A "melee" tagged ability
+    // in our content set explicitly requires melee access.
+    .filter((entry) => availableAttackKinds == null || !(entry.tags ?? []).includes("melee") || availableAttackKinds.has("melee"));
   const diagnostics = dependencyDiagnostics({ request, registry, level, roleId, category, subtypes });
   const selected = [];
   const excluded = new Set(excludeContentIds ?? []);
@@ -298,6 +303,7 @@ export function rerollAbilitySlot({ request, registry, blueprint, targetId, rand
     category: blueprint.identity.category,
     subtypes: blueprint.identity.resolvedSubtypes ?? blueprint.identity.subtypes ?? [],
     random,
+    attacks: blueprint.combat?.attacks ?? [],
     preserve: preserved,
     excludeContentIds: [previous.contentId],
     budgetLimitOverride: Math.max(0, totalBudget - specialSpent)

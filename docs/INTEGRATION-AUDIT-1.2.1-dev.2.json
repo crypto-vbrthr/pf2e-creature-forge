@@ -1,0 +1,12 @@
+{
+  "testedWith": "Battlefield Control 0.1.0-dev.7",
+  "generations": 1500,
+  "withHookingPull": 352,
+  "missingRequiredAthletics": 0,
+  "meleeTaggedOnRangedOnly": 0,
+  "invalidBlueprints": 0,
+  "compilationFailures": 0,
+  "budgetWarnings": 0,
+  "rerolls": 15,
+  "failedRerolls": 0
+}

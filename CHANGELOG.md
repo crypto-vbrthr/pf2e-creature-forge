@@ -1,3 +1,18 @@
+## 1.2.1-dev.3 (2026-10-28)
+
+- Corrected the layout of focus-tag checkboxes in Foundry/PF2e themes: compact, consistently aligned indicators no longer overlap tag labels.
+- Preserved native keyboard, screen-reader, and label-click behavior with visually hidden real checkbox inputs and accessible custom indicators.
+- No changes to tag choices, selection weighting, free-form tags, generation rules, or public schemas.
+
+## 1.2.1-dev.2 (2026-10-28)
+
+- Added grouped focus-tag checkboxes for ability generation, localized in German and English; custom/add-on tags remain available in the advanced comma-separated field.
+- Clarified that focus tags influence the weighted selection, not eligible-candidate filtering.
+- Ensured that selected abilities with explicit skill tags, skill requirements, or check interactions receive corresponding skill modifiers without replacing existing skills.
+- Restricted explicitly melee-tagged abilities to compatible generated attack profiles, including on ability rerolls.
+- Localized effect-application timing `critical-failure` for Battlefield Control effect buttons.
+- Kept request, blueprint, content and embedded editor contract versions unchanged.
+
 ## 1.2.1-dev.1 – Chat Effect Drag & Drop
 
 - Shared ability chat cards now show linked effects as buttons that can be clicked to apply to selected targets.

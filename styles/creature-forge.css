@@ -954,3 +954,96 @@
 .pf2e-creature-forge-chat-card .pf2e-creature-forge-drag-effect { cursor: grab !important; white-space: normal !important; min-width: 0 !important; }
 .pf2e-creature-forge-chat-card .pf2e-creature-forge-drag-effect:active { cursor: grabbing !important; }
 .pf2e-creature-forge-chat-card .pf2e-creature-forge-runtime-effect { flex-wrap: wrap; }
+
+/* Focus-tag chips: draw the check ourselves. Foundry and PF2e apply different
+   global checkbox sizes/backgrounds, which otherwise overlap the chip text. */
+.cf-editor .cf-focus-settings {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: .5rem;
+  padding: .6rem;
+  border: 1px solid var(--color-border-light-tertiary, #666);
+  border-radius: 6px;
+}
+.cf-editor .cf-focus-settings > strong { font-size: .88em; }
+.cf-editor .cf-focus-settings > small { font-size: .76em; opacity: .75; line-height: 1.35; }
+.cf-editor .cf-focus-group { display: grid; gap: .3rem; }
+.cf-editor .cf-focus-heading { font-size: .8em; font-weight: 600; opacity: .8; }
+.cf-editor .cf-focus-choices { display: flex; align-items: center; gap: .35rem .4rem; flex-wrap: wrap; }
+.cf-editor label.cf-focus-choice {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: .42rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 1.85rem;
+  padding: .3rem .58rem;
+  border: 1px solid var(--color-border-light-tertiary, #777);
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: .8em;
+  line-height: 1.25;
+  user-select: none;
+}
+.cf-editor label.cf-focus-choice.is-selected,
+.cf-editor label.cf-focus-choice:has(input:checked) {
+  border-color: var(--color-border-highlight, #bfa46b);
+  background: color-mix(in srgb, var(--color-warm-1, #ac9153) 18%, transparent);
+}
+/* Keep the real input in the accessibility tree and keyboard tab order but
+   fully hide its native rendering and any system-created check decoration. */
+.cf-editor label.cf-focus-choice input[type="checkbox"] {
+  position: absolute;
+  inset: auto;
+  width: 1px !important;
+  min-width: 0 !important;
+  height: 1px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  overflow: hidden;
+  clip-path: inset(50%);
+  pointer-events: none;
+}
+.cf-editor label.cf-focus-choice > .cf-focus-indicator {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  flex: 0 0 .95rem;
+  width: .95rem;
+  height: .95rem;
+  border: 1px solid var(--color-border-light-primary, #898989);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-bg-option, #222) 86%, #111);
+}
+.cf-editor label.cf-focus-choice input:checked + .cf-focus-indicator {
+  border-color: #dba94c;
+  background: #dba94c;
+}
+.cf-editor label.cf-focus-choice input:checked + .cf-focus-indicator::after {
+  content: "";
+  display: block;
+  width: .28rem;
+  height: .5rem;
+  border-right: 2px solid #22170a;
+  border-bottom: 2px solid #22170a;
+  transform: translateY(-1px) rotate(45deg);
+}
+.cf-editor label.cf-focus-choice > .cf-focus-name {
+  opacity: 1;
+  font-size: inherit;
+  line-height: 1.25;
+  min-width: 0;
+}
+.cf-editor label.cf-focus-choice:focus-within {
+  outline: 2px solid var(--color-border-highlight, #dba94c);
+  outline-offset: 2px;
+}
+.cf-editor label.cf-focus-choice:has(input:disabled) { cursor: default; opacity: .6; }
+.cf-editor .cf-focus-extra { margin-top: .25rem; }
