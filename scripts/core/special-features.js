@@ -33,11 +33,11 @@ export function estimateSpecialPower(entry = {}, kind = null) {
   return 2;
 }
 
-function sourceAllowed(entry, selected = [], registry, kind) {
+function sourceAllowed(entry, selected = [], registry, kind, explicit = false) {
   const source = entry?.source ?? {};
   if (source.sourceKind === "compendium") return selected.includes(source.compendiumId);
   if (!source.libraryId) return true;
-  const effective = kind === "aura"
+  const effective = explicit ? selected : kind === "aura"
     ? registry.resolveAuraLibrarySelection(selected)
     : registry.resolveAfflictionLibrarySelection(selected);
   return effective.includes(source.libraryId);
@@ -117,7 +117,7 @@ function materialize(entry, kind, level) {
 function candidateList({ request, registry, kind, level, category, subtypes, role }) {
   const selected = selectedSources(request, kind);
   return registry.query(kind, { level, category, subtypes, role })
-    .filter((entry) => sourceAllowed(entry, selected, registry, kind));
+    .filter((entry) => sourceAllowed(entry, selected, registry, kind, request.sources?.explicitSelection === true));
 }
 
 function pickFeature({ request, registry, kind, level, category, subtypes, role, random, availableBudget, preserve = null, excludeContentIds = [] }) {

@@ -469,11 +469,13 @@ export function initializePublicApi({ openCreatureForge } = {}) {
           const abilities = [...new Set((stored.abilities ?? []).map(String).filter(Boolean))];
           const auras = [...new Set((stored.auras ?? []).map(String).filter(Boolean))];
           const afflictions = [...new Set((stored.afflictions ?? []).map(String).filter(Boolean))];
+          const explicitSelection = stored.explicitSelection === true;
           return {
+            explicitSelection,
             categories: [...new Set((stored.categories ?? []).map(String).filter(Boolean))],
             subtypes: [...new Set((stored.subtypes ?? []).map(String).filter(Boolean))],
-            abilities: abilities.length ? abilities : registry.getDefaultAbilityLibraryIds(),
-            auras: auras.length ? auras : registry.getDefaultAuraLibraryIds(),
+            abilities: explicitSelection ? abilities : (abilities.length ? abilities : registry.getDefaultAbilityLibraryIds()),
+            auras: explicitSelection ? auras : (auras.length ? auras : registry.getDefaultAuraLibraryIds()),
             // Empty means "use the current default Affliction libraries". This lets
             // Affliction Forge provider libraries discovered after ready participate
             // without baking a stale library list into the request.
@@ -482,11 +484,12 @@ export function initializePublicApi({ openCreatureForge } = {}) {
             loot: [...new Set((stored.loot ?? []).map(String).filter(Boolean))]
           };
         } catch {
-          return { categories: [], subtypes: [], abilities: registry.getDefaultAbilityLibraryIds(), auras: registry.getDefaultAuraLibraryIds(), afflictions: [], spells: [], loot: [] };
+          return { explicitSelection: false, categories: [], subtypes: [], abilities: registry.getDefaultAbilityLibraryIds(), auras: registry.getDefaultAuraLibraryIds(), afflictions: [], spells: [], loot: [] };
         }
       },
       setDefaults: async (sources = {}) => {
         const value = {
+          explicitSelection: sources.explicitSelection === true,
           categories: [...new Set((sources.categories ?? []).map(String).filter(Boolean))],
           subtypes: [...new Set((sources.subtypes ?? []).map(String).filter(Boolean))],
           abilities: [...new Set((sources.abilities ?? registry.getDefaultAbilityLibraryIds()).map(String).filter(Boolean))],

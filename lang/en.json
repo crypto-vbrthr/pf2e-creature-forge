@@ -795,5 +795,9 @@
   "PF2E_CREATURE_FORGE.FocusTag.magic": "Magic",
   "PF2E_CREATURE_FORGE.FocusTag.battlefield-control": "Battlefield control",
   "PF2E_CREATURE_FORGE.FocusTag.predator": "Predatory tactics",
-  "PF2E_CREATURE_FORGE.Runtime.Timing.CriticalFailure": "On critical failure"
+  "PF2E_CREATURE_FORGE.Runtime.Timing.CriticalFailure": "On critical failure",
+  "PF2E_CREATURE_FORGE.Editor.SourcesSelected": "Selected",
+  "PF2E_CREATURE_FORGE.Action.SelectAllSources": "All",
+  "PF2E_CREATURE_FORGE.Action.ClearSources": "None",
+  "PF2E_CREATURE_FORGE.Editor.NoSourcesFound": "No sources available"
 }

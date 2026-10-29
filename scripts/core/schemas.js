@@ -101,6 +101,7 @@ export const DEFAULT_REQUEST = Object.freeze({
     variation: "balanced"
   },
   sources: {
+    explicitSelection: false,
     categories: [],
     subtypes: [],
     abilities: [],
@@ -124,6 +125,7 @@ export function createGenerationRequest(input = {}) {
   request.schemaVersion = REQUEST_SCHEMA_VERSION;
   request.identity.subtypes = [...new Set((request.identity.subtypes ?? []).map((value) => String(value).trim()).filter(Boolean))];
   request.generation.seed = String(request.generation.seed ?? "").trim();
+  request.sources.explicitSelection = request.sources?.explicitSelection === true;
   request.mythic ??= { enabled: false, role: "auto" };
   request.mythic.enabled = request.mythic?.enabled === true;
   request.mythic.role = ["auto", "ambusher", "brute", "caster", "striker"].includes(request.mythic?.role) ? request.mythic.role : "auto";

@@ -176,9 +176,9 @@ export class SpellSourceManager {
     return likely ? [likely.id] : [];
   }
 
-  resolveSelection(selected = []) {
+  resolveSelection(selected = [], { explicit = false } = {}) {
     const requested = [...new Set((selected ?? []).map(String).filter(Boolean))];
-    return requested.length ? requested : this.getDefaultSourceIds();
+    return explicit ? requested : (requested.length ? requested : this.getDefaultSourceIds());
   }
 
   getPack(id) {
@@ -214,19 +214,19 @@ export class SpellSourceManager {
   }
 
   async ensure(sources = {}, { force = false } = {}) {
-    const ids = this.resolveSelection(sources?.spells ?? []);
+    const ids = this.resolveSelection(sources?.spells ?? [], { explicit: sources?.explicitSelection === true });
     const results = [];
     for (const id of ids) results.push(await this.scan(id, { force }));
     return { sources: ids, scanned: results };
   }
 
-  listSpells(selectedSources = []) {
-    const ids = this.resolveSelection(selectedSources);
+  listSpells(selectedSources = [], { explicit = false } = {}) {
+    const ids = this.resolveSelection(selectedSources, { explicit });
     return ids.flatMap((id) => this.cache.get(id)?.spells ?? []).map(deepClone);
   }
 
   isPrepared(sources = {}) {
-    return this.resolveSelection(sources?.spells ?? []).every((id) => this.cache.has(id));
+    return this.resolveSelection(sources?.spells ?? [], { explicit: sources?.explicitSelection === true }).every((id) => this.cache.has(id));
   }
 
   status() {

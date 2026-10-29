@@ -2,7 +2,7 @@
   "id": "pf2e-creature-forge",
   "title": "PF2E Creature Forge",
   "description": "A flexible PF2e creature generator for Foundry VTT, creating rule-aware creatures with customizable roles, abilities, spellcasting, mythic options, and seamless Forge Suite integration.",
-  "version": "1.2.1-rc.1",
+  "version": "1.2.1",
   "authors": [
     {
       "name": "crypto-vbrthr"
@@ -46,5 +46,5 @@
   "socket": false,
   "url": "https://github.com/crypto-vbrthr/pf2e-creature-forge",
   "manifest": "https://raw.githubusercontent.com/crypto-vbrthr/pf2e-creature-forge/refs/heads/main/module.json",
-  "download": "https://github.com/crypto-vbrthr/pf2e-creature-forge/releases/download/v1.2.1-rc.1/pf2e-creature-forge.zip"
+  "download": "https://github.com/crypto-vbrthr/pf2e-creature-forge/releases/download/v1.2.1/pf2e-creature-forge.zip"
 }

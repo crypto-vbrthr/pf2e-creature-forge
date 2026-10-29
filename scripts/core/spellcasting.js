@@ -254,7 +254,7 @@ export function generateSpellcasting({ request, registry, spellSources, level, r
   if (["none", "off"].includes(mode)) return { spellcasting: [], diagnostics, spent: 0 };
   const chance = spellcastingChance({ request, category, subtypes, roleId });
   if (!["required", "on"].includes(mode) && !random.fork("presence").chance(chance)) return { spellcasting: [], diagnostics, spent: 0 };
-  const candidates = spellSources?.listSpells?.(request.sources?.spells ?? []) ?? [];
+  const candidates = spellSources?.listSpells?.(request.sources?.spells ?? [], { explicit: request.sources?.explicitSelection === true }) ?? [];
   if (!candidates.length) {
     diagnostics.push({ level: "warning", code: "SPELL_SOURCES_EMPTY", message: "Spellcasting was selected, but no spells are available from the active spell compendiums." });
     return { spellcasting: [], diagnostics, spent: 0 };

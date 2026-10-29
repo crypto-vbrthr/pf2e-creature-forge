@@ -188,7 +188,8 @@ export class EmbeddedCreatureEditor {
     this.layout = layout;
     this.activeTab = activeTab === "sources" ? "sources" : "creature";
     this.tabScrollPositions = { creature: 0, sources: 0 };
-    this.panelScrollPositions = { concept: 0, generated: 0 };
+    this.panelScrollPositions = { concept: 0, generated: 0, sources: 0 };
+    this.sourceListScrollPositions = {};
     this.capabilities = {
       generation: true,
       actorCreation: false,
@@ -227,6 +228,9 @@ export class EmbeddedCreatureEditor {
     if (this.activeTab === "creature" && this.root) {
       this.panelScrollPositions.concept = this.root.querySelector("[data-cf-concept-scroll]")?.scrollTop ?? this.panelScrollPositions.concept;
       this.panelScrollPositions.generated = this.root.querySelector("[data-cf-generated-scroll]")?.scrollTop ?? this.panelScrollPositions.generated;
+    } else if (this.activeTab === "sources" && this.root) {
+      this.panelScrollPositions.sources = this.root.querySelector(".cf-sources-panel")?.scrollTop ?? this.panelScrollPositions.sources;
+      for (const list of this.root.querySelectorAll("[data-cf-source-list]")) this.sourceListScrollPositions[list.dataset.cfSourceList] = list.scrollTop;
     }
     this.activeEffectId = null;
     this.activeAuraId = null;
@@ -333,13 +337,14 @@ export class EmbeddedCreatureEditor {
     request.mythic.enabled = Boolean(get("mythicEnabled")?.checked);
     request.mythic.role = get("mythicRole")?.value ?? "auto";
     request.identity.subtypes = [...(get("subtypes")?.selectedOptions ?? [])].map((entry) => entry.value).filter(Boolean);
-    if (get("categorySources")) request.sources.categories = [...get("categorySources").selectedOptions].map((entry) => entry.value).filter(Boolean);
-    if (get("subtypeSources")) request.sources.subtypes = [...get("subtypeSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
-    if (get("abilitySources")) request.sources.abilities = [...get("abilitySources").selectedOptions].map((entry) => entry.value).filter(Boolean);
-    if (get("auraSources")) request.sources.auras = [...get("auraSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
-    if (get("afflictionSources")) request.sources.afflictions = [...get("afflictionSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
-    if (get("spellSources")) request.sources.spells = [...get("spellSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
-    if (get("lootSources")) request.sources.loot = [...get("lootSources").selectedOptions].map((entry) => entry.value).filter(Boolean);
+    for (const [field, key] of Object.entries({
+      categorySources: "categories", subtypeSources: "subtypes", abilitySources: "abilities",
+      auraSources: "auras", afflictionSources: "afflictions", spellSources: "spells", lootSources: "loot"
+    })) {
+      if (root.querySelector(`[data-cf-source-group="${field}"]`)) {
+        request.sources[key] = [...root.querySelectorAll(`input[name="${field}"]:checked`)].map((entry) => entry.value);
+      }
+    }
     request.identity.size = get("size")?.value ?? "med";
     for (const ability of ABILITIES) request.attributes[ability] = get(ability)?.value ?? "role";
     request.defenses.ac = get("ac")?.value ?? "role";
@@ -414,6 +419,25 @@ export class EmbeddedCreatureEditor {
     const subtypeSlugs = new Set(this.api.sources.listContent("subtype", { selectedSources: request.sources.subtypes }).map((entry) => entry.slug ?? entry.id));
     request.identity.subtypes = (request.identity.subtypes ?? []).filter((slug) => subtypeSlugs.has(slug));
     this.session.setRequest(request);
+  }
+
+  async #applySourceSelection(kind = "source-selection-change") {
+    const previousSources = deepClone(this.session.request.sources);
+    this.#syncRequestFromForm();
+    this.session.request.sources.explicitSelection = true;
+    try {
+      await this.api.sources.ensure(this.session.request.sources);
+      this.#reconcileContentSelection();
+      if (this.capabilities.persistSourceSelection) await this.api.sources.setDefaults(this.session.request.sources);
+      this.#render();
+      await this.#emitChange(kind);
+    } catch (error) {
+      // Failed compendium scans must not leave behind an unsaved/invalid selection.
+      this.session.request.sources = previousSources;
+      this.#render();
+      console.error("pf2e-creature-forge | Source selection failed.", error);
+      globalThis.ui?.notifications?.error?.(localize("PF2E_CREATURE_FORGE.Notifications.SourceScanFailed", "One or more creature compendiums could not be scanned."));
+    }
   }
 
   async #handleEvent(event) {
@@ -642,6 +666,12 @@ export class EmbeddedCreatureEditor {
       } else if (action === "close-effect-editor") {
         this.activeEffectId = null;
         this.#render();
+      } else if (["select-all-sources", "clear-sources"].includes(action) && this.capabilities.sourceSelection && this.mode !== "view") {
+        const group = target.closest?.("[data-cf-source-group]");
+        if (group) {
+          for (const input of group.querySelectorAll('input[type="checkbox"]')) input.checked = action === "select-all-sources";
+          await this.#applySourceSelection();
+        }
       } else if (action === "refresh-sources" && this.capabilities.sourceSelection) {
         this.#syncRequestFromForm();
         try {
@@ -669,20 +699,11 @@ export class EmbeddedCreatureEditor {
     }
 
     if (event.type === "change" || (event.type === "input" && target.matches?.('input[name="name"], input[name="seed"], input[name="preferredSkills"], input[name="abilityFocus"], input[name="spellThemes"]'))) {
-      this.#syncRequestFromForm();
-      if (event.type === "change" && target.matches?.('select[name="categorySources"], select[name="subtypeSources"], select[name="abilitySources"], select[name="auraSources"], select[name="afflictionSources"], select[name="spellSources"], select[name="lootSources"]')) {
-        try {
-          await this.api.sources.ensure(this.session.request.sources);
-          this.#reconcileContentSelection();
-          if (this.capabilities.persistSourceSelection) await this.api.sources.setDefaults(this.session.request.sources);
-          this.#render();
-          await this.#emitChange("source-selection-change");
-        } catch (error) {
-          console.error("pf2e-creature-forge | Source selection failed.", error);
-          globalThis.ui?.notifications?.error?.(localize("PF2E_CREATURE_FORGE.Notifications.SourceScanFailed", "One or more creature compendiums could not be scanned."));
-        }
+      if (event.type === "change" && target.matches?.('input[data-cf-source-toggle]')) {
+        await this.#applySourceSelection();
         return;
       }
+      this.#syncRequestFromForm();
       if (event.type === "change" && target.matches?.('select[name="category"], input[name="mythicEnabled"]')) this.#render();
       await this.#emitChange("request-change");
     }
@@ -797,6 +818,18 @@ export class EmbeddedCreatureEditor {
       this.panelScrollPositions.concept = this.root.querySelector("[data-cf-concept-scroll]").scrollTop;
       this.panelScrollPositions.generated = this.root.querySelector("[data-cf-generated-scroll]")?.scrollTop ?? 0;
     }
+    if (captureScroll && !previousRenderWasSubeditorMode && this.activeTab === "sources" && this.root) {
+      this.panelScrollPositions.sources = this.root.querySelector(".cf-sources-panel")?.scrollTop ?? this.panelScrollPositions.sources;
+      for (const list of this.root.querySelectorAll("[data-cf-source-list]")) this.sourceListScrollPositions[list.dataset.cfSourceList] = list.scrollTop;
+    }
+    // Restore keyboard focus after a source checkbox triggers a full form refresh.
+    const focusedSource = this.root?.contains?.(globalThis.document?.activeElement)
+      ? globalThis.document.activeElement?.closest?.("[data-cf-source-group]")
+        ? { group: globalThis.document.activeElement.closest("[data-cf-source-group]").dataset.cfSourceGroup,
+            name: globalThis.document.activeElement.name ?? "", value: globalThis.document.activeElement.value ?? "",
+            action: globalThis.document.activeElement.dataset.cfAction ?? "" }
+        : null
+      : null;
     const previousScrollTop = this.tabScrollPositions[this.activeTab] ?? 0;
     if (this.boundHandler && this.root) {
       this.root.removeEventListener("change", this.boundHandler);
@@ -822,43 +855,58 @@ export class EmbeddedCreatureEditor {
     const canCreateActor = this.capabilities.actorCreation && this.mode !== "view";
     const compendiumSources = this.api.sources.listCompendiums({ documentName: "Actor" });
     const compendiumLabels = new Map(compendiumSources.map((entry) => [entry.id, entry.label]));
-    const sourceOptions = (selected = []) => compendiumSources.map((entry) => {
-      const suffix = entry.packageName ? ` · ${entry.packageName}` : "";
-      return option(entry.id, escapeHtml(`${entry.label}${suffix}`), selected.includes(entry.id));
-    }).join("");
+    const sourceChoices = (entries) => entries.map((entry) => ({
+      id: String(entry.id),
+      label: String(entry.label),
+      suffix: entry.packageName ? ` · ${entry.packageName}` : ""
+    }));
+    const sourceGroup = (name, title, entries, selected, hint) => {
+      const selectedIds = new Set(selected);
+      const checkedCount = entries.filter((entry) => selectedIds.has(entry.id)).length;
+      const btnDisabled = disabled || !entries.length ? "disabled" : "";
+      return `<fieldset class="cf-source-group cf-wide" data-cf-source-group="${name}" ${disabled}>
+        <legend>${escapeHtml(title)}</legend>
+        <div class="cf-source-toolbar">
+          <span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SourcesSelected", "Selected"))}: ${checkedCount}/${entries.length}</span>
+          <div><button type="button" data-cf-action="select-all-sources" ${btnDisabled}>${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.SelectAllSources", "All"))}</button>
+          <button type="button" data-cf-action="clear-sources" ${btnDisabled}>${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.ClearSources", "None"))}</button></div>
+        </div>
+        <div class="cf-source-list" data-cf-source-list="${name}">
+          ${entries.length ? entries.map((entry) => `<label class="cf-source-choice">
+            <input type="checkbox" data-cf-source-toggle name="${name}" value="${escapeHtml(entry.id)}" ${selectedIds.has(entry.id) ? "checked" : ""} ${disabled}>
+            <span>${escapeHtml(entry.label)}<small>${escapeHtml(entry.suffix)}</small></span>
+          </label>`).join("") : `<span class="cf-muted">${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.NoSourcesFound", "No sources available"))}</span>`}
+        </div>
+        <small class="cf-source-hint">${escapeHtml(hint)}</small>
+      </fieldset>`;
+    };
     const spellCompendiumSources = this.api.spells?.listCompendiums?.() ?? [];
-    const selectedSpellSources = request.sources.spells?.length ? request.sources.spells : (this.api.spells?.getDefaultSourceIds?.() ?? []);
-    const spellSourceOptions = spellCompendiumSources.map((entry) => {
-      const suffix = entry.packageName ? ` · ${entry.packageName}` : "";
-      return option(entry.id, escapeHtml(`${entry.label}${suffix}`), selectedSpellSources.includes(entry.id));
-    }).join("");
+    const selectedSpellSources = request.sources.explicitSelection
+      ? request.sources.spells : (request.sources.spells?.length ? request.sources.spells : (this.api.spells?.getDefaultSourceIds?.() ?? []));
     const lootCompendiumSources = this.api.loot?.listCompendiums?.() ?? [];
     const selectedLootSources = request.sources.loot ?? [];
-    const lootSourceOptions = lootCompendiumSources.map((entry) => {
-      const suffix = entry.packageName ? ` · ${entry.packageName}` : "";
-      return option(entry.id, escapeHtml(`${entry.label}${suffix}`), selectedLootSources.includes(entry.id));
-    }).join("");
     const abilityLibraries = this.api.content.listAbilityLibraries();
-    const selectedAbilityLibraries = request.sources.abilities?.length
-      ? request.sources.abilities
-      : this.api.content.getDefaultAbilityLibraryIds();
-    const abilityLibraryOptions = abilityLibraries.map((library) => {
+    const selectedAbilityLibraries = request.sources.explicitSelection
+      ? request.sources.abilities : (request.sources.abilities?.length ? request.sources.abilities : this.api.content.getDefaultAbilityLibraryIds());
+    const abilityLibraryEntries = abilityLibraries.map((library) => {
       const moduleTitle = globalThis.game?.modules?.get?.(library.moduleId)?.title ?? library.moduleId;
       const label = localize(library.labelKey, library.label ?? library.id);
       const suffix = library.moduleId && library.moduleId !== "pf2e-creature-forge" ? ` · ${moduleTitle}` : "";
-      return option(library.id, escapeHtml(`${label}${suffix} · ${library.abilityCount} ${localize("PF2E_CREATURE_FORGE.Component.Abilities", "abilities")}`), selectedAbilityLibraries.includes(library.id));
-    }).join("");
+      return { id: library.id, label: `${label}${suffix} · ${library.abilityCount} ${localize("PF2E_CREATURE_FORGE.Component.Abilities", "abilities")}` };
+    });
     const auraLibraries = this.api.content.listAuraLibraries?.() ?? [];
-    const selectedAuraLibraries = request.sources.auras?.length ? request.sources.auras : (this.api.content.getDefaultAuraLibraryIds?.() ?? []);
-    const auraLibraryOptions = auraLibraries.map((library) => {
+    const selectedAuraLibraries = request.sources.explicitSelection
+      ? request.sources.auras : (request.sources.auras?.length ? request.sources.auras : (this.api.content.getDefaultAuraLibraryIds?.() ?? []));
+    const auraLibraryEntries = auraLibraries.map((library) => {
       const moduleTitle = globalThis.game?.modules?.get?.(library.moduleId)?.title ?? library.moduleId;
       const label = localize(library.labelKey, library.label ?? library.id);
       const suffix = library.moduleId && library.moduleId !== "pf2e-creature-forge" ? ` · ${moduleTitle}` : "";
-      return option(library.id, escapeHtml(`${label}${suffix} · ${library.auraCount} ${localize("PF2E_CREATURE_FORGE.Component.Auras", "auras")}`), selectedAuraLibraries.includes(library.id));
-    }).join("");
+      return { id: library.id, label: `${label}${suffix} · ${library.auraCount} ${localize("PF2E_CREATURE_FORGE.Component.Auras", "auras")}` };
+    });
     const afflictionLibraries = this.api.content.listAfflictionLibraries?.() ?? [];
-    const selectedAfflictionLibraries = request.sources.afflictions?.length ? request.sources.afflictions : (this.api.content.getDefaultAfflictionLibraryIds?.() ?? []);
-    const afflictionLibraryOptions = afflictionLibraries.map((library) => {
+    const selectedAfflictionLibraries = request.sources.explicitSelection
+      ? request.sources.afflictions : (request.sources.afflictions?.length ? request.sources.afflictions : (this.api.content.getDefaultAfflictionLibraryIds?.() ?? []));
+    const afflictionLibraryEntries = afflictionLibraries.map((library) => {
       const moduleTitle = globalThis.game?.modules?.get?.(library.moduleId)?.title ?? library.moduleId;
       const label = localize(library.labelKey, library.label ?? library.id);
       const isAfflictionForge = library.source?.sourceKind === "affliction-forge-library";
@@ -868,8 +916,8 @@ export class EmbeddedCreatureEditor {
       const countSuffix = isAfflictionForge && library.source?.loaded !== true
         ? ""
         : ` · ${library.afflictionCount} ${localize("PF2E_CREATURE_FORGE.Component.Afflictions", "afflictions")}`;
-      return option(library.id, escapeHtml(`${label}${suffix}${countSuffix}`), selectedAfflictionLibraries.includes(library.id));
-    }).join("");
+      return { id: library.id, label: `${label}${suffix}${countSuffix}` };
+    });
     const categories = this.api.sources.listContent("category", { selectedSources: request.sources.categories }).map((entry) => ({
       value: entry.slug ?? entry.id,
       label: `${localize(entry.label, entry.slug ?? entry.id)}${entry.discoveredSources?.length ? ` · ${entry.discoveredSources.map((id) => compendiumLabels.get(id) ?? id).join(", ")}` : ""}`,
@@ -1297,13 +1345,13 @@ export class EmbeddedCreatureEditor {
                   <span class="cf-source-scope">${escapeHtml(localize(this.capabilities.persistSourceSelection ? "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.World" : "PF2E_CREATURE_FORGE.Editor.SourceSelectionScope.Host", this.capabilities.persistSourceSelection ? "Saved as world defaults." : "Used only by this editor/request."))}</span>
                 </div>
                 <div class="cf-form-grid cf-source-grid">
-                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.CategorySources", "Category compendiums"))}</span><select name="categorySources" multiple size="9" ${disabled}>${sourceOptions(request.sources.categories)}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.CategorySourceHint", "Selected NPC compendiums can contribute additional creature categories."))}</small></label>
-                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SubtypeSources", "Subtype compendiums"))}</span><select name="subtypeSources" multiple size="9" ${disabled}>${sourceOptions(request.sources.subtypes)}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SubtypeSourceHint", "Traits observed on NPCs in the selected compendiums become additional subtype candidates."))}</small></label>
-                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AbilitySources", "Ability libraries"))}</span><select name="abilitySources" multiple size="9" ${disabled}>${abilityLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AbilitySourceHint", "Selected registered libraries contribute abilities and their linked effects. Loose API-registered abilities remain available."))}</small></label>
-                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AuraSources", "Aura libraries"))}</span><select name="auraSources" multiple size="7" ${disabled}>${auraLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AuraSourceHint", "Selected registered libraries contribute aura definitions. Automatic generation may still choose no aura."))}</small></label>
-                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.AfflictionSources", "Affliction libraries"))}</span><select name="afflictionSources" multiple size="7" ${disabled}>${afflictionLibraryOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.AfflictionSourceHint", "Selected registered libraries contribute poisons, diseases, curses, and other afflictions."))}</small></label>
-                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.SpellSources", "Spell compendiums"))}</span><select name="spellSources" multiple size="9" ${disabled}>${spellSourceOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.SpellSourceHint", "Selected spell compendiums provide the candidates for thematic spell selection."))}</small></label>
-                  <label class="cf-wide"><span>${escapeHtml(localize("PF2E_CREATURE_FORGE.Field.LootSources", "Loot & item compendiums"))}</span><select name="lootSources" multiple size="9" ${disabled}>${lootSourceOptions}</select><small>${escapeHtml(localize("PF2E_CREATURE_FORGE.Editor.LootSourceHint", "Selected item compendiums are passed to Loot Forge and Item Forge without changing their world defaults."))}</small></label>
+                  ${sourceGroup("categorySources", localize("PF2E_CREATURE_FORGE.Field.CategorySources", "Category compendiums"), sourceChoices(compendiumSources), request.sources.categories, localize("PF2E_CREATURE_FORGE.Editor.CategorySourceHint", "Selected NPC compendiums can contribute additional creature categories."))}
+                  ${sourceGroup("subtypeSources", localize("PF2E_CREATURE_FORGE.Field.SubtypeSources", "Subtype compendiums"), sourceChoices(compendiumSources), request.sources.subtypes, localize("PF2E_CREATURE_FORGE.Editor.SubtypeSourceHint", "Traits observed on NPCs in the selected compendiums become additional subtype candidates."))}
+                  ${sourceGroup("abilitySources", localize("PF2E_CREATURE_FORGE.Field.AbilitySources", "Ability libraries"), abilityLibraryEntries, selectedAbilityLibraries, localize("PF2E_CREATURE_FORGE.Editor.AbilitySourceHint", "Selected registered libraries contribute abilities and their linked effects. Loose API-registered abilities remain available."))}
+                  ${sourceGroup("auraSources", localize("PF2E_CREATURE_FORGE.Field.AuraSources", "Aura libraries"), auraLibraryEntries, selectedAuraLibraries, localize("PF2E_CREATURE_FORGE.Editor.AuraSourceHint", "Selected registered libraries contribute aura definitions. Automatic generation may still choose no aura."))}
+                  ${sourceGroup("afflictionSources", localize("PF2E_CREATURE_FORGE.Field.AfflictionSources", "Affliction libraries"), afflictionLibraryEntries, selectedAfflictionLibraries, localize("PF2E_CREATURE_FORGE.Editor.AfflictionSourceHint", "Selected registered libraries contribute poisons, diseases, curses, and other afflictions."))}
+                  ${sourceGroup("spellSources", localize("PF2E_CREATURE_FORGE.Field.SpellSources", "Spell compendiums"), sourceChoices(spellCompendiumSources), selectedSpellSources, localize("PF2E_CREATURE_FORGE.Editor.SpellSourceHint", "Selected spell compendiums provide the candidates for thematic spell selection."))}
+                  ${sourceGroup("lootSources", localize("PF2E_CREATURE_FORGE.Field.LootSources", "Loot & item compendiums"), sourceChoices(lootCompendiumSources), selectedLootSources, localize("PF2E_CREATURE_FORGE.Editor.LootSourceHint", "Selected item compendiums are passed to Loot Forge and Item Forge without changing their world defaults."))}
                 </div>
                 <div class="cf-source-actions">
                   <button type="button" data-cf-action="refresh-sources" ${disabled}><i class="fa-solid fa-arrows-rotate"></i> ${escapeHtml(localize("PF2E_CREATURE_FORGE.Action.RefreshSources", "Rescan sources"))}</button>
@@ -1336,6 +1384,20 @@ export class EmbeddedCreatureEditor {
     const generatedPanel = this.root?.querySelector("[data-cf-generated-scroll]");
     if (conceptPanel) conceptPanel.scrollTop = this.panelScrollPositions.concept;
     if (generatedPanel) generatedPanel.scrollTop = this.panelScrollPositions.generated;
+    const sourcesPanel = this.root?.querySelector(".cf-sources-panel");
+    if (sourcesPanel) sourcesPanel.scrollTop = this.panelScrollPositions.sources;
+    for (const list of this.root?.querySelectorAll("[data-cf-source-list]") ?? []) {
+      list.scrollTop = this.sourceListScrollPositions[list.dataset.cfSourceList] ?? 0;
+    }
+    if (focusedSource) {
+      const group = [...(this.root?.querySelectorAll("[data-cf-source-group]") ?? [])]
+        .find((entry) => entry.dataset.cfSourceGroup === focusedSource.group);
+      const focusTarget = [...(group?.querySelectorAll("input, button") ?? [])]
+        .find((entry) => focusedSource.action
+          ? entry.dataset.cfAction === focusedSource.action
+          : entry.name === focusedSource.name && entry.value === focusedSource.value);
+      focusTarget?.focus?.({ preventScroll: true });
+    }
     this.boundHandler = this.#handleEvent.bind(this);
     this.root?.addEventListener("change", this.boundHandler);
     this.root?.addEventListener("input", this.boundHandler);

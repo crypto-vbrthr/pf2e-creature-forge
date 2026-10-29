@@ -795,5 +795,9 @@
   "PF2E_CREATURE_FORGE.FocusTag.magic": "Magie",
   "PF2E_CREATURE_FORGE.FocusTag.battlefield-control": "Schlachtfeldkontrolle",
   "PF2E_CREATURE_FORGE.FocusTag.predator": "Jagd und Raubtier",
-  "PF2E_CREATURE_FORGE.Runtime.Timing.CriticalFailure": "Bei kritischem Fehlschlag"
+  "PF2E_CREATURE_FORGE.Runtime.Timing.CriticalFailure": "Bei kritischem Fehlschlag",
+  "PF2E_CREATURE_FORGE.Editor.SourcesSelected": "Ausgewählt",
+  "PF2E_CREATURE_FORGE.Action.SelectAllSources": "Alle",
+  "PF2E_CREATURE_FORGE.Action.ClearSources": "Keine",
+  "PF2E_CREATURE_FORGE.Editor.NoSourcesFound": "Keine Quellen verfügbar"
 }

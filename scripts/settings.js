@@ -13,6 +13,7 @@ export function registerSettings() {
     config: false,
     type: Object,
     default: {
+      explicitSelection: false,
       categories: [],
       subtypes: [],
       abilities: [],

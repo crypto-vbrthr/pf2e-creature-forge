@@ -21,12 +21,12 @@ test("embedded editor v14 exposes Effect, Aura, Affliction, and spellcasting con
   assert.match(source, /data-cf-tab="sources"/);
   assert.match(source, /data-cf-tab-panel="sources"/);
   assert.match(source, /setActiveTab\(tab\)/);
-  assert.match(source, /name="categorySources"/);
-  assert.match(source, /name="subtypeSources"/);
-  assert.match(source, /name="abilitySources"/);
-  assert.match(source, /name="auraSources"/);
-  assert.match(source, /name="afflictionSources"/);
-  assert.match(source, /name="spellSources"/);
+  assert.match(source, /sourceGroup\("categorySources"/);
+  assert.match(source, /sourceGroup\("subtypeSources"/);
+  assert.match(source, /sourceGroup\("abilitySources"/);
+  assert.match(source, /sourceGroup\("auraSources"/);
+  assert.match(source, /sourceGroup\("afflictionSources"/);
+  assert.match(source, /sourceGroup\("spellSources"/);
   assert.match(source, /name="spellcastingMode"/);
   assert.match(source, /name="spellcastingStyle"/);
   assert.match(source, /name="spellTradition"/);
@@ -78,10 +78,15 @@ test("editor css hides inactive tab panels while keeping tabs outside the scroll
 
 test("compendium pickers are rendered in the dedicated sources panel", async () => {
   const source = await readFile(editorUrl, "utf8");
-  assert.match(source, /data-cf-tab-panel="sources"[\s\S]*name="categorySources"[\s\S]*name="subtypeSources"/);
+  assert.match(source, /data-cf-tab-panel="sources"[\s\S]*sourceGroup\("categorySources"[\s\S]*sourceGroup\("subtypeSources"/);
   const renderedSourcePanel = source.slice(source.indexOf('data-cf-tab-panel="sources"'));
   assert.match(renderedSourcePanel, /PF2E_CREATURE_FORGE\.Editor\.Sources/);
   assert.match(renderedSourcePanel, /data-cf-action="refresh-sources"/);
+  assert.match(source, /data-cf-source-toggle/);
+  assert.match(source, /data-cf-action="select-all-sources"/);
+  assert.match(source, /data-cf-action="clear-sources"/);
+  assert.match(source, /this\.panelScrollPositions\.sources = this\.root\.querySelector\("\.cf-sources-panel"\)/);
+  assert.match(source, /sourcesPanel\.scrollTop = this\.panelScrollPositions\.sources/);
 });
 
 

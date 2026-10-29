@@ -1,3 +1,17 @@
+## 1.2.1 (2026-10-29) — Stable
+- Promoted the user-reviewed Creature Forge 1.2.1-rc.2 to stable with **no generator, editor, or gameplay logic changes**.
+- Includes independently selectable source libraries/compendiums, persistent source-panel scrolling, focus-tag checkboxes, ability skill/attack prerequisites, and chat effect controls from the 1.2.1 RC/dev series.
+- Confirmed that absent spell generation reported during RC testing was caused by missing/disabled spell sources, not by a spell-generation regression. Forced spellcasting still requires eligible spell sources.
+- Aligned module/package/API versions and the release download target to `v1.2.1`. Public Request v8 / Blueprint v12 / Content v11 / Embedded Editor v14 / runtime-status v2 contracts remain unchanged.
+- Existing automated tests and JS syntax checks must pass for the stable archive. Final in-world smoke validation is based on user feedback, not a full automated Foundry UI integration harness.
+
+## 1.2.1-rc.2 (2026-10-29)
+- Fixed the **Sources** tab jumping to the top after toggling/rescanning compendiums by preserving the actual sources panel and per-library list scroll offsets across full editor rerenders and tab switches.
+- Replaced Ctrl/Shift multi-selects with independent, labeled source checkboxes and per-group **All / None** buttons for category, subtype, ability, aura, affliction, spell and loot sources.
+- Added opt-in `sources.explicitSelection` to request v8. When enabled, a deliberately empty list disables the corresponding bundled ability/aura/affliction library or spell compendium instead of silently re-enabling default sources. Existing requests without this flag continue using their original fallback semantics. Loose API-registered abilities remain available as documented.
+- The standalone editor saves these selections as world defaults. Embedded editors with persistent selection disabled remain request-local. Public API, request/blueprint/content schema numbers and editor contract versions stay unchanged.
+- Release candidate requires Foundry 14 / PF2e live UI smoke test; dependency compatibility for other add-ons is unchanged.
+
 ## 1.2.1-rc.1 (2026-10-28)
 
 - Promoted the visually confirmed 1.2.1-dev.3 focus-tag checkbox layout to release candidate with no additional feature or gameplay modifications.

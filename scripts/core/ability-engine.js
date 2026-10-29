@@ -44,11 +44,13 @@ export function resolveAbilityPowerBudget(request, roleId) {
   return Math.max(count, count * (BUDGET_MULTIPLIER[complexity] ?? 3));
 }
 
-function sourceAllowed(entry, selected = [], registry) {
+function sourceAllowed(entry, selected = [], registry, explicit = false) {
   const source = entry?.source ?? {};
   if (source.sourceKind === "compendium") return selected.includes(source.compendiumId);
   if (!source.libraryId) return true; // legacy/API-registered loose content stays available
-  const effective = registry.resolveAbilityLibrarySelection(selected);
+  // An explicit empty selection disables bundled libraries; old API requests
+  // still interpret an empty list as "use the default libraries".
+  const effective = explicit ? selected : registry.resolveAbilityLibrarySelection(selected);
   return effective.includes(source.libraryId);
 }
 
@@ -162,7 +164,7 @@ export function collectAbilityEffectResources(abilities, registry, existingResou
 export function listAbilityCandidates({ request, registry, level, roleId, category, subtypes, includeInvalid = false }) {
   const context = { level, role: roleId, category, subtypes };
   const selected = request.sources?.abilities ?? [];
-  const candidates = registry.query("ability", context).filter((entry) => sourceAllowed(entry, selected, registry));
+  const candidates = registry.query("ability", context).filter((entry) => sourceAllowed(entry, selected, registry, request.sources?.explicitSelection === true));
   if (includeInvalid) return candidates;
   return candidates.filter((entry) => registry.validateAbilityDependencies(entry).valid);
 }
@@ -170,7 +172,7 @@ export function listAbilityCandidates({ request, registry, level, roleId, catego
 function dependencyDiagnostics({ request, registry, level, roleId, category, subtypes }) {
   const context = { level, role: roleId, category, subtypes };
   const selected = request.sources?.abilities ?? [];
-  const candidates = registry.query("ability", context).filter((entry) => sourceAllowed(entry, selected, registry));
+  const candidates = registry.query("ability", context).filter((entry) => sourceAllowed(entry, selected, registry, request.sources?.explicitSelection === true));
   return candidates.flatMap((entry) => {
     const result = registry.validateAbilityDependencies(entry);
     if (result.valid) return [];

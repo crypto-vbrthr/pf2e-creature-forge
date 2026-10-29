@@ -1,4 +1,4 @@
-# Public API 1.2.1-rc.1
+# Public API 1.2.1
 
 > **1.2.0 UI extension:** The embedded editor adds two independent scroll regions, section locks/rerolls and direct numeric adjustments to blueprint fields. Request/Blueprint/Content schemas remain unchanged; the Embedded Creature Editor v14 contract applies. Numeric defense locks now protect AC, HP, Perception, and saves without protecting defensive affinities. Affinity locks independently protect immunities, resistances, weaknesses, and their HP compensation. HP remains stable if its numeric section is locked, and the internal base HP is reconciled to the selected affinity compensation.
 
@@ -307,7 +307,21 @@ api.abilities.resolvePowerBudget(request);
 api.abilities.listLibraries();
 ```
 
-A generation request selects libraries through `sources.abilities`. An empty array means the registered `defaultEnabled` libraries. Abilities registered loosely through `registerAbility()` or ordinary bundles without a library remain visible for backward compatibility.
+A generation request selects libraries through `sources.abilities`. For backward compatibility, **an empty array with `sources.explicitSelection` omitted/false** means the registered `defaultEnabled` libraries. The Creature Forge source checkbox UI sets `sources.explicitSelection: true` so that empty arrays explicitly disable the corresponding bundled **ability, aura, affliction**, or **spell** sources. Category/subtype and loot arrays already support an empty selection. Abilities registered loosely through `registerAbility()` or ordinary bundles without a library remain visible for backward compatibility.
+
+```js
+const request = api.createRequest({
+  sources: {
+    explicitSelection: true,
+    abilities: ["pf2e-creature-forge.ability-library.core"],
+    auras: [],         // do not pick a library aura
+    afflictions: [],   // do not pick a library affliction
+    spells: []         // do not use fallback spell compendiums
+  }
+});
+```
+
+The standalone editor can persist this as world defaults. Existing request snapshots without `explicitSelection` preserve their original default fallback behavior.
 
 `abilities.powerBudget` accepts `"auto"` or an integer from 0 to 30. Each generated ability carries `powerCost`, and the Blueprint records the result in `metadata.abilityBudget`.
 
@@ -647,7 +661,7 @@ await api.sources.refreshAfflictionLibraries({ force: true });
 
 Provider/world Affliction Forge libraries are bridged as selectable Creature Forge Affliction sources. Generic implicit Item-compendium libraries are visible but are not default-enabled. Unedited bridged entries retain their canonical `templateUuid`; editing them detaches the Creature Blueprint resource so actor creation cannot mutate or misrepresent the source template. `api.sources.ensure(...)`, `isPrepared(...)`, and `getStatus()` include the Affliction bridge as well as category/subtype compendium discovery.
 
-`CreatureGenerationRequest.sources.categories`, `.subtypes`, `.abilities`, `.auras`, and `.afflictions` are independent arrays. Core and non-compendium extension content remains visible regardless of these arrays. Compendium-discovered content is filtered to the selected pack ids.
+`CreatureGenerationRequest.sources.categories`, `.subtypes`, `.abilities`, `.auras`, and `.afflictions` are independent arrays. Core category/subtype definitions and loose API-registered extension content remain available; bundled ability, aura, and affliction content obey selected library IDs. Compendium-discovered content is filtered to the selected pack ids. `sources.explicitSelection: true` makes empty library/spell lists mean **none** instead of the legacy default-enabled fallback.
 
 When a request uses unprepared compendium sources, prefer `await api.generateAsync(request)`. For repeated synchronous generation, call `await api.sources.ensure(request.sources)` once before `api.generate(request)`.
 
@@ -687,7 +701,7 @@ editor.unmount();
 editor.destroy();
 ```
 
-The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v12 keeps source selection in the dedicated `sources` tab, adds loot Item-compendium selection plus loot controls/channel locks/rerolls, preserves spellcasting controls, and retains host-controllable `effectEditing`, `auraEditing`, and `afflictionEditing` capabilities for mounting the public Forge editors in the same editor workspace. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.
+The editor is a host-neutral embedded surface. It scopes field lookup and event handling to its own root, owns its internal scroll region, and renders its primary actions in a persistent bottom footer. Contract v14 keeps source selection in the dedicated `sources` tab, adds loot Item-compendium selection plus loot controls/channel locks/rerolls, preserves spellcasting controls, and retains host-controllable `effectEditing`, `auraEditing`, and `afflictionEditing` capabilities for mounting the public Forge editors in the same editor workspace. `sourceSelection: true` exposes the tab and its category/subtype compendium pickers; `persistSourceSelection: true` is intended for the standalone world-default host, while embedded modules should normally leave persistence disabled and carry sources in their own generation request. Hosts can inspect `editor.currentTab`, call `editor.setActiveTab("sources")`, or pass `activeTab` at creation/mount time. The standalone Creature Forge ApplicationV2 window only hosts this public editor and does not contain a separate editor implementation.
 
 
 ### Signature powers 0.7.2
