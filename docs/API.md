@@ -1,4 +1,4 @@
-# Public API 1.2.1
+# Public API 1.2.2
 
 > **1.2.0 UI extension:** The embedded editor adds two independent scroll regions, section locks/rerolls and direct numeric adjustments to blueprint fields. Request/Blueprint/Content schemas remain unchanged; the Embedded Creature Editor v14 contract applies. Numeric defense locks now protect AC, HP, Perception, and saves without protecting defensive affinities. Affinity locks independently protect immunities, resistances, weaknesses, and their HP compensation. HP remains stable if its numeric section is locked, and the internal base HP is reconciled to the selected affinity compensation.
 

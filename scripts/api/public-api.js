@@ -277,12 +277,12 @@ export function initializePublicApi({ openCreatureForge } = {}) {
         return lootChannelChance({ channel, category: normalized.identity.category, roleId: normalized.identity.role, variation: normalized.generation.variation, level: normalized.identity.level, hasSpellcasting: normalized.spellcasting.mode !== "none" });
       },
       generate: (blueprint, request = null) => lootIntegration.generateForBlueprint(blueprint, request ?? blueprint?.metadata?.requestSnapshot ?? {}),
-      refresh: async (blueprint) => {
-        const planned = generator.reroll(blueprint, { scope: "loot" });
+      refresh: async (blueprint, request = null) => {
+        const planned = generator.reroll(blueprint, { scope: "loot", ...(request == null ? {} : { request }) });
         return lootIntegration.generateForBlueprint(planned, planned?.metadata?.requestSnapshot ?? {});
       },
-      refreshChannel: async (blueprint, channel) => {
-        const planned = generator.reroll(blueprint, { scope: `loot:${channel}` });
+      refreshChannel: async (blueprint, channel, request = null) => {
+        const planned = generator.reroll(blueprint, { scope: `loot:${channel}`, ...(request == null ? {} : { request }) });
         return lootIntegration.generateForBlueprint(planned, planned?.metadata?.requestSnapshot ?? {});
       },
       listCompendiums: () => listCompendiumSources({ documentName: "Item" }),

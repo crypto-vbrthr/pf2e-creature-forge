@@ -49,7 +49,11 @@ export class CreatureEditorSession {
 
   async rerollAsync(options = {}) {
     if (!this.blueprint) return this.generateAsync();
-    this.blueprint = await (this.api.rerollAsync ? this.api.rerollAsync(this.blueprint, options) : this.api.reroll(this.blueprint, options));
+    // Editor controls contain a draft request newer than the blueprint's
+    // generation snapshot. Every scope must use the current draft, otherwise
+    // rerolling one ability/section silently resets recently toggled focus tags.
+    const rerollOptions = { ...options, request: options.request ?? this.request };
+    this.blueprint = await (this.api.rerollAsync ? this.api.rerollAsync(this.blueprint, rerollOptions) : this.api.reroll(this.blueprint, rerollOptions));
     this.request = deepClone(this.blueprint.metadata.requestSnapshot);
     this.dirty = true;
     return this.blueprint;
@@ -57,7 +61,7 @@ export class CreatureEditorSession {
 
   reroll(options = {}) {
     if (!this.blueprint) return this.generate();
-    this.blueprint = this.api.reroll(this.blueprint, options);
+    this.blueprint = this.api.reroll(this.blueprint, { ...options, request: options.request ?? this.request });
     this.request = deepClone(this.blueprint.metadata.requestSnapshot);
     this.dirty = true;
     return this.blueprint;

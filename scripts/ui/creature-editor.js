@@ -483,7 +483,7 @@ export class EmbeddedCreatureEditor {
         const scope = target.closest?.("[data-cf-section]")?.dataset.cfSection;
         if (this.capabilities.generation && canRerollSection(this.session.blueprint, scope)) {
           if (scope === "loot") {
-            this.session.blueprint = await this.api.loot.refresh(this.session.blueprint);
+            this.session.blueprint = await this.api.loot.refresh(this.session.blueprint, this.session.request);
             this.session.request = deepClone(this.session.blueprint.metadata.requestSnapshot);
             this.session.dirty = true;
           } else {
@@ -506,7 +506,7 @@ export class EmbeddedCreatureEditor {
         await this.#emitChange("reroll-hp");
       } else if (action === "reroll-loot") {
         if (this.session.blueprint && !sectionLocked(this.session.blueprint, "loot")) {
-          this.session.blueprint = await this.api.loot.refresh(this.session.blueprint);
+          this.session.blueprint = await this.api.loot.refresh(this.session.blueprint, this.session.request);
           this.session.request = deepClone(this.session.blueprint.metadata.requestSnapshot);
           this.session.dirty = true;
           this.#render();
@@ -515,7 +515,7 @@ export class EmbeddedCreatureEditor {
       } else if (action === "reroll-loot-channel") {
         const channel = target.closest?.("[data-loot-channel]")?.dataset?.lootChannel;
         if (channel && !sectionLocked(this.session.blueprint, "loot") && this.session.blueprint?.loot?.channels?.[channel] && !this.session.blueprint.loot.channels[channel].locked) {
-          this.session.blueprint = await this.api.loot.refreshChannel(this.session.blueprint, channel);
+          this.session.blueprint = await this.api.loot.refreshChannel(this.session.blueprint, channel, this.session.request);
           this.session.request = deepClone(this.session.blueprint.metadata.requestSnapshot);
           this.session.dirty = true;
           this.#render();
@@ -845,7 +845,7 @@ export class EmbeddedCreatureEditor {
     const focusSelected = new Set(request.abilities.focus ?? []);
     const focusGroups = ABILITY_FOCUS_GROUPS.map((group) => `<div class="cf-focus-group">
       <span class="cf-focus-heading">${escapeHtml(localize(`PF2E_CREATURE_FORGE.FocusGroup.${group.id}`, group.id))}</span>
-      <div class="cf-focus-choices">${group.tags.map((tag) => `<label class="cf-focus-choice${focusSelected.has(tag) ? " is-selected" : ""}">
+      <div class="cf-focus-choices">${group.tags.map((tag) => `<label class="cf-focus-choice">
         <input type="checkbox" name="abilityFocusChoice" value="${escapeHtml(tag)}" ${focusSelected.has(tag) ? "checked" : ""} ${disabled}>
         <span class="cf-focus-indicator" aria-hidden="true"></span>
         <span class="cf-focus-name">${escapeHtml(localize(`PF2E_CREATURE_FORGE.FocusTag.${tag}`, tag.replaceAll("-", " ")))}</span>

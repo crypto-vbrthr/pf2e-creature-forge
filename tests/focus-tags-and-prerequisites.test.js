@@ -30,6 +30,13 @@ test("curated checkbox focus tags and free-form addon tags share a stable reques
   assert.match(style, /clip-path: inset\(50%\)/);
   assert.match(style, /input:checked \+ \.cf-focus-indicator/);
   assert.match(style, /:focus-within/);
+  // Reproduces the visual bug in 1.2.1: a one-time "is-selected" class
+  // survived subsequent uncheck events because focus changes do not rerender.
+  // The chip must derive its appearance entirely from the live input state.
+  assert.match(style, /label\.cf-focus-choice:has\(input:checked\)/);
+  assert.doesNotMatch(style, /label\.cf-focus-choice\.is-selected/);
+  assert.match(ui, /<label class="cf-focus-choice">/);
+  assert.doesNotMatch(ui, /<label class="cf-focus-choice\$\{/);
   assert.match(ui, /root\.querySelectorAll\('input\[name="abilityFocusChoice"\]:checked'\)/);
   assert.match(ui, /additionalAbilityFocus\(request\.abilities\.focus/);
 });

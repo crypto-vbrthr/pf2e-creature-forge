@@ -1,3 +1,24 @@
+## 1.2.2 (2026-10-31) — Stable focus-tag state hotfix
+- Promoted the Foundry-tested `1.2.2-rc.2` to stable without generator, editor, or gameplay behavior changes.
+- Focus-tag checkboxes now reliably select and deselect, reflect their actual state, and retain edits through scoped rerolls and loot refreshes.
+- Includes the UI highlighting fix from rc.1 and request-state preservation from rc.2; retained API compatibility and unchanged schemas.
+- Aligned module, package, API constants, and download metadata for release `v1.2.2`.
+- Live Foundry checkbox behavior confirmed by user; automated test/syntax verification performed on this stable package.
+
+## 1.2.2-rc.2 (2026-10-31) — Preserve draft focus tags during actions
+- Fixed the underlying request-state regression exposed during 1.2.2-rc.1 testing: clicking a focus-tag checkbox updated the editor draft, but a scoped reroll read the old blueprint `metadata.requestSnapshot` and overwrote the new selection. This also affected other recently edited request fields.
+- Editor sessions now send the active draft request for synchronous and asynchronous scoped rerolls. The generator applies an explicitly supplied request to any reroll scope and persists it in the returned blueprint. Existing API callers without an override retain the original snapshot behavior.
+- Loot refresh actions now also pass the current editor request, so they cannot silently discard selected tags or other draft changes.
+- Kept the CSS-only visual checkbox fix from rc.1, including immediate selected-state highlighting, native keyboard/label clicks and the additional free-form focus field.
+- Added targeted regression tests reproducing the rc.1 reset, checking selection/deselection, full/partial/single-ability rerolls and backward compatibility. No ability weighting, content schema, or addon selection changes.
+- Live Foundry UI verification is still required before stable release.
+
+## 1.2.2-rc.1 (2026-10-31) — Focus tag checkbox hotfix RC
+- Fixed focus tag chips remaining visually selected after unchecking them. The chip highlight had been driven by a stale `is-selected` class from initial rendering, while the input state already changed correctly.
+- The appearance is now derived solely from the current checkbox state via `:has(input:checked)`, and the redundant render-time class was removed. This preserves native label click, keyboard operation and accessible checkbox state.
+- Added regression checks to prevent stale CSS state from returning. No generator, tag-weighting, source-selection, request schema or public editor API changes.
+- Requires a final Foundry 14 UI verification before promoting the patch to stable.
+
 ## 1.2.1 (2026-10-29) — Stable
 - Promoted the user-reviewed Creature Forge 1.2.1-rc.2 to stable with **no generator, editor, or gameplay logic changes**.
 - Includes independently selectable source libraries/compendiums, persistent source-panel scrolling, focus-tag checkboxes, ability skill/attack prerequisites, and chat effect controls from the 1.2.1 RC/dev series.

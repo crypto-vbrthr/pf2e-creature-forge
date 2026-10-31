@@ -988,7 +988,8 @@
   line-height: 1.25;
   user-select: none;
 }
-.cf-editor label.cf-focus-choice.is-selected,
+/* A previous render must not keep a chip highlighted after it is unchecked.
+   The current checkbox state is the single source of truth for the highlight. */
 .cf-editor label.cf-focus-choice:has(input:checked) {
   border-color: var(--color-border-highlight, #bfa46b);
   background: color-mix(in srgb, var(--color-warm-1, #ac9153) 18%, transparent);

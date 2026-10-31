@@ -491,8 +491,11 @@ export class CreatureGenerator {
   }
 
   reroll(blueprint, options = {}) {
-    const snapshot = blueprint?.metadata?.requestSnapshot;
-    if (!snapshot) throw new Error("Blueprint does not contain a request snapshot and cannot be rerolled.");
+    const originalSnapshot = blueprint?.metadata?.requestSnapshot;
+    if (!originalSnapshot) throw new Error("Blueprint does not contain a request snapshot and cannot be rerolled.");
+    // Scoped rerolls must honor an explicitly supplied updated editor request.
+    // Older API callers without an override retain their previous behavior.
+    const snapshot = options.request == null ? originalSnapshot : createGenerationRequest(options.request);
     const scope = String(options.scope ?? "all");
     const newSeed = String(options.seed ?? createRandomSeed(`reroll-${scope}`));
 
@@ -547,6 +550,7 @@ export class CreatureGenerator {
     }
 
     const next = normalizeBlueprintLocks(deepClone(blueprint));
+    next.metadata.requestSnapshot = deepClone(snapshot);
     next.metadata.seed = newSeed;
     next.metadata.rerollHistory ??= [];
     next.metadata.rerollHistory.push({ scope, previousSeed: blueprint.metadata.seed, seed: newSeed });
